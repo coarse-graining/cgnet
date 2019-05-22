@@ -19,7 +19,7 @@ def readlist(filename):
 setup(
     name=NAME,
     version=VERSION,
-    author="B Husic, Nick Charron, ...",
+    author="Jiang Wang, B Husic, Nick Charron, ...",
     author_email="bhusic@stanford.edu",
     url='https://github.com/coarse-graining/cgnet',
     download_url='https://github.com/coarse-graining/cgnet/tarball/master',

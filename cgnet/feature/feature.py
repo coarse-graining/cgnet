@@ -1,3 +1,7 @@
+# Author: B Husic
+# Contributors: Jiang Wang
+
+
 import torch
 import torch.nn as nn
 import numpy as np

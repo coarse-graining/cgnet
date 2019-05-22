@@ -1,3 +1,7 @@
+# Author: B Husic
+# Contributors: Jiang Wang
+
+
 import numpy as np
 import torch
 import scipy.spatial
