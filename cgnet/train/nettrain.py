@@ -63,6 +63,27 @@ class Trainer():
         loss /= num_batch
         return loss
 
+    def lipschitz_projection(self, model):
+        """Performs L2 Lipschitz Projection via spectral normalization
+
+        Parameters
+        ----------
+        model : Net() instance
+            model to perform Lipschitz projection upon
+
+        """
+		for layer in model.layers:
+			if isinstance(layer, nn.Linear):
+				weight = layer.weight.data
+				u, s, v = torch.svd(weight)
+				if next(model.parameters()).is_cuda:
+					lip_reg = torch.max(((s[0]) / self.lipschitz),
+										torch.tensor([1.0]).double().cuda())
+				else:
+					lip_reg = torch.max(((s[0]) / self.lipschitz),
+										torch.tensor([1.0]).double())
+				layer.weight.data = weight / (lip_reg)
+
     def train(self, model, num_epochs, verbose=True,
               batch_freq=1, epoch_freq=1):
         """Training loop
@@ -98,17 +119,7 @@ class Trainer():
                 self.optimzer.step()
                 # perform L2 lipschitz check and projection
                 if self.lipschitz:
-                    for layer in model.layers:
-                        if isinstance(layer, nn.Linear):
-                            weight = layer.weight.data
-                            u, s, v = torch.svd(weight)
-                            if next(model.parameters()).is_cuda:
-                                lip_reg = torch.max(((s[0]) / self.lipschitz),
-                                                    torch.tensor([1.0]).double().cuda())
-                            else:
-                                lip_reg = torch.max(((s[0]) / self.lipschitz),
-                                                    torch.tensor([1.0]).double())
-                            layer.weight.data = weight / (lip_reg)
+                    self.lipschitz_projection(model)
                 if verbose:
                     if num % batch_freq == 0:
                         print(
