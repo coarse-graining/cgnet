@@ -1,7 +1,9 @@
+# Author: Nick Charron
+# Contributors: Brooke Husic, Dominik Lemm
+
 import torch
 import torch.nn as nn
 import numpy as np
-
 
 class ForceLoss(torch.nn.Module):
     """Loss function for force matching scheme."""
@@ -40,23 +42,23 @@ def LinearLayer(d_in, d_out, bias=True, activation=None, dropout=0, weight_init=
         input dimension
     d_out : int
         output dimension
-    bias : bool
+    bias : bool (default=True)
         specifies whether or not to add a bias node
-    activation : torch.nn.Module()
+    activation : torch.nn.Module() (default=None)
         activation function for the layer
-    dropout : float
+    dropout : float (default=0)
         if > 0, a dropout layer with the specified dropout frequency is
         added after the activation.
-    weight_init : str, float, or nn.init function
+    weight_init : str, float, or nn.init function (default=\'xavier\')
         specifies the initialization of the layer weights. For non-option
         initializations (eg, xavier initialization), a string may be used
         for simplicity. If a float or int is passed, a constant initialization
         is used. For more complicated initializations, a torch.nn.init function
         object can be passed in.
-    weight_init_args : list or tuple
+    weight_init_args : list or tuple (default=None)
         arguments (excluding the layer.weight argument) for a torch.nn.init
         function.
-    weight_init_kwargs : dict
+    weight_init_kwargs : dict (default=None)
         keyword arguements for a torch.nn.init function
 
     Returns
@@ -83,7 +85,6 @@ def LinearLayer(d_in, d_out, bias=True, activation=None, dropout=0, weight_init=
         seq += [activation]
     if dropout:
         seq += [nn.Dropout(dropout)]
-
     if weight_init == 'xavier':
         torch.nn.init.xavier_uniform_(seq[0].weight)
     if weight_init == 'identity':
@@ -97,7 +98,6 @@ def LinearLayer(d_in, d_out, bias=True, activation=None, dropout=0, weight_init=
             weight_inti_kwargs = []
         weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
     return seq
-
 
 class Net(nn.Module):
     """CGnet neural network class
@@ -116,12 +116,12 @@ class Net(nn.Module):
         self.arch = nn.Sequential(*arch)
         self.criterion = criterion
 
-    def forward(self, in_data):
+    def forward(self, coord):
         """Forward pass through the network
 
         Parameters
         ----------
-        in_data : torch.Tensor (grad enabled)
+        coord : torch.Tensor (grad enabled)
             input trajectory/data of size [n_examples, n_degrees_of_freedom].
 
         Returns
@@ -132,21 +132,22 @@ class Net(nn.Module):
             vector forces of size [n_examples, n_degrees_of_freedom].
         """
 
-        energy = self.arch(in_data)
+        energy = self.arch(coord)
         force = torch.autograd.grad(-torch.sum(energy),
-                                    in_data,
+                                    coord,
                                     create_graph=True,
                                     retain_graph=True)
         return energy, force[0]
 
-    def predict(self, batch):
+    def predict(self, coord, force_labels):
         """Prediction over test/validation batch.
 
         Parameters
         ----------
-        batch : dict
-            dictionary with \'traj\' and \'force\' keys and corresponding
-            values that are batches of trajectory and force label data.
+        coord: torch.Tensor (grad enabled)
+            input trajectory/data of size [n_examples, n_degrees_of_freedom]
+        force_labels: torch.Tensor
+            force labels of size [n_examples, n_degrees_of_freedom]
 
         Returns
         -------
@@ -156,8 +157,7 @@ class Net(nn.Module):
         """
 
         self.eval()  # set model to eval mode
-        in_data = batch['traj']
-        energy, force = self.forward(in_data)
-        loss = self.criterion.forward(force, batch['force'])
+        energy, force = self.forward(coord)
+        loss = self.criterion.forward(force, force_labels)
         self.train()  # set model to train mode
         return loss.data
