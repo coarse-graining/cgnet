@@ -9,9 +9,9 @@ from sklearn.metrics import mean_squared_error as mse
 from cgnet.network.nnet import CGnet, LinearLayer, ForceLoss
 
 # Random test data
-x0 = torch.rand((25, 1), requires_grad=True)
+x0 = torch.rand((50, 1), requires_grad=True)
 slope = np.random.randn()
-noise = torch.rand((25, 1))
+noise = 0.7*torch.rand((50, 1))
 y0 = x0.detach()*slope + noise
 
 
@@ -60,13 +60,12 @@ def test_cgnet():
 def test_linear_regression():
     """Comparison of CGnet with sklearn linear regression for linear force"""
 
-    layers = LinearLayer(1, 10, activation=nn.Tanh(), bias=True)
-    layers += LinearLayer(10, 10, activation=nn.Tanh(), bias=True)
-    layers += LinearLayer(10, 1, activation=None, bias=True)
+    layers = LinearLayer(1, 15, activation=nn.Softplus(), bias=True)
+    layers += LinearLayer(15, 15, activation=nn.Softplus(), bias=True)
+    layers += LinearLayer(15, 1, activation=nn.Softplus(), bias=True)
     model = CGnet(layers, ForceLoss())
     print(model)
-    optimizer = torch.optim.Adam(
-        model.parameters(), lr=0.05, weight_decay=0.01)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.05, weight_decay=0)
     epochs = 35
     for i in range(epochs):
         optimizer.zero_grad()
@@ -84,4 +83,4 @@ def test_linear_regression():
     reg = lrg.fit(x, y)
     y_pred = reg.predict(x)
 
-    np.testing.assert_almost_equal(mse(y, y_pred), loss, decimal=2)
+    np.testing.assert_almost_equal(mse(y, y_pred), loss, decimal=1)
