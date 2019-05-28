@@ -3,7 +3,7 @@
 import numpy as np
 import torch
 
-from cgtools.feature import MoleculeDataset
+from cgnet.feature import MoleculeDataset
 
 beads = np.random.randint(10)
 dims = np.random.randint(5)
