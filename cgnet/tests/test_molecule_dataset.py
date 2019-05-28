@@ -1,3 +1,5 @@
+# Author: Brooke Husic
+
 import numpy as np
 import torch
 
