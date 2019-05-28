@@ -1,8 +1,10 @@
+# Author: Brooke Husic
+
 import numpy as np
 import scipy.spatial
 import torch
 
-from cgtools.feature import ProteinBackboneFeature
+from cgnet.feature import ProteinBackboneFeature
 
 frames = np.random.randint(10)
 beads = np.random.randint(4, 10)
@@ -13,6 +15,8 @@ xt = torch.Tensor(x)
 
 
 def test_distance_features():
+    """Make sure pairwise distance features are consistent with scipy"""
+
     f = ProteinBackboneFeature()
     out = f.forward(xt)
 
@@ -30,6 +34,8 @@ def test_distance_features():
 
 
 def test_angle_features():
+    """Make sure angle features are consistent with manual calculation"""
+
     f = ProteinBackboneFeature()
     out = f.forward(xt)
 
@@ -54,6 +60,8 @@ def test_angle_features():
 
 
 def test_dihedral_features():
+    """Make sure dihedral features are consistent with manual calculation"""
+    
     f = ProteinBackboneFeature()
     out = f.forward(xt)
 

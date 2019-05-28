@@ -1,9 +1,11 @@
+# Author: Brooke Husic
+
 import numpy as np
 import scipy.spatial
 import torch
 
-from cgtools.feature import ProteinBackboneFeature
-from cgtools.feature import ProteinBackboneStatistics
+from cgnet.feature import ProteinBackboneFeature
+from cgnet.feature import ProteinBackboneStatistics
 
 frames = np.random.randint(10)
 beads = np.random.randint(4, 10)
@@ -18,6 +20,8 @@ stats = ProteinBackboneStatistics(xt)
 
 
 def test_distance_statistics():
+    """Make sure distance statistics are consistent with numpy"""
+
     feature_dist_mean = np.mean(f.distances.numpy(), axis=0)
     feature_dist_std = np.std(f.distances.numpy(), axis=0)
 
@@ -28,6 +32,8 @@ def test_distance_statistics():
 
 
 def test_angle_statistics():
+    """Make sure angle statistics are consistent with numpy"""
+
     feature_angle_mean = np.mean(f.angles.numpy(), axis=0)
     feature_angle_std = np.std(f.angles.numpy(), axis=0)
 
@@ -38,6 +44,8 @@ def test_angle_statistics():
 
 
 def test_dihedral_statistics():
+    """Make sure dihedral statistics are consistent with numpy"""
+
     feature_dihed_cos_mean = np.mean(f.dihedral_cosines.numpy(), axis=0)
     feature_dihed_cos_std = np.std(f.dihedral_cosines.numpy(), axis=0)
     feature_dihed_sin_mean = np.mean(f.dihedral_sines.numpy(), axis=0)
