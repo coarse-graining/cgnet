@@ -59,7 +59,7 @@ def test_cgnet():
 
 
 def test_linear_regression():
-    """Comparison of CGnet with sklearn linear regression for constant force"""
+    """Comparison of CGnet with sklearn linear regression for linear force"""
 
     layers = LinearLayer(1, 10, activation=nn.Tanh(), bias=True)
     layers += LinearLayer(10, 10, activation=nn.Tanh(), bias=True)
