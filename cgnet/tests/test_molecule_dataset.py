@@ -11,6 +11,8 @@ y = np.random.randn(20, beads, dims)
 
 
 def test_adding_data():
+    """Make sure data is added correctly to a dataset"""
+    
     ds1 = MoleculeDataset(x, y)
 
     ds2 = MoleculeDataset(x, y, selection=np.arange(10))
@@ -21,6 +23,8 @@ def test_adding_data():
 
 
 def test_stride():
+    """Make sure dataset stride returns correct results"""
+
     stride = np.random.randint(1, 4)
     ds = MoleculeDataset(x, y, stride=stride)
 
