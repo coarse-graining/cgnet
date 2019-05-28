@@ -1,3 +1,6 @@
+# Author: Nick Charron
+# Contributors: Brooke Husic, Dominik Lemm
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -6,7 +9,7 @@ from torch.utils.data import DataLoader, TensorDataset, RandomSampler, Sequentia
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
 from network.nnet import Net, LinearLayer, ForceLoss
-from train.nettrain import Trainer
+from cgnet.train.nettrain import Trainer
 
 # Random train data
 x0 = torch.rand((3000,2),requires_grad=True)
