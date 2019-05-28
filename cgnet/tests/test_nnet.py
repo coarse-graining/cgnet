@@ -13,7 +13,6 @@ x0 = torch.rand((25, 1), requires_grad=True)
 slope = np.random.randn()
 noise = torch.rand((25, 1))
 y0 = x0.detach()*slope + noise
-batch = {'traj': x0, 'force': y0}
 
 
 def test_linear_layer():
