@@ -1,1 +1,1 @@
-from .nnet import LinearLayer, Net, ForceLoss
+from .nnet import LinearLayer, CGnet, ForceLoss

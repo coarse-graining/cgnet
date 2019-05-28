@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+
 class ForceLoss(torch.nn.Module):
     """Loss function for force matching scheme."""
 
@@ -99,7 +100,8 @@ def LinearLayer(d_in, d_out, bias=True, activation=None, dropout=0, weight_init=
         weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
     return seq
 
-class Net(nn.Module):
+
+class CGnet(nn.Module):
     """CGnet neural network class
 
     Parameters
@@ -111,13 +113,13 @@ class Net(nn.Module):
     """
 
     def __init__(self, arch, criterion):
-        super(Net, self).__init__()
+        super(CGnet, self).__init__()
 
         self.arch = nn.Sequential(*arch)
         self.criterion = criterion
 
     def forward(self, coord):
-        """Forward pass through the network
+        """Forward pass through the network ending with autograd layer.
 
         Parameters
         ----------
@@ -133,6 +135,7 @@ class Net(nn.Module):
         """
 
         energy = self.arch(coord)
+        # Perform autograd to learn potential of conservative force field
         force = torch.autograd.grad(-torch.sum(energy),
                                     coord,
                                     create_graph=True,
