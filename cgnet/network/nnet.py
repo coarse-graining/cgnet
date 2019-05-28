@@ -158,7 +158,7 @@ class CGnet(nn.Module):
     References
     ----------
     Wang, J., Olsson, S., Wehmeyer, C., Pérez, A., Charron, N. E.,
-        de Fabritiis, G., Noé, F, Clementi, C. (2019). Machine Learning
+        de Fabritiis, G., Noé, F., Clementi, C. (2019). Machine Learning
         of Coarse-Grained Molecular Dynamics Force Fields. ACS Central Science.
         https://doi.org/10.1021/acscentsci.8b00913
 
