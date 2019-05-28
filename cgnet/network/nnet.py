@@ -21,7 +21,8 @@ class ForceLoss(torch.nn.Module):
             forces calculated from the CGnet energy via autograd.
             Size [n_examples, n_degrees_freedom].
         labels : torch.Tensor
-            forces to compute the loss against. Size [n_examples,n_degrees_of_freedom].
+            forces to compute the loss against. Size [n_examples,
+                                                      n_degrees_of_freedom].
 
         Returns
         -------
@@ -110,6 +111,57 @@ class CGnet(nn.Module):
         underlying sequential network architecture.
     criterion : nn.Module() instances
         loss function to be used for network.
+
+    Notes
+    -----
+    CGnets are a class of feedforward neural networks introduced by Jiang et.
+    al. (2019) which are used to predict coarse-grained molecular force fields
+    from Cartesain coordinate data. They are characterized by an autograd layer
+    with respect to input coordinates implemented before the loss function,
+    which directs the network to learn a representation of the coarse-grained
+    potential of mean force (PMF) associated with a conservative coarse-grained
+    force feild via a gradient operation as prescribed by classical mechanics.
+    CGnets may also contain featurization layers, which transform Cartesian
+    inputs into roto-translationally invariant features, thereby yeilding a PMF
+    that respects these invarainces. CGnets may additionally be supplied with
+    external prior functions, which are useful for regularizing network behavior
+    in sparsely smaple, unphysical regions of molecular configuration space.
+
+    Examples
+    --------
+    From Jiang et. al. (2019), the optimal architecture for a 5-bead coarse
+    grain model of alanine dipeptide, featurized into bonds, angles, pairwaise
+    distances, and backbone torsions, was found to be:
+
+    CGnet(
+      (input): in_features=30
+      (arch): Sequential(
+        (0): ProteinBackboneFeature(in_features=30, out_features=17)
+        (1): Linear(in_features=17, out_features=160, bias=True)
+        (2): Tanh()
+        (3): Linear(in_features=160, out_features=160, bias=True)
+        (4): Tanh()
+        (5): Linear(in_features=160, out_features=160, bias=True)
+        (6): Tanh()
+        (7): Linear(in_features=160, out_features=160, bias=True)
+        (8): Tanh()
+        (9): Linear(in_features=160, out_features=160, bias=True)
+        (10): Tanh()
+        (11): Linear(in_features=160, out_features=1, bias=True)
+        (12): torch.sum((11) + BondPotential(bonds, angles))
+        (13): torch.autograd.grad(-(12), input, create_graph=True,
+                                  retain_graph=True)
+      )
+    (criterion): ForceLoss()
+    )
+
+    References
+    ----------
+    Wang, J., Olsson, S., Wehmeyer, C., Pérez, A., Charron, N. E.,
+        de Fabritiis, G., Noé, F, Clementi, C. (2019). Machine Learning
+        of Coarse-Grained Molecular Dynamics Force Fields. ACS Central Science.
+        https://doi.org/10.1021/acscentsci.8b00913
+
     """
 
     def __init__(self, arch, criterion):
