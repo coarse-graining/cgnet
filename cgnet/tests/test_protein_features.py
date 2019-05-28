@@ -34,7 +34,7 @@ def test_distance_features():
 
 
 def test_angle_features():
-    """Make sure pairwise angle features are consistent with manual calculation"""
+    """Make sure angle features are consistent with manual calculation"""
 
     f = ProteinBackboneFeature()
     out = f.forward(xt)
@@ -60,7 +60,7 @@ def test_angle_features():
 
 
 def test_dihedral_features():
-    """Make sure pairwise dihedral features are consistent with manual calculation"""
+    """Make sure dihedral features are consistent with manual calculation"""
     
     f = ProteinBackboneFeature()
     out = f.forward(xt)
