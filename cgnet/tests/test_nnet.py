@@ -7,8 +7,6 @@ import torch.nn as nn
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
 from cgnet.network.nnet import Net, LinearLayer, ForceLoss
-import matplotlib.pyplot as plt
-
 
 # Random test data
 x0 = torch.rand((25, 1), requires_grad=True)
@@ -85,5 +83,4 @@ def test_linear_regression():
     reg = lrg.fit(x, y)
     y_pred = reg.predict(x)
 
-    plt.show()
     np.testing.assert_almost_equal(mse(y,y_pred), loss, decimal=2)
