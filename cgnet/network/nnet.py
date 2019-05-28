@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+
 class ForceLoss(torch.nn.Module):
     """Loss function for force matching scheme."""
 
@@ -98,6 +99,7 @@ def LinearLayer(d_in, d_out, bias=True, activation=None, dropout=0, weight_init=
             weight_inti_kwargs = []
         weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
     return seq
+
 
 class Net(nn.Module):
     """CGnet neural network class

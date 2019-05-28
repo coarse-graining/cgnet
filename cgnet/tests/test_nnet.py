@@ -12,8 +12,9 @@ from cgnet.network.nnet import Net, LinearLayer, ForceLoss
 x0 = torch.rand((25, 1), requires_grad=True)
 slope = np.random.randn()
 noise = torch.rand((25, 1))
-y0    = x0.detach()*slope + noise
+y0 = x0.detach()*slope + noise
 batch = {'traj': x0, 'force': y0}
+
 
 def test_linear_layer():
     """Tests LinearLayer function"""
@@ -25,10 +26,10 @@ def test_linear_layer():
     for r, bias in zip(rands, biases):
         layers += LinearLayer(r, r, activation=nn.ReLU(),
                               bias=bool(bias), dropout=0.3)
-    layers += LinearLayer(rand, 1, activation=None,bias=False)
+    layers += LinearLayer(rand, 1, activation=None, bias=False)
     biases = [1] + biases + [0]
-    linears = [l for l in layers if isinstance(l,nn.Linear)]
-    for layer, bias in zip(linears,biases):
+    linears = [l for l in layers if isinstance(l, nn.Linear)]
+    for layer, bias in zip(linears, biases):
         if isinstance(layer, nn.Linear):
             if layer.bias is not None:
                 np.testing.assert_equal(bool(layer.bias.data[0]), bool(bias))
@@ -42,7 +43,7 @@ def test_linear_layer():
 
 def test_net():
     """Tests Net class"""
-    rand = np.random.randint(1,10)
+    rand = np.random.randint(1, 10)
     arch = LinearLayer(1, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
@@ -65,7 +66,8 @@ def test_linear_regression():
     layers += LinearLayer(10, 1, activation=None, bias=True)
     model = Net(layers, ForceLoss())
     print(model)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.05, weight_decay=0.01)
+    optimizer = torch.optim.Adam(
+        model.parameters(), lr=0.05, weight_decay=0.01)
     epochs = 35
     for i in range(epochs):
         optimizer.zero_grad()
@@ -83,4 +85,4 @@ def test_linear_regression():
     reg = lrg.fit(x, y)
     y_pred = reg.predict(x)
 
-    np.testing.assert_almost_equal(mse(y,y_pred), loss, decimal=2)
+    np.testing.assert_almost_equal(mse(y, y_pred), loss, decimal=2)
