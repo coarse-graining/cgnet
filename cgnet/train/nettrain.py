@@ -11,15 +11,15 @@ class Trainer():
 
         Parameters
         ----------
-        trainloader : torch.data.loader() object or None
+        trainloader : torch.data.loader() object (default=None)
             dataoder for training dataset
-        testloader : torch.data.loader() object or None
+        testloader : torch.data.loader() object (default=None)
             dataloader for testing dataset
-        optimizer : torch.optim.optimzer class
+        optimizer : torch.optim.optimzer class (default=torch.optim.Adam())
             optimizer used for updating network weights
-        scheduler : torch.optim.lr_scheduler object
+        scheduler : torch.optim.lr_scheduler object (default=None)
             learning rate scheduler
-        lipschitz : bool or float
+        lipschitz : bool or float (default=False)
             strength of L2 lipschitz projection after each
             optimizer step
 
@@ -97,12 +97,12 @@ class Trainer():
             as a single pass through the training dataset - ie, one epoch
             of training has finished after the optimizer has stepped over
             each batch in the training dataset)
-        verbose : bool
+        verbose : bool (default=True)
             if True, progress messages on training and validation error
             are reported to stdout for the specified frequency
-        batch_freq : int
+        batch_freq : int (default=1)
             frequency of batches with which verbose messages are printed
-        epoch_freq : int
+        epoch_freq : int (default=1)
             frequency of epochs with which verbose messages are printed
 
         """
