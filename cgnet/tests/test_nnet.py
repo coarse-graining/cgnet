@@ -58,7 +58,17 @@ def test_cgnet():
 
 
 def test_linear_regression():
-    """Comparison of CGnet with sklearn linear regression for linear force"""
+    """Comparison of CGnet with sklearn linear regression for linear force
+
+    Notes
+    -----
+    This test is quite forgiving in comparing the sklearn/CGnet results
+    for learning a linear force feild/quadratic potential because the decimal
+    accuracy is set to one decimal point. It could be lower, but the test might
+    then occassionaly fail due to stochastic reasons associated with the dataset
+    and the limited training routine.
+
+    """
 
     layers = LinearLayer(1, 15, activation=nn.Softplus(), bias=True)
     layers += LinearLayer(15, 15, activation=nn.Softplus(), bias=True)
