@@ -8,6 +8,7 @@ Requirements
 + ``numpy``
 + ``pytorch``
 + ``scipy``
++ ``sklearn`` (for testing)
 
 Usage
 ---
