@@ -16,7 +16,7 @@ y0 = x0.detach()*slope + noise
 
 
 def test_linear_layer():
-    """Tests LinearLayer function"""
+    """Tests LinearLayer function for bias logic and input/output size"""
 
     rand = np.random.randint(1, 11)
     layers = LinearLayer(1, rand, activation=None, bias=True)
@@ -41,7 +41,7 @@ def test_linear_layer():
 
 
 def test_cgnet():
-    """Tests CGnet class"""
+    """Tests CGnet class criterion attribute, architecture size, and network output size"""
     rand = np.random.randint(1, 10)
     arch = LinearLayer(1, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
