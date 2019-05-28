@@ -7,12 +7,14 @@ import torch.nn as nn
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
 from cgnet.network.nnet import Net, LinearLayer, ForceLoss
+import matplotlib.pyplot as plt
+
 
 # Random test data
-x0 = torch.rand((3000, 1), requires_grad=True)
+x0 = torch.rand((25, 1), requires_grad=True)
 slope = np.random.randn()
-noise = 0.1*torch.rand((3000, 1))
-y0    = torch.ones((3000,1))*(slope + noise)
+noise = torch.rand((25, 1))
+y0    = x0.detach()*slope + noise
 batch = {'traj': x0, 'force': y0}
 
 def test_linear_layer():
@@ -60,11 +62,13 @@ def test_net():
 def test_linear_regression():
     """Comparison of single layer network for linear regression with sklearn"""
 
-    layers = LinearLayer(1, 1, activation=None, bias=True)
+    layers = LinearLayer(1, 10, activation=nn.Tanh(), bias=True)
+    layers += LinearLayer(10, 10, activation=nn.Tanh(), bias=True)
+    layers += LinearLayer(10, 1, activation=None, bias=True)
     model = Net(layers, ForceLoss())
     print(model)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-    epochs = 1000
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.05, weight_decay=0.01)
+    epochs = 35
     for i in range(epochs):
         optimizer.zero_grad()
         U, F = model.forward(x0)
@@ -81,4 +85,5 @@ def test_linear_regression():
     reg = lrg.fit(x, y)
     y_pred = reg.predict(x)
 
-    np.testing.assert_almost_equal(mse(y,y_pred), loss, decimal=3)
+    plt.show()
+    np.testing.assert_almost_equal(mse(y,y_pred), loss, decimal=2)
