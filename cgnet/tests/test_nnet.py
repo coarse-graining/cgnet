@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
-from cgnet.network.nnet import CGnet, LinearLayer, ForceLoss
+from cgnet.network.nnet import CGnet, LinearLayer, HarmonicLayer, ForceLoss
 
 # Random test data
 x0 = torch.rand((50, 1), requires_grad=True)
@@ -39,6 +39,18 @@ def test_linear_layer():
 
     np.testing.assert_equal(x0.size(), y.size())
 
+def test_harmonic_layer():
+    """Tests HarmonicLayer class for calculation and output size"""
+
+    num_examples = np.random.randint(1, 30)
+    num_feats = np.random.randint(1, 30)
+    prev_output = torch.randn((num_examples, 1))
+    feats = torch.randn((num_examples, num_feats))
+    bond_data = torch.randn((2, num_feats))
+    bondpotential = HarmonicLayer(bond_data)
+    energy = bondpotential(prev_output,feats)
+
+    np.testing.assert_equal(energy.size(), (num_examples, 1))
 
 def test_cgnet():
     """Tests CGnet class criterion attribute, architecture size, and network output size"""

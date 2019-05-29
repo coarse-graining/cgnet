@@ -1,5 +1,5 @@
 # Author: Nick Charron
-# Contributors: Brooke Husic, Dominik Lemm
+# Contributors: Brooke Husic, Dominik Lemm, Jiang Wang
 
 import torch
 import torch.nn as nn
@@ -101,6 +101,45 @@ def LinearLayer(d_in, d_out, bias=True, activation=None, dropout=0, weight_init=
         weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
     return seq
 
+class HarmonicLayer(nn.Module):
+    """Layer for calculating bond/angle harmonic energy prior
+
+    Parameters
+    ----------
+    bond_data: torch.Tensor
+        tensor of bond data of size (2,k). The first row holds the means
+        each distance/angle. The second row holds the harmonic constants
+        governing the interaction. k refers to the number of input features.
+
+    """
+
+    def __init__(self, bond_data):
+        super(HarmonicLayer, self).__init__()
+        self.bond_data = bond_data
+
+    def forward(self, net_output, in_feat):
+        """Calculates harmonic contribution of bond/angle interactions to energy
+
+        Parameters
+        ----------
+        net_output: torch.Tensor
+            output from the CGnet neural network or previous prior layer. Must
+            be size (n,1) for n examples.
+        in_feat: torch.Tensor
+            input features, such as bond distances or angles of size (n,k), for
+            n examples and k features.
+
+        Returns
+        -------
+        energy: torch.Tensor
+            output energy of size (n,1) for n examples.
+
+        """
+
+        n = len(in_feat)
+        energy = torch.sum(self.bond_data[1,:] * (in_feat - self.bond_data[0,:]) ** 2,1).reshape(n,1)/2
+        energy += net_output
+        return energy
 
 class CGnet(nn.Module):
     """CGnet neural network class
