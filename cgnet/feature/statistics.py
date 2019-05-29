@@ -127,10 +127,9 @@ class ProteinBackboneStatistics():
         Returns
         -------
         bondconst_array : torch.Tensor or np.array
-            2 by n tensor/array with means in the first row and
-            standard deviations in the second row, where n is
-            the number of adjacent pairwise distances plus the
-            number of angles
+            2 by n tensor/array with bond constants in the first row and
+            means in the second row, where n is the number of adjacent
+            pairwise distances plus the number of angles
         """
         if self.distances is None or self.angles is None:
             raise RuntimeError('Must compute distances and angles in \
