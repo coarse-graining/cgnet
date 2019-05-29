@@ -5,8 +5,8 @@ import torch
 
 from cgnet.feature import MoleculeDataset
 
-beads = np.random.randint(10)
-dims = np.random.randint(5)
+beads = np.random.randint(1, 10)
+dims = np.random.randint(1, 5)
 
 x = np.random.randn(20, beads, dims)
 y = np.random.randn(20, beads, dims)
