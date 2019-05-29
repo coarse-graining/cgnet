@@ -7,7 +7,7 @@ import torch
 from cgnet.feature import ProteinBackboneFeature
 from cgnet.feature import ProteinBackboneStatistics
 
-frames = np.random.randint(10)
+frames = np.random.randint(1, 10)
 beads = np.random.randint(4, 10)
 dims = 3
 
