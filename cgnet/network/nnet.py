@@ -34,8 +34,15 @@ class ForceLoss(torch.nn.Module):
         return loss
 
 
-def LinearLayer(d_in, d_out, bias=True, activation=None, dropout=0, weight_init='xavier',
-                weight_init_args=None, weight_init_kwargs=None):
+def LinearLayer(
+        d_in,
+        d_out,
+        bias=True,
+        activation=None,
+        dropout=0,
+        weight_init='xavier',
+        weight_init_args=None,
+        weight_init_kwargs=None):
     """Linear layer function
 
     Parameters
@@ -101,6 +108,7 @@ def LinearLayer(d_in, d_out, bias=True, activation=None, dropout=0, weight_init=
         weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
     return seq
 
+
 class HarmonicLayer(nn.Module):
     """Layer for calculating bond/angle harmonic energy prior
 
@@ -137,9 +145,12 @@ class HarmonicLayer(nn.Module):
         """
 
         n = len(in_feat)
-        energy = torch.sum(self.bond_data[1,:] * (in_feat - self.bond_data[0,:]) ** 2,1).reshape(n,1)/2
+        energy = torch.sum(
+            self.bond_data[1, :] * (in_feat - self.bond_data[0, :]) ** 2,
+                                    1).reshape(n, 1) / 2
         energy += net_output
         return energy
+
 
 class CGnet(nn.Module):
     """CGnet neural network class

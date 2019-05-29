@@ -53,7 +53,10 @@ def test_harmonic_layer():
     np.testing.assert_equal(energy.size(), (num_examples, 1))
 
 def test_cgnet():
-    """Tests CGnet class criterion attribute, architecture size, and network output size"""
+    """Tests CGnet class criterion attribute, architecture size, and network
+    output size
+    """
+
     rand = np.random.randint(1, 10)
     arch = LinearLayer(1, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
