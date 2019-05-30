@@ -115,9 +115,9 @@ class HarmonicLayer(nn.Module):
     Parameters
     ----------
     bond_data: torch.Tensor
-        tensor of bond data of size (2,k). The first row holds the means
-        each distance/angle. The second row holds the harmonic constants
-        governing the interaction. k refers to the number of input features.
+        tensor of bond data of size (2,k). The first row holds the harmonic
+        constants governing the interaction. k refers to the number of input
+        features. The second row holds the means of each distance/angle.
 
     """
 
@@ -146,7 +146,7 @@ class HarmonicLayer(nn.Module):
 
         n = len(in_feat)
         energy = torch.sum(
-            self.bond_data[1, :] * (in_feat - self.bond_data[0, :]) ** 2,
+            self.bond_data[0, :] * (in_feat - self.bond_data[1, :]) ** 2,
                                     1).reshape(n, 1) / 2
         energy += net_output
         return energy
