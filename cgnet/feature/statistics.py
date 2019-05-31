@@ -94,7 +94,19 @@ class ProteinBackboneStatistics():
         else:
             return key
 
-    def get_zscores(self, tensor=True, as_dict=True,
+    def _flip_dict(self, mydict):
+        all_inds = np.unique(np.sum([list(mydict[stat].keys())
+                                     for stat in mydict.keys()]))
+
+        newdict = {}
+        for i in all_inds:
+            newdict[i] = {}
+            for stat in mydict.keys():
+                if i in mydict[stat].keys():
+                    newdict[i][stat] = mydict[stat][i]
+        return newdict
+
+    def get_zscores(self, tensor=True, as_dict=True, flip_dict=False,
                     order=["Distances", "Angles",
                            "Dihedral_cosines", "Dihedral_sines"]):
         """Obtain zscores (mean and standard deviation) for features
@@ -120,7 +132,7 @@ class ProteinBackboneStatistics():
 
         zscore_keys = np.sum([[self._get_key(key, name)
                                for key in self.descriptions[name]]
-                               for name in order])
+                              for name in order])
         zscore_array = np.vstack([
             np.concatenate([self.stats_dict[key][stat]
                             for key in order]) for stat in ['mean', 'std']])
@@ -130,14 +142,17 @@ class ProteinBackboneStatistics():
         if as_dict:
             zscore_dict = {}
             for i, stat in enumerate(['mean', 'std']):
-                zscore_dict[stat] = dict(zip(zscore_keys, zscore_array[i,:]))
+                zscore_dict[stat] = dict(zip(zscore_keys, zscore_array[i, :]))
+            if flip_dict:
+                zscore_dict = self._flip_dict(zscore_dict)
             return zscore_dict
         else:
             return zscore_array
 
     def get_bond_constants(self, tensor=True, as_dict=True, zscores=True,
+                           flip_dict=False,
                            order=["Distances", "Angles",
-                           "Dihedral_cosines", "Dihedral_sines"]):
+                                  "Dihedral_cosines", "Dihedral_sines"]):
         """Obtain bond constants (K values and means) for adjacent distance
            and angle features. K values depend on the temperature.
 
@@ -186,12 +201,14 @@ class ProteinBackboneStatistics():
                 bondconst_dict = self.get_zscores(tensor=tensor, as_dict=True,
                                                   order=order)
                 bondconst_dict['k'] = dict(zip(bondconst_keys,
-                                               bondconst_array[0,:]))
+                                               bondconst_array[0, :]))
             else:
                 bondconst_dict = {}
                 for i, stat in enumerate(['k', 'mean']):
                     bondconst_dict[stat] = dict(zip(bondconst_keys,
-                                                 bondconst_array[i,:]))
+                                                    bondconst_array[i, :]))
+            if flip_dict:
+                bondconst_dict = self._flip_dict(bondconst_dict)
             return bondconst_dict
         else:
             return bondconst_array
@@ -228,7 +245,8 @@ class ProteinBackboneStatistics():
         for frame in range(self.n_frames):
             dmat = scipy.spatial.distance.squareform(
                 scipy.spatial.distance.pdist(self.data[frame]))
-            frame_dists = [dmat[self._order[i]] for i in range(len(self._order))]
+            frame_dists = [dmat[self._order[i]]
+                           for i in range(len(self._order))]
             dlist[frame, :] = frame_dists
         self.distances = dlist
         self.descriptions['Distances'] = self._order
