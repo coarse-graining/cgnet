@@ -65,6 +65,7 @@ class ProteinBackboneStatistics():
             'Dihedral_cosines': self.dihedral_cosines,
             'Dihedral_sines': self.dihedral_sines
         }
+        self.descriptions = {}
 
         if get_distances:
             self._get_pairwise_distances()
@@ -163,8 +164,8 @@ class ProteinBackboneStatistics():
                 order.append((i, i+increment))
                 if increment == 1:
                     adj_pairs.append((i, i+increment))
-        self.order = order
-        self.adj_pairs = adj_pairs
+        self._order = order
+        self._adj_pairs = adj_pairs
 
     def _get_stats(self, X, key):
         """Populates stats dictionary with mean and std of feature
@@ -181,19 +182,21 @@ class ProteinBackboneStatistics():
            shape=(n_frames, n_beads-1)
         """
         dlist = np.empty([self.n_frames,
-                          len(self.order)])
+                          len(self._order)])
         for frame in range(self.n_frames):
             dmat = scipy.spatial.distance.squareform(
                 scipy.spatial.distance.pdist(self.data[frame]))
-            frame_dists = [dmat[self.order[i]] for i in range(len(self.order))]
+            frame_dists = [dmat[self._order[i]] for i in range(len(self._order))]
             dlist[frame, :] = frame_dists
         self.distances = dlist
+        self.descriptions['Distances'] = self._order
 
     def _get_adjacent_distances(self):
         """Obtain adjacent distances; shape=(n_frames, n_beads-1, 3)
         """
         self.adj_dists = self.data[:][:, 1:] - \
             self.data[:][:, :(self.n_beads-1)]
+        self.descriptions['Adjacent Distances'] = self._adj_pairs
 
     def _get_angles(self):
         """Obtain angles of all adjacent triplets; shape=(n_frames, n_beads-2)
@@ -202,8 +205,11 @@ class ProteinBackboneStatistics():
         base = self.adj_dists[:, 0:(self.n_beads-2), :]
         offset = self.adj_dists[:, 1:(self.n_beads-1), :]
 
+        descriptions = []
         self.angles = np.arccos(np.sum(base*offset, axis=2)/np.linalg.norm(
             base, axis=2)/np.linalg.norm(offset, axis=2))
+        descriptions.extend([(i, i+1, i+2) for i in range(self.n_beads-2)])
+        self.descriptions["Angles"] = descriptions
 
     def _get_dihedrals(self):
         """Obtain angles of all adjacent quartets; shape=(n_frames, n_beads-3)
@@ -221,8 +227,12 @@ class ProteinBackboneStatistics():
         plane_vector = np.cross(cp_offset, offset_2, axis=2)
         pv_base = plane_vector[:, 0:(self.n_beads-3), :]
 
+        descriptions = []
         self.dihedral_cosines = np.sum(cp_base*cp_offset, axis=2)/np.linalg.norm(
             cp_base, axis=2)/np.linalg.norm(cp_offset, axis=2)
 
         self.dihedral_sines = np.sum(cp_base*pv_base, axis=2)/np.linalg.norm(
             cp_base, axis=2)/np.linalg.norm(pv_base, axis=2)
+        descriptions.extend([(i, i+1, i+2, i+3)
+                             for i in range(self.n_beads-3)])
+        self.descriptions["Dihedrals"] = descriptions
