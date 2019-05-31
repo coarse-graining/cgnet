@@ -39,31 +39,37 @@ def test_linear_layer():
 
     np.testing.assert_equal(x0.size(), y.size())
 
+
 def test_harmonic_layer():
     """Tests HarmonicLayer class for calculation and output size"""
 
     num_examples = np.random.randint(1, 30)
     num_feats = np.random.randint(1, 30)
-    prev_output = torch.randn((num_examples, 1))
     feats = torch.randn((num_examples, num_feats))
-    bond_data = torch.randn((2, num_feats))
-    bondpotential = HarmonicLayer(bond_data)
-    energy = bondpotential(prev_output,feats)
+    params = torch.randn((2, num_feats))
+    feat_idx = torch.randperm(int(num_examples/2))
+    feat_dict = {'selection': feat_idx, 'parameters': params}
+    harmonic_potential = HarmonicLayer(feat_dict)
+    energy = harmonic_potential(feats)
 
     np.testing.assert_equal(energy.size(), (num_examples, 1))
 
+
 def test_cgnet():
     """Tests CGnet class criterion attribute, architecture size, and network
-    output size
+    output size. Also tests prior embedding.
     """
 
     rand = np.random.randint(1, 10)
     arch = LinearLayer(1, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
-        + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
-        + LinearLayer(rand, 1, bias=True, activation=nn.Tanh())\
+        + LinearLayer(rand, 1, bias=True, activation=None)\
 
-    model = CGnet(arch, ForceLoss())
+    feat_dict = {'selection': [1], 'parameters': torch.randn((2, 1))}
+    harmonic_potential = HarmonicLayer(feat_dict)
+
+    model = CGnet(arch, ForceLoss(), priors=[harmonic_potential])
+    np.testing.assert_equal(True, model.priors is not None)
     np.testing.assert_equal(len(arch), model.arch.__len__())
     np.testing.assert_equal(True, isinstance(model.criterion, ForceLoss))
 
@@ -89,7 +95,6 @@ def test_linear_regression():
     layers += LinearLayer(15, 15, activation=nn.Softplus(), bias=True)
     layers += LinearLayer(15, 1, activation=nn.Softplus(), bias=True)
     model = CGnet(layers, ForceLoss())
-    print(model)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.05, weight_decay=0)
     epochs = 35
     for i in range(epochs):

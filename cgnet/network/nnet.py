@@ -114,25 +114,27 @@ class HarmonicLayer(nn.Module):
 
     Parameters
     ----------
-    bond_data: torch.Tensor
-        tensor of bond data of size (2,k). The first row holds the harmonic
-        constants governing the interaction. k refers to the number of input
-        features. The second row holds the means of each distance/angle.
+    feat_data: dict
+        dictionary of feature information. the key "selection" associates
+        with a list of feature indices that  can retreive selected features
+        output from the forward() method of a ProteinBackboneFeature() instance.
+        The key "parameters" assocaites with a tensor of harmonic data of size (2,k).
+        The first row holds the harmonic constants governing the interaction.
+        k refers to the number of input features. The second row holds the means
+        of each feature.
 
     """
 
-    def __init__(self, bond_data):
+    def __init__(self, feat_data):
         super(HarmonicLayer, self).__init__()
-        self.bond_data = bond_data
+        self.harmonic_parameters = feat_data['parameters']
+        self.feat_idx = feat_data['selection']
 
-    def forward(self, net_output, in_feat):
+    def forward(self, in_feat):
         """Calculates harmonic contribution of bond/angle interactions to energy
 
         Parameters
         ----------
-        net_output: torch.Tensor
-            output from the CGnet neural network or previous prior layer. Must
-            be size (n,1) for n examples.
         in_feat: torch.Tensor
             input features, such as bond distances or angles of size (n,k), for
             n examples and k features.
@@ -146,9 +148,8 @@ class HarmonicLayer(nn.Module):
 
         n = len(in_feat)
         energy = torch.sum(
-            self.bond_data[0, :] * (in_feat - self.bond_data[1, :]) ** 2,
-                                    1).reshape(n, 1) / 2
-        energy += net_output
+            self.harmonic_parameters[0, :] * (in_feat -
+                    self.harmonic_parameters[1, :]) ** 2, 1).reshape(n, 1) / 2
         return energy
 
 
@@ -161,6 +162,12 @@ class CGnet(nn.Module):
         underlying sequential network architecture.
     criterion : nn.Module() instances
         loss function to be used for network.
+    feature : nn.Module() insstance
+        feature layer to transform cartesian coordinates into roto-
+        translationalyl invariant features.
+    priors : list of nn.Module() instances (default=None)
+        list of prior layers that provide energy contributions external to
+        the hidden architecture of the CGnet.
 
     Notes
     -----
@@ -214,11 +221,13 @@ class CGnet(nn.Module):
 
     """
 
-    def __init__(self, arch, criterion):
+    def __init__(self, arch, criterion, feature=None, priors=None):
         super(CGnet, self).__init__()
 
         self.arch = nn.Sequential(*arch)
         self.criterion = criterion
+        self.feature = feature
+        self.priors = priors
 
     def forward(self, coord):
         """Forward pass through the network ending with autograd layer.
@@ -231,12 +240,23 @@ class CGnet(nn.Module):
         Returns
         -------
         energy : torch.Tensor
-            scalar potential energy of size [n_examples, 1].
+            scalar potential energy of size [n_examples, 1]. If priors are
+            supplied to the CGnet, then this energy is the sum of network
+            and prior energies.
         force  : torch.Tensor
             vector forces of size [n_examples, n_degrees_of_freedom].
         """
+        feat = coord
+        if self.feature:
+            feat = self.feature(feat)
 
-        energy = self.arch(coord)
+        # forward pass through the hidden architecture of the CGnet
+        energy = self.arch(feat)
+        # addition of external priors to form total energy
+        if self.priors:
+            for prior in self.priors:
+                energy += prior(feat[prior.feat_idx])
+
         # Perform autograd to learn potential of conservative force field
         force = torch.autograd.grad(-torch.sum(energy),
                                     coord,
