@@ -8,6 +8,25 @@ import numpy as np
 
 
 class ProteinBackboneFeature(nn.Module):
+    """Featurization of a protein backbone into pairwise distances,
+    angles, and dihedrals.
+
+    Attributes
+    ----------
+    n_beads : int
+        Number of beads in the coarse-graining, assumed to be consecutive
+        along a protein backbone
+    descriptions : dictionary
+        List of indices (value) for each feature type (key)
+    description_order : list
+        List of order of features in output vector of forward method
+    distances : torch.Tensor
+        List of pairwise distances according to descriptions['Distances']
+    angles : torch.Tensor
+        List of three-bead angles according to descriptions['Angles']
+    dihedrals : torch.Tensor
+        List of four-bead torsions according to descriptions['Torsions']
+    """
 
     def __init__(self):
         super(ProteinBackboneFeature, self).__init__()
