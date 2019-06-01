@@ -252,7 +252,10 @@ class CGnet(nn.Module):
         super(CGnet, self).__init__()
 
         self.arch = nn.Sequential(*arch)
-        self.priors = nn.Sequential(*priors)
+        if priors:
+            self.priors = nn.Sequential(*priors)
+        else:
+            self.priors = None
         self.criterion = criterion
         self.feature = feature
 

@@ -6,13 +6,22 @@ import torch
 import torch.nn as nn
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
-from cgnet.network.nnet import CGnet, LinearLayer, HarmonicLayer, ForceLoss
+from cgnet.network import CGnet, LinearLayer, HarmonicLayer, ForceLoss
+from cgnet.feature import ProteinBackboneFeature, ProteinBackboneStatistics
 
 # Random test data
 x0 = torch.rand((50, 1), requires_grad=True)
 slope = np.random.randn()
 noise = 0.7*torch.rand((50, 1))
 y0 = x0.detach()*slope + noise
+
+# Random linear protein
+num_examples = np.random.randint(10, 30)
+num_beads = np.random.randint(5, 10)
+coords = torch.randn((num_examples, num_beads, 3), requires_grad=True)
+stats = ProteinBackboneStatistics(coords.detach().numpy())
+bondsdict = stats.get_bond_constants(flip_dict=True, zscores=True)
+bonds = dict((k, bondsdict[k]) for k in [(i, i+1) for i in range(num_beads-1)])
 
 
 def test_linear_layer():
@@ -43,14 +52,11 @@ def test_linear_layer():
 def test_harmonic_layer():
     """Tests HarmonicLayer class for calculation and output size"""
 
-    num_examples = np.random.randint(1, 30)
-    num_feats = np.random.randint(1, 30)
-    feats = torch.randn((num_examples, num_feats))
-    params = torch.randn((2, num_feats))
-    feat_idx = torch.randperm(int(num_examples/2))
-    feat_dict = {'selection': feat_idx, 'parameters': params}
-    harmonic_potential = HarmonicLayer(feat_dict)
-    energy = harmonic_potential(feats)
+    harmonic_potential = HarmonicLayer(bonds, descriptions=stats.descriptions,
+                                       feature_type='Distances')
+    feat_layer = ProteinBackboneFeature()
+    feat = feat_layer(coords)
+    energy = harmonic_potential(feat[:, harmonic_potential.feat_idx])
 
     np.testing.assert_equal(energy.size(), (num_examples, 1))
 
@@ -60,22 +66,27 @@ def test_cgnet():
     output size. Also tests prior embedding.
     """
 
+    harmonic_potential = HarmonicLayer(bonds, descriptions=stats.descriptions,
+                                       feature_type='Distances')
+    feature_layer = ProteinBackboneFeature()
+    num_feats = feature_layer(coords).size()[1]
+
     rand = np.random.randint(1, 10)
-    arch = LinearLayer(1, rand, bias=True, activation=nn.Tanh())\
+    arch = LinearLayer(num_feats, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, 1, bias=True, activation=None)\
 
-    feat_dict = {'selection': [1], 'parameters': torch.randn((2, 1))}
-    harmonic_potential = HarmonicLayer(feat_dict)
-
-    model = CGnet(arch, ForceLoss(), priors=[harmonic_potential])
+    model = CGnet(arch, ForceLoss(), feature=ProteinBackboneFeature(),
+                  priors=[harmonic_potential])
     np.testing.assert_equal(True, model.priors is not None)
     np.testing.assert_equal(len(arch), model.arch.__len__())
     np.testing.assert_equal(True, isinstance(model.criterion, ForceLoss))
+    np.testing.assert_equal(True, isinstance(model.arch, nn.Sequential))
+    np.testing.assert_equal(True, isinstance(model.priors, nn.Sequential))
 
-    energy, force = model.forward(x0)
-    np.testing.assert_equal(energy.size(), (x0.size()[0], 1))
-    np.testing.assert_equal(force.size(), y0.size())
+    energy, force = model.forward(coords)
+    np.testing.assert_equal(energy.size(), (coords.size()[0], 1))
+    np.testing.assert_equal(force.size(), coords.size())
 
 
 def test_linear_regression():
