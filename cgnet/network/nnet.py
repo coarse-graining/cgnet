@@ -115,20 +115,47 @@ class HarmonicLayer(nn.Module):
     Parameters
     ----------
     feat_data: dict
-        dictionary of feature information. the key "selection" associates
-        with a list of feature indices that  can retreive selected features
-        output from the forward() method of a ProteinBackboneFeature() instance.
-        The key "parameters" assocaites with a tensor of harmonic data of size (2,k).
-        The first row holds the harmonic constants governing the interaction.
-        k refers to the number of input features. The second row holds the means
-        of each feature.
+        dictionary of means and bond constants. Keys are tuples that provide the
+        descriptions of each contributing feature. THe values of each key are in
+        turn dictionarys that have the following keys. The \'mean\' key is mapped
+        to the numerical mean of the feature over the trajectory. The \'std\' key
+        is mapped to the numerical standard deviation of the feature over the
+        trajectory. The \'k\' is mapped to the harmonic constant derived from the
+        feature.
+    descriptions: dict
+        dictionary of CG bead indices as tuples, for feature keys.
+    feature_type: str
+        features type from which to select coordinates.
 
     """
 
-    def __init__(self, feat_data):
+    def __init__(self, feat_data, descriptions=None, feature_type=None):
         super(HarmonicLayer, self).__init__()
-        self.harmonic_parameters = feat_data['parameters']
-        self.feat_idx = feat_data['selection']
+        if descriptions and not feature_type:
+            raise RuntimeError('Must declare feature_type is using \
+                                descriptions')
+        if descriptions and feature_type:
+            self.feature_type = feature_type
+            self.features = []
+            self.feat_idx = []
+            self.harmonic_parameters = torch.tensor([])
+            # get number of each feature to determine starting idx
+            nums = [len(descriptions['Distances']), len(descriptions['Angles']),
+                    len(descriptions['Dihedral_cosines']),
+                    len(descriptions['Dihedral_sines'])]
+            descs = ['Distances', 'Angles', 'Dihedral_cosines', 'Dihedral_sines']
+            start_idx = 0
+            for num, desc in zip(nums, descs):
+                if self.feature_type == desc:
+                    break
+                else:
+                    start_idx += num
+            for key, params in feat_data.items():
+                self.features.append(key)
+                self.feat_idx.append(start_idx +
+                                 descriptions[self.feature_type].index(key))
+                self.harmonic_parameters = torch.cat((self.harmonic_parameters,
+                     torch.tensor([[params['k']], [params['mean']]])), dim=1)
 
     def forward(self, in_feat):
         """Calculates harmonic contribution of bond/angle interactions to energy
@@ -149,7 +176,7 @@ class HarmonicLayer(nn.Module):
         n = len(in_feat)
         energy = torch.sum(
             self.harmonic_parameters[0, :] * (in_feat -
-                    self.harmonic_parameters[1, :]) ** 2, 1).reshape(n, 1) / 2
+                                              self.harmonic_parameters[1, :]) ** 2, 1).reshape(n, 1) / 2
         return energy
 
 
@@ -182,7 +209,7 @@ class CGnet(nn.Module):
     inputs into roto-translationally invariant features, thereby yeilding a PMF
     that respects these invarainces. CGnets may additionally be supplied with
     external prior functions, which are useful for regularizing network behavior
-    in sparsely smaple, unphysical regions of molecular configuration space.
+    in sparsely sampled, unphysical regions of molecular configuration space.
 
     Examples
     --------
@@ -225,9 +252,9 @@ class CGnet(nn.Module):
         super(CGnet, self).__init__()
 
         self.arch = nn.Sequential(*arch)
+        self.priors = nn.Sequential(*priors)
         self.criterion = criterion
         self.feature = feature
-        self.priors = priors
 
     def forward(self, coord):
         """Forward pass through the network ending with autograd layer.
@@ -255,7 +282,7 @@ class CGnet(nn.Module):
         # addition of external priors to form total energy
         if self.priors:
             for prior in self.priors:
-                energy += prior(feat[prior.feat_idx])
+                energy += prior(feat[:, prior.feat_idx])
 
         # Perform autograd to learn potential of conservative force field
         force = torch.autograd.grad(-torch.sum(energy),
