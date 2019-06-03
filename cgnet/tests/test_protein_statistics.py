@@ -70,7 +70,7 @@ def test_zscore_dict_1():
     assert len(zscore_dict) == n_keys
 
 
-def test_zscore_dict_2
+def test_zscore_dict_2():
     # Make sure the zscore dict has the right structure
     zscore_dict = stats.get_zscores(flip_dict=False)
     n_keys = beads*(beads-1)/2 + beads-1 + beads-2
