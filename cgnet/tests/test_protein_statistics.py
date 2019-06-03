@@ -60,3 +60,41 @@ def test_dihedral_statistics():
                                          stats.stats_dict['Dihedral_sines']['mean'])
     np.testing.assert_array_almost_equal(feature_dihed_sin_std,
                                          stats.stats_dict['Dihedral_sines']['std'])
+
+
+def test_zscore_dict_1():
+    # Make sure the "flipped" zscore dict has the right structure
+    zscore_dict = stats.get_zscores(flip_dict=True)
+    n_keys = beads*(beads-1)/2 + beads-2 + 2*(beads-3)
+
+    assert len(zscore_dict) == n_keys
+
+
+def test_zscore_dict_2():
+    # Make sure the zscore dict has the right structure
+    zscore_dict = stats.get_zscores(flip_dict=False)
+    n_keys = beads*(beads-1)/2 + beads-2 + 2*(beads-3)
+
+    for k in zscore_dict.keys():
+        assert len(zscore_dict[k]) == n_keys
+
+
+def test_bondconst_dict_1():
+    # Make sure the "flipped" bond constant dict has the right structure
+    bondconst_dict = stats.get_bond_constants(flip_dict=True)
+    n_keys = beads*(beads-1)/2 + beads-2 + 2*(beads-3)
+
+    assert len(bondconst_dict) == n_keys
+
+
+def test_bondconst_dict_2():
+    # Make sure the bond constant dict has the right structure
+    bondconst_dict = stats.get_bond_constants(flip_dict=False)
+    n_keys = beads*(beads-1)/2 + beads-2 + 2*(beads-3)
+    n_keys_bondconst = beads-1 + beads-2
+
+    for k in bondconst_dict.keys():
+        if k == 'k':
+            assert len(bondconst_dict[k]) == n_keys_bondconst
+        else:
+            assert len(bondconst_dict[k]) == n_keys
