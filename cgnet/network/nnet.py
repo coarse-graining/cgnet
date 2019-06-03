@@ -189,9 +189,9 @@ class CGnet(nn.Module):
         underlying sequential network architecture.
     criterion : nn.Module() instances
         loss function to be used for network.
-    feature : nn.Module() insstance
+    feature : nn.Module() instance
         feature layer to transform cartesian coordinates into roto-
-        translationalyl invariant features.
+        translationaly invariant features.
     priors : list of nn.Module() instances (default=None)
         list of prior layers that provide energy contributions external to
         the hidden architecture of the CGnet.
