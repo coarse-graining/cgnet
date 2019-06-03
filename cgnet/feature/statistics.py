@@ -95,7 +95,7 @@ class ProteinBackboneStatistics():
             return key
 
     def _flip_dict(self, mydict):
-        all_inds = np.unique(np.sum([list(mydict[stat].keys())
+        all_inds = np.unique(np.concatenate([list(mydict[stat].keys())
                                      for stat in mydict.keys()]))
 
         newdict = {}
@@ -114,14 +114,28 @@ class ProteinBackboneStatistics():
         Parameters
         ----------
         tensor : Boolean (default=True)
-            Returns type torch.Tensor if True and np.array if False
+            Returns (innermost data) of type torch.Tensor if True and np.array
+             if False
+        as_dict : Boolean (default=True)
+            Returns a dictionary instead of an array (see "Returns"
+            documentation)
+        flip_dict : Boolean (default=True)
+            Returns a dictionary with outer keys as indices if True and
+            outer keys as statistic string names if False
         order : List, default=['Distances', 'Angles', 'Dihedral_cosines',
                                'Dihedral_sines']
             Order of statistics in output
 
         Returns
         -------
-        zscore_array : torch.Tensor or np.array
+        zscore_dict : python dictionary (if as_dict=True)
+            If flip_dict is True, the outer keys will be bead pairs, triples,
+            or quadruples+phase, e.g. (1, 2) or (0, 1, 2, 3, 'cos'), and
+            the inner keys will be 'mean' and 'std' statistics.
+            If flip_dict is False, the outer keys will be the 'mean' and 'std'
+            statistics and the inner keys will be bead pairs, triples, or
+            quadruples+phase
+        zscore_array : torch.Tensor or np.array (if as_dict=False)
             2 by n tensor/array with means in the first row and
             standard deviations in the second row, where n is
             the number of features
@@ -159,11 +173,30 @@ class ProteinBackboneStatistics():
         Parameters
         ----------
         tensor : Boolean (default=True)
-            Returns type torch.Tensor if True and np.array if False
+            Returns (innermost data) of type torch.Tensor if True and np.array
+             if False
+        as_dict : Boolean (default=True)
+            Returns a dictionary instead of an array (see "Returns"
+            documentation)
+        zscores : Boolean (default=True)
+            Includes results from the get_zscores() method if True;
+            only alowed if as_dict is also True
+        flip_dict : Boolean (default=True)
+            Returns a dictionary with outer keys as indices if True and
+            outer keys as statistic string names if False
 
         Returns
         -------
-        bondconst_array : torch.Tensor or np.array
+        bondconst_dict : python dictionary (if as_dict=True)
+            If flip_dict is True, the outer keys will be bead pairs, triples,
+            or quadruples+phase, e.g. (1, 2) or (0, 1, 2, 3, 'cos'), and
+            the inner keys will be 'mean', 'std', and 'k' statistics (only
+            'mean' and 'k', and no quadruples, if zscores is False)
+            If flip_dict is False, the outer keys will be the 'mean', 'std',
+            and 'k' statistics (only 'mean' and 'k' if zscores if False) and
+            the inner keys will be bead pairs, triples, or, unless zscores is
+            False, quadruples+phase
+        bondconst_array : torch.Tensor or np.array (if as_dict=False)
             2 by n tensor/array with bond constants in the first row and
             means in the second row, where n is the number of adjacent
             pairwise distances plus the number of angles
