@@ -8,3 +8,4 @@ build
 dist
 *.egg
 debug/*
+*.swp

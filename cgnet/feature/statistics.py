@@ -106,7 +106,7 @@ class ProteinBackboneStatistics():
                     newdict[i][stat] = mydict[stat][i]
         return newdict
 
-    def get_zscores(self, tensor=True, as_dict=True, flip_dict=False,
+    def get_zscores(self, tensor=True, as_dict=True, flip_dict=True,
                     order=["Distances", "Angles",
                            "Dihedral_cosines", "Dihedral_sines"]):
         """Obtain zscores (mean and standard deviation) for features
@@ -150,7 +150,7 @@ class ProteinBackboneStatistics():
             return zscore_array
 
     def get_bond_constants(self, tensor=True, as_dict=True, zscores=True,
-                           flip_dict=False,
+                           flip_dict=True,
                            order=["Distances", "Angles",
                                   "Dihedral_cosines", "Dihedral_sines"]):
         """Obtain bond constants (K values and means) for adjacent distance
