@@ -95,7 +95,7 @@ class ProteinBackboneStatistics():
             return key
 
     def _flip_dict(self, mydict):
-        all_inds = np.unique(np.sum([list(mydict[stat].keys())
+        all_inds = np.unique(np.concatenate([list(mydict[stat].keys())
                                      for stat in mydict.keys()]))
 
         newdict = {}
