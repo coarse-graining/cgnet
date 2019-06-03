@@ -15,7 +15,7 @@ xt = torch.Tensor(x)
 
 
 def test_distance_features():
-    """Make sure pairwise distance features are consistent with scipy"""
+    # Make sure pairwise distance features are consistent with scipy
 
     f = ProteinBackboneFeature()
     out = f.forward(xt)
@@ -34,7 +34,7 @@ def test_distance_features():
 
 
 def test_angle_features():
-    """Make sure angle features are consistent with manual calculation"""
+    # Make sure angle features are consistent with manual calculation
 
     f = ProteinBackboneFeature()
     out = f.forward(xt)
@@ -60,7 +60,7 @@ def test_angle_features():
 
 
 def test_dihedral_features():
-    """Make sure dihedral features are consistent with manual calculation"""
+    # Make sure dihedral features are consistent with manual calculation
     
     f = ProteinBackboneFeature()
     out = f.forward(xt)
