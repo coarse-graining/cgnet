@@ -46,7 +46,7 @@ class ProteinBackboneStatistics():
                  get_distances=True, get_angles=True,
                  get_dihedrals=True, temperature=300.0):
         if torch.is_tensor(data):
-            self.data = data.numpy()
+            self.data = data.detach().numpy()
         else:
             self.data = data
         self.n_frames = self.data.shape[0]
@@ -198,7 +198,7 @@ class ProteinBackboneStatistics():
         if as_dict:
             if zscores:
                 bondconst_dict = self.get_zscores(tensor=tensor, as_dict=True,
-                                                  order=order)
+                                                  order=order, flip_dict=False)
                 bondconst_dict['k'] = dict(zip(bondconst_keys,
                                                bondconst_array[0, :]))
             else:
