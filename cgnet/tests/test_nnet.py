@@ -25,7 +25,7 @@ bonds = dict((k, bondsdict[k]) for k in [(i, i+1) for i in range(num_beads-1)])
 
 
 def test_linear_layer():
-    """Tests LinearLayer function for bias logic and input/output size"""
+    # Tests LinearLayer function for bias logic and input/output size
 
     rand = np.random.randint(1, 11)
     layers = LinearLayer(1, rand, activation=None, bias=True)
@@ -50,7 +50,7 @@ def test_linear_layer():
 
 
 def test_harmonic_layer():
-    """Tests HarmonicLayer class for calculation and output size"""
+    # Tests HarmonicLayer class for calculation and output size
 
     harmonic_potential = HarmonicLayer(bonds, descriptions=stats.descriptions,
                                        feature_type='Distances')
@@ -62,9 +62,8 @@ def test_harmonic_layer():
 
 
 def test_cgnet():
-    """Tests CGnet class criterion attribute, architecture size, and network
-    output size. Also tests prior embedding.
-    """
+    # Tests CGnet class criterion attribute, architecture size, and network
+    # output size. Also tests prior embedding.
 
     harmonic_potential = HarmonicLayer(bonds, descriptions=stats.descriptions,
                                        feature_type='Distances')
@@ -90,17 +89,15 @@ def test_cgnet():
 
 
 def test_linear_regression():
-    """Comparison of CGnet with sklearn linear regression for linear force
+    # Comparison of CGnet with sklearn linear regression for linear force
 
-    Notes
-    -----
-    This test is quite forgiving in comparing the sklearn/CGnet results
-    for learning a linear force feild/quadratic potential because the decimal
-    accuracy is set to one decimal point. It could be lower, but the test might
-    then occassionaly fail due to stochastic reasons associated with the dataset
-    and the limited training routine.
-
-    """
+    # Notes
+    # -----
+    # This test is quite forgiving in comparing the sklearn/CGnet results
+    # for learning a linear force feild/quadratic potential because the decimal
+    # accuracy is set to one decimal point. It could be lower, but the test
+    # might then occassionaly fail due to stochastic reasons associated with
+    # the dataset and the limited training routine.
 
     layers = LinearLayer(1, 15, activation=nn.Softplus(), bias=True)
     layers += LinearLayer(15, 15, activation=nn.Softplus(), bias=True)
