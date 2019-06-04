@@ -101,6 +101,68 @@ def LinearLayer(d_in, d_out, bias=True, activation=None, dropout=0, weight_init=
         weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
     return seq
 
+class RepulsionLayer(nn.Module):
+    """Layer for calculating pairwise repulsion energy prior
+    Parameters
+    ----------
+    feat_data: list
+        list of distance tuples for which to calculate repulsion interactions
+    excluded_volume: float (default=5.5)
+        Excluded volume parameter.
+    exponent: float (default=6.0)
+        Exponent of repulsion interaction. By convention, this value is
+        taken to be positive.
+    descriptions: dict
+        dictionary of CG bead indices as tuples, for feature keys.
+    feature_type: str
+        features type from which to select coordinates.
+    """
+
+    def __init__(self, feat_data, excluded_volume=5.5, exponent=6.0,
+                 descriptions=None, feature_type=None):
+        super(RepulsionLayer, self).__init__()
+        self.excluded_volume = excluded_volume
+        self.exponent = exponent
+        if descriptions and not feature_type:
+            raise RuntimeError('Must declare feature_type if using \
+                                descriptions')
+        if descriptions and feature_type:
+            self.feature_type = feature_type
+            self.features = []
+            self.feat_idx = []
+            # get number of each feature to determine starting idx
+            nums = [len(descriptions['Distances']), len(descriptions['Angles']),
+                    len(descriptions['Dihedral_cosines']),
+                    len(descriptions['Dihedral_sines'])]
+            descs = ['Distances', 'Angles', 'Dihedral_cosines', 'Dihedral_sines']
+            start_idx = 0
+            for num, desc in zip(nums, descs):
+                if self.feature_type == desc:
+                    break
+                else:
+                    start_idx += num
+            for key, params in feat_data.items():
+                self.features.append(key)
+                self.feat_idx.append(start_idx +
+                                 descriptions[self.feature_type].index(key))
+
+    def forward(self, in_feat):
+        """Calculates repulsion interaction contributions to energy
+        Parameters
+        ----------
+        in_feat: torch.Tensor
+            input features, such as pairwise distances, of size (n,k), for
+            n examples and k features.
+        Returns
+        -------
+        energy: torch.Tensor
+            output energy of size (n,1) for n examples.
+        """
+
+        n = len(in_feat)
+        energy = torch.sum((self.excluded_volume/in_feat) ** self.exponent,
+                            1).reshape(n, 1) / 2
+        return energy
 
 class CGnet(nn.Module):
     """CGnet neural network class

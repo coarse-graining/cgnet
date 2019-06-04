@@ -14,6 +14,15 @@ slope = np.random.randn()
 noise = 0.7*torch.rand((50, 1))
 y0 = x0.detach()*slope + noise
 
+# Random linear protein
+num_examples = np.random.randint(10, 30)
+num_beads = np.random.randint(5, 10)
+coords = torch.randn((num_examples, num_beads, 3), requires_grad=True)
+stats = ProteinBackboneStatistics(coords.detach().numpy())
+bondsdict = stats.get_bond_constants(flip_dict=True, zscores=True)
+bonds = dict((k, bondsdict[k]) for k in [(i, i+1) for i in range(num_beads-1)])
+repul_distances = [i for i in stats.distances if abs(i[0]-i[1]) > 2]
+
 
 def test_linear_layer():
     """Tests LinearLayer function for bias logic and input/output size"""
@@ -39,11 +48,24 @@ def test_linear_layer():
 
     np.testing.assert_equal(x0.size(), y.size())
 
+def test_repulsion_layer():
+    # Tests RepulsionLayer class for calculation and output size
+
+    repulsion_potential = RepulsionLayer(repul_distances, excluded_volume=5.5,
+                           exponent=6.0, descriptions=stats.descriptions,
+                           feature_type='Distances')
+    feat_layer = ProteinBackboneFeature()
+    feat = feat_layer(coords)
+    energy = repulsion_potential(feat[:, repulsion_potential.feat_idx])
+
+    np.testing.assert_equal(energy.size(), (num_examples, 1))
 
 def test_cgnet():
     """Tests CGnet class criterion attribute, architecture size, and network output size"""
     rand = np.random.randint(1, 10)
     arch = LinearLayer(1, rand, bias=True, activation=nn.Tanh())\
+        + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
+        + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, 1, bias=True, activation=nn.Tanh())\
