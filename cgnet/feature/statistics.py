@@ -33,6 +33,8 @@ class ProteinBackboneStatistics():
     ----------
     stats_dict : dictionary
         Stores 'mean' and 'std' for caluclated features
+    descriptions : dictionary
+        List of indices (value) for each feature type (key)
 
     Example
     -------
@@ -44,7 +46,7 @@ class ProteinBackboneStatistics():
                  get_distances=True, get_angles=True,
                  get_dihedrals=True, temperature=300.0):
         if torch.is_tensor(data):
-            self.data = data.numpy()
+            self.data = data.detach().numpy()
         else:
             self.data = data
         self.n_frames = self.data.shape[0]
@@ -65,6 +67,7 @@ class ProteinBackboneStatistics():
             'Dihedral_cosines': self.dihedral_cosines,
             'Dihedral_sines': self.dihedral_sines
         }
+        self.descriptions = {}
 
         if get_distances:
             self._get_pairwise_distances()
@@ -83,7 +86,27 @@ class ProteinBackboneStatistics():
             self._get_stats(self.dihedral_cosines, 'Dihedral_cosines')
             self._get_stats(self.dihedral_sines, 'Dihedral_sines')
 
-    def get_zscores(self, tensor=True,
+    def _get_key(self, key, name):
+        if name == 'Dihedral_cosines':
+            return tuple(list(key) + ['cos'])
+        if name == 'Dihedral_sines':
+            return tuple(list(key) + ['sin'])
+        else:
+            return key
+
+    def _flip_dict(self, mydict):
+        all_inds = np.unique(np.concatenate([list(mydict[stat].keys())
+                                     for stat in mydict.keys()]))
+
+        newdict = {}
+        for i in all_inds:
+            newdict[i] = {}
+            for stat in mydict.keys():
+                if i in mydict[stat].keys():
+                    newdict[i][stat] = mydict[stat][i]
+        return newdict
+
+    def get_zscores(self, tensor=True, as_dict=True, flip_dict=True,
                     order=["Distances", "Angles",
                            "Dihedral_cosines", "Dihedral_sines"]):
         """Obtain zscores (mean and standard deviation) for features
@@ -91,14 +114,28 @@ class ProteinBackboneStatistics():
         Parameters
         ----------
         tensor : Boolean (default=True)
-            Returns type torch.Tensor if True and np.array if False
+            Returns (innermost data) of type torch.Tensor if True and np.array
+             if False
+        as_dict : Boolean (default=True)
+            Returns a dictionary instead of an array (see "Returns"
+            documentation)
+        flip_dict : Boolean (default=True)
+            Returns a dictionary with outer keys as indices if True and
+            outer keys as statistic string names if False
         order : List, default=['Distances', 'Angles', 'Dihedral_cosines',
                                'Dihedral_sines']
             Order of statistics in output
 
         Returns
         -------
-        zscore_array : torch.Tensor or np.array
+        zscore_dict : python dictionary (if as_dict=True)
+            If flip_dict is True, the outer keys will be bead pairs, triples,
+            or quadruples+phase, e.g. (1, 2) or (0, 1, 2, 3, 'cos'), and
+            the inner keys will be 'mean' and 'std' statistics.
+            If flip_dict is False, the outer keys will be the 'mean' and 'std'
+            statistics and the inner keys will be bead pairs, triples, or
+            quadruples+phase
+        zscore_array : torch.Tensor or np.array (if as_dict=False)
             2 by n tensor/array with means in the first row and
             standard deviations in the second row, where n is
             the number of features
@@ -107,31 +144,66 @@ class ProteinBackboneStatistics():
             if self._name_dict[key] is None:
                 raise ValueError("{} have not been calculated".format(key))
 
+        zscore_keys = np.sum([[self._get_key(key, name)
+                               for key in self.descriptions[name]]
+                              for name in order])
         zscore_array = np.vstack([
             np.concatenate([self.stats_dict[key][stat]
                             for key in order]) for stat in ['mean', 'std']])
-        if tensor:
-            return torch.from_numpy(zscore_array)
+        if not tensor:
+            zscore_array = torch.from_numpy(zscore_array)
+
+        if as_dict:
+            zscore_dict = {}
+            for i, stat in enumerate(['mean', 'std']):
+                zscore_dict[stat] = dict(zip(zscore_keys, zscore_array[i, :]))
+            if flip_dict:
+                zscore_dict = self._flip_dict(zscore_dict)
+            return zscore_dict
         else:
             return zscore_array
 
-    def get_bond_constants(self, tensor=True):
+    def get_bond_constants(self, tensor=True, as_dict=True, zscores=True,
+                           flip_dict=True,
+                           order=["Distances", "Angles",
+                                  "Dihedral_cosines", "Dihedral_sines"]):
         """Obtain bond constants (K values and means) for adjacent distance
            and angle features. K values depend on the temperature.
 
         Parameters
         ----------
         tensor : Boolean (default=True)
-            Returns type torch.Tensor if True and np.array if False
+            Returns (innermost data) of type torch.Tensor if True and np.array
+             if False
+        as_dict : Boolean (default=True)
+            Returns a dictionary instead of an array (see "Returns"
+            documentation)
+        zscores : Boolean (default=True)
+            Includes results from the get_zscores() method if True;
+            only alowed if as_dict is also True
+        flip_dict : Boolean (default=True)
+            Returns a dictionary with outer keys as indices if True and
+            outer keys as statistic string names if False
 
         Returns
         -------
-        bondconst_array : torch.Tensor or np.array
-            2 by n tensor/array with means in the first row and
-            standard deviations in the second row, where n is
-            the number of adjacent pairwise distances plus the
-            number of angles
+        bondconst_dict : python dictionary (if as_dict=True)
+            If flip_dict is True, the outer keys will be bead pairs, triples,
+            or quadruples+phase, e.g. (1, 2) or (0, 1, 2, 3, 'cos'), and
+            the inner keys will be 'mean', 'std', and 'k' statistics (only
+            'mean' and 'k', and no quadruples, if zscores is False)
+            If flip_dict is False, the outer keys will be the 'mean', 'std',
+            and 'k' statistics (only 'mean' and 'k' if zscores if False) and
+            the inner keys will be bead pairs, triples, or, unless zscores is
+            False, quadruples+phase
+        bondconst_array : torch.Tensor or np.array (if as_dict=False)
+            2 by n tensor/array with bond constants in the first row and
+            means in the second row, where n is the number of adjacent
+            pairwise distances plus the number of angles
         """
+        if zscores and not as_dict:
+            raise RuntimeError('zscores can only be True if as_dict is True')
+
         if self.distances is None or self.angles is None:
             raise RuntimeError('Must compute distances and angles in \
                                 order to get bond constants')
@@ -139,17 +211,37 @@ class ProteinBackboneStatistics():
         self.kb = JPERKCAL/KBOLTZMANN/AVOGARDO/self.temperature
 
         bond_mean = self.stats_dict['Distances']['mean'][:self.n_beads-1]
-        bond_var = self.stats_dict['Distances']['std'][:self.n_beads-1]**2
         angle_mean = self.stats_dict['Angles']['mean']
+
+        bond_var = self.stats_dict['Distances']['std'][:self.n_beads-1]**2
         angle_var = self.stats_dict['Angles']['std']**2
+
+        bond_keys = self.descriptions['Distances'][:self.n_beads-1]
+        angle_keys = self.descriptions['Angles']
 
         K_bond = 1/bond_var/self.kb
         K_angle = 1/angle_var/self.kb
 
+        bondconst_keys = np.sum([bond_keys, angle_keys])
         bondconst_array = np.vstack([np.concatenate([K_bond, K_angle]),
                                      np.concatenate([bond_mean, angle_mean])])
-        if tensor:
-            return torch.from_numpy(bondconst_array)
+        if not tensor:
+            bondconst_array = torch.from_numpy(bondconst_array)
+
+        if as_dict:
+            if zscores:
+                bondconst_dict = self.get_zscores(tensor=tensor, as_dict=True,
+                                                  order=order, flip_dict=False)
+                bondconst_dict['k'] = dict(zip(bondconst_keys,
+                                               bondconst_array[0, :]))
+            else:
+                bondconst_dict = {}
+                for i, stat in enumerate(['k', 'mean']):
+                    bondconst_dict[stat] = dict(zip(bondconst_keys,
+                                                    bondconst_array[i, :]))
+            if flip_dict:
+                bondconst_dict = self._flip_dict(bondconst_dict)
+            return bondconst_dict
         else:
             return bondconst_array
 
@@ -163,8 +255,8 @@ class ProteinBackboneStatistics():
                 order.append((i, i+increment))
                 if increment == 1:
                     adj_pairs.append((i, i+increment))
-        self.order = order
-        self.adj_pairs = adj_pairs
+        self._order = order
+        self._adj_pairs = adj_pairs
 
     def _get_stats(self, X, key):
         """Populates stats dictionary with mean and std of feature
@@ -181,13 +273,15 @@ class ProteinBackboneStatistics():
            shape=(n_frames, n_beads-1)
         """
         dlist = np.empty([self.n_frames,
-                          len(self.order)])
+                          len(self._order)])
         for frame in range(self.n_frames):
             dmat = scipy.spatial.distance.squareform(
                 scipy.spatial.distance.pdist(self.data[frame]))
-            frame_dists = [dmat[self.order[i]] for i in range(len(self.order))]
+            frame_dists = [dmat[self._order[i]]
+                           for i in range(len(self._order))]
             dlist[frame, :] = frame_dists
         self.distances = dlist
+        self.descriptions['Distances'] = self._order
 
     def _get_adjacent_distances(self):
         """Obtain adjacent distances; shape=(n_frames, n_beads-1, 3)
@@ -202,8 +296,11 @@ class ProteinBackboneStatistics():
         base = self.adj_dists[:, 0:(self.n_beads-2), :]
         offset = self.adj_dists[:, 1:(self.n_beads-1), :]
 
+        descriptions = []
         self.angles = np.arccos(np.sum(base*offset, axis=2)/np.linalg.norm(
             base, axis=2)/np.linalg.norm(offset, axis=2))
+        descriptions.extend([(i, i+1, i+2) for i in range(self.n_beads-2)])
+        self.descriptions['Angles'] = descriptions
 
     def _get_dihedrals(self):
         """Obtain angles of all adjacent quartets; shape=(n_frames, n_beads-3)
@@ -221,8 +318,13 @@ class ProteinBackboneStatistics():
         plane_vector = np.cross(cp_offset, offset_2, axis=2)
         pv_base = plane_vector[:, 0:(self.n_beads-3), :]
 
+        descriptions = []
         self.dihedral_cosines = np.sum(cp_base*cp_offset, axis=2)/np.linalg.norm(
             cp_base, axis=2)/np.linalg.norm(cp_offset, axis=2)
 
         self.dihedral_sines = np.sum(cp_base*pv_base, axis=2)/np.linalg.norm(
             cp_base, axis=2)/np.linalg.norm(pv_base, axis=2)
+        descriptions.extend([(i, i+1, i+2, i+3)
+                             for i in range(self.n_beads-3)])
+        self.descriptions['Dihedral_cosines'] = descriptions
+        self.descriptions['Dihedral_sines'] = descriptions

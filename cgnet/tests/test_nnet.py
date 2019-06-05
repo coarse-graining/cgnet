@@ -7,9 +7,7 @@ import torch.nn as nn
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
 from cgnet.network.nnet import CGnet, LinearLayer, ForceLoss, RepulsionLayer
-
 from cgnet.feature import ProteinBackboneStatistics, ProteinBackboneFeature
-
 
 # Random test data
 x0 = torch.rand((50, 1), requires_grad=True)
@@ -22,13 +20,13 @@ num_examples = np.random.randint(10, 30)
 num_beads = np.random.randint(5, 10)
 coords = torch.randn((num_examples, num_beads, 3), requires_grad=True)
 stats = ProteinBackboneStatistics(coords.detach().numpy())
-bondsdict = stats.get_bond_constants()
-#bonds = dict((k, bondsdict[k]) for k in [(i, i+1) for i in range(num_beads-1)])
+bondsdict = stats.get_bond_constants(flip_dict=True, zscores=True)
+bonds = dict((k, bondsdict[k]) for k in [(i, i+1) for i in range(num_beads-1)])
 repul_distances = [i for i in stats.distances if abs(i[0]-i[1]) > 2]
 
 
 def test_linear_layer():
-    """Tests LinearLayer function for bias logic and input/output size"""
+    # Tests LinearLayer function for bias logic and input/output size
 
     rand = np.random.randint(1, 11)
     layers = LinearLayer(1, rand, activation=None, bias=True)
@@ -64,43 +62,62 @@ def test_repulsion_layer():
 
     np.testing.assert_equal(energy.size(), (num_examples, 1))
 
+def test_harmonic_layer():
+    # Tests HarmonicLayer class for calculation and output size
+
+    harmonic_potential = HarmonicLayer(bonds, descriptions=stats.descriptions,
+                                       feature_type='Distances')
+    feat_layer = ProteinBackboneFeature()
+    feat = feat_layer(coords)
+    energy = harmonic_potential(feat[:, harmonic_potential.feat_idx])
+
+    np.testing.assert_equal(energy.size(), (num_examples, 1))
+
+
 def test_cgnet():
-    """Tests CGnet class criterion attribute, architecture size, and network output size"""
+    # Tests CGnet class criterion attribute, architecture size, and network
+    # output size. Also tests prior embedding.
+
+    harmonic_potential = HarmonicLayer(bonds, descriptions=stats.descriptions,
+                                       feature_type='Distances')
+    feature_layer = ProteinBackboneFeature()
+    num_feats = feature_layer(coords).size()[1]
+
     rand = np.random.randint(1, 10)
-    arch = LinearLayer(1, rand, bias=True, activation=nn.Tanh())\
-        + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
+    arch = LinearLayer(num_feats, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, 1, bias=True, activation=nn.Tanh())\
 
-    model = CGnet(arch, ForceLoss())
+    model = CGnet(arch, ForceLoss(), feature=ProteinBackboneFeature(),
+                  priors=[harmonic_potential])
+    np.testing.assert_equal(True, model.priors is not None)
     np.testing.assert_equal(len(arch), model.arch.__len__())
     np.testing.assert_equal(True, isinstance(model.criterion, ForceLoss))
+    np.testing.assert_equal(True, isinstance(model.arch, nn.Sequential))
+    np.testing.assert_equal(True, isinstance(model.priors, nn.Sequential))
 
-    energy, force = model.forward(x0)
-    np.testing.assert_equal(energy.size(), (x0.size()[0], 1))
-    np.testing.assert_equal(force.size(), y0.size())
+    energy, force = model.forward(coords)
+    np.testing.assert_equal(energy.size(), (coords.size()[0], 1))
+    np.testing.assert_equal(force.size(), coords.size())
 
 
 def test_linear_regression():
-    """Comparison of CGnet with sklearn linear regression for linear force
+    # Comparison of CGnet with sklearn linear regression for linear force
 
-    Notes
-    -----
-    This test is quite forgiving in comparing the sklearn/CGnet results
-    for learning a linear force feild/quadratic potential because the decimal
-    accuracy is set to one decimal point. It could be lower, but the test might
-    then occassionaly fail due to stochastic reasons associated with the dataset
-    and the limited training routine.
-
-    """
+    # Notes
+    # -----
+    # This test is quite forgiving in comparing the sklearn/CGnet results
+    # for learning a linear force feild/quadratic potential because the decimal
+    # accuracy is set to one decimal point. It could be lower, but the test
+    # might then occassionaly fail due to stochastic reasons associated with
+    # the dataset and the limited training routine.
 
     layers = LinearLayer(1, 15, activation=nn.Softplus(), bias=True)
     layers += LinearLayer(15, 15, activation=nn.Softplus(), bias=True)
     layers += LinearLayer(15, 1, activation=nn.Softplus(), bias=True)
     model = CGnet(layers, ForceLoss())
-    print(model)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.05, weight_decay=0)
     epochs = 35
     for i in range(epochs):
