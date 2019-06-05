@@ -108,6 +108,7 @@ def LinearLayer(
         weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
     return seq
 
+
 class RepulsionLayer(nn.Module):
     """Layer for calculating pairwise repulsion energy prior
     Parameters
@@ -141,7 +142,8 @@ class RepulsionLayer(nn.Module):
             nums = [len(descriptions['Distances']), len(descriptions['Angles']),
                     len(descriptions['Dihedral_cosines']),
                     len(descriptions['Dihedral_sines'])]
-            descs = ['Distances', 'Angles', 'Dihedral_cosines', 'Dihedral_sines']
+            descs = ['Distances', 'Angles',
+                     'Dihedral_cosines', 'Dihedral_sines']
             start_idx = 0
             for num, desc in zip(nums, descs):
                 if self.feature_type == desc:
@@ -150,7 +152,7 @@ class RepulsionLayer(nn.Module):
                     start_idx += num
             for feat in self.features:
                 self.feat_idx.append(start_idx +
-                                 descriptions[self.feature_type].index(feat))
+                                     descriptions[self.feature_type].index(feat))
 
     def forward(self, in_feat):
         """Calculates repulsion interaction contributions to energy
@@ -167,8 +169,9 @@ class RepulsionLayer(nn.Module):
 
         n = len(in_feat)
         energy = torch.sum((self.excluded_volume/in_feat) ** self.exponent,
-                            1).reshape(n, 1) / 2
+                           1).reshape(n, 1) / 2
         return energy
+
 
 class HarmonicLayer(nn.Module):
     """Layer for calculating bond/angle harmonic energy prior
@@ -178,11 +181,11 @@ class HarmonicLayer(nn.Module):
     feat_data: dict
         dictionary of means and bond constants. Keys are tuples that provide the
         descriptions of each contributing feature. THe values of each key are in
-        turn dictionarys that have the following keys. The \'mean\' key is mapped
-        to the numerical mean of the feature over the trajectory. The \'std\' key
-        is mapped to the numerical standard deviation of the feature over the
-        trajectory. The \'k\' is mapped to the harmonic constant derived from the
-        feature.
+        turn dictionarys that have the following keys. The \'mean\' key is
+        mapped to the numerical mean of the feature over the trajectory. The
+        \'std\' key is mapped to the numerical standard deviation of the feature
+        over the trajectory. The \'k\' is mapped to the harmonic constant
+        derived from the feature.
     descriptions: dict
         dictionary of CG bead indices as tuples, for feature keys.
     feature_type: str
@@ -204,7 +207,8 @@ class HarmonicLayer(nn.Module):
             nums = [len(descriptions['Distances']), len(descriptions['Angles']),
                     len(descriptions['Dihedral_cosines']),
                     len(descriptions['Dihedral_sines'])]
-            descs = ['Distances', 'Angles', 'Dihedral_cosines', 'Dihedral_sines']
+            descs = ['Distances', 'Angles',
+                     'Dihedral_cosines', 'Dihedral_sines']
             start_idx = 0
             for num, desc in zip(nums, descs):
                 if self.feature_type == desc:
@@ -214,9 +218,10 @@ class HarmonicLayer(nn.Module):
             for key, params in feat_data.items():
                 self.features.append(key)
                 self.feat_idx.append(start_idx +
-                                 descriptions[self.feature_type].index(key))
+                                     descriptions[self.feature_type].index(key))
                 self.harmonic_parameters = torch.cat((self.harmonic_parameters,
-                     torch.tensor([[params['k']], [params['mean']]])), dim=1)
+                                           torch.tensor([[params['k']],
+                                           [params['mean']]])), dim=1)
 
     def forward(self, in_feat):
         """Calculates harmonic contribution of bond/angle interactions to energy
@@ -235,9 +240,9 @@ class HarmonicLayer(nn.Module):
         """
 
         n = len(in_feat)
-        energy = torch.sum(
-            self.harmonic_parameters[0, :] * (in_feat -
-                                              self.harmonic_parameters[1, :]) ** 2, 1).reshape(n, 1) / 2
+        energy = torch.sum(self.harmonic_parameters[0, :] * (in_feat -
+                           self.harmonic_parameters[1, :]) ** 2,
+                           1).reshape(n, 1) / 2
         return energy
 
 
@@ -293,9 +298,10 @@ class CGnet(nn.Module):
         (9): Linear(in_features=160, out_features=160, bias=True)
         (10): Tanh()
         (11): Linear(in_features=160, out_features=1, bias=True)
-        (12): torch.sum((11) + BondPotential(bonds, angles))
-        (13): torch.autograd.grad(-(12), input, create_graph=True,
-                                  retain_graph=True)
+        (12): HarmonicLayer(bonds)
+        (13): HarmonicLayer(angles)
+        (14): torch.autograd.grad(-((11) + (12) + (13)), input,
+                                  create_graph=True, retain_graph=True)
       )
     (criterion): ForceLoss()
     )

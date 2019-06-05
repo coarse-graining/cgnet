@@ -6,7 +6,8 @@ import torch
 import torch.nn as nn
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
-from cgnet.network.nnet import CGnet, LinearLayer, ForceLoss, RepulsionLayer
+from cgnet.network.nnet import CGnet, LinearLayer, ForceLoss,\
+                               RepulsionLayer, HarmonicLayer
 from cgnet.feature import ProteinBackboneStatistics, ProteinBackboneFeature
 
 # Random test data
@@ -22,7 +23,13 @@ coords = torch.randn((num_examples, num_beads, 3), requires_grad=True)
 stats = ProteinBackboneStatistics(coords.detach().numpy())
 bondsdict = stats.get_bond_constants(flip_dict=True, zscores=True)
 bonds = dict((k, bondsdict[k]) for k in [(i, i+1) for i in range(num_beads-1)])
-repul_distances = [i for i in stats.distances if abs(i[0]-i[1]) > 2]
+repul_distances = [i for i in stats.descriptions['Distances']
+                   if abs(i[0]-i[1]) > 2]
+descriptions = stats.descriptions
+nums = [len(descriptions['Distances']), len(descriptions['Angles']),
+        len(descriptions['Dihedral_cosines']),
+        len(descriptions['Dihedral_sines'])]
+descs = ['Distances', 'Angles', 'Dihedral_cosines', 'Dihedral_sines']
 
 
 def test_linear_layer():
@@ -49,29 +56,69 @@ def test_linear_layer():
 
     np.testing.assert_equal(x0.size(), y.size())
 
+
 def test_repulsion_layer():
     # Tests RepulsionLayer class for calculation and output size
-    print(bondsdict)
-    print(stats.distances)
-    repulsion_potential = RepulsionLayer(repul_distances, excluded_volume=5.5,
-                           exponent=6.0, descriptions=stats.descriptions,
-                           feature_type='Distances')
+
+    ex_vol = np.random.randn()
+    expo = np.random.randint(6, 12)
+    repulsion_potential = RepulsionLayer(repul_distances,
+                                         excluded_volume=ex_vol, exponent=expo,
+                                         descriptions=descriptions,
+                                         feature_type='Distances')
     feat_layer = ProteinBackboneFeature()
     feat = feat_layer(coords)
     energy = repulsion_potential(feat[:, repulsion_potential.feat_idx])
 
     np.testing.assert_equal(energy.size(), (num_examples, 1))
+    start_idx = 0
+    feat_idx = []
+    for num, desc in zip(nums, descs):
+        if 'Distances' == desc:
+            break
+        else:
+            start_idx += num
+    for pair in repul_distances:
+        feat_idx.append(start_idx +
+                        descriptions['Distances'].index(pair))
+    energy_check = torch.sum((ex_vol/feat[:, feat_idx]) ** expo,
+                             1).reshape(len(feat), 1) / 2
+    np.testing.assert_equal(energy.detach().numpy(),
+                            energy_check.detach().numpy())
+
 
 def test_harmonic_layer():
     # Tests HarmonicLayer class for calculation and output size
 
-    harmonic_potential = HarmonicLayer(bonds, descriptions=stats.descriptions,
+    harmonic_potential = HarmonicLayer(bonds, descriptions=descriptions,
                                        feature_type='Distances')
     feat_layer = ProteinBackboneFeature()
     feat = feat_layer(coords)
     energy = harmonic_potential(feat[:, harmonic_potential.feat_idx])
 
     np.testing.assert_equal(energy.size(), (num_examples, 1))
+    start_idx = 0
+    feat_idx = []
+    features = []
+    harmonic_parameters = torch.tensor([])
+    for num, desc in zip(nums, descs):
+        if 'Distances' == desc:
+            break
+        else:
+            start_idx += num
+    for key, params in bonds.items():
+        features.append(key)
+        feat_idx.append(start_idx +
+                        descriptions['Distances'].index(key))
+        harmonic_parameters = torch.cat((harmonic_parameters,
+                                         torch.tensor([[params['k']],
+                                         [params['mean']]])), dim=1)
+    energy_check = torch.sum(harmonic_parameters[0, :] * (feat[:, feat_idx] -
+                             harmonic_parameters[1, :]) ** 2,
+                             1).reshape(len(feat), 1) / 2
+
+    np.testing.assert_equal(energy.detach().numpy(),
+                            energy_check.detach().numpy())
 
 
 def test_cgnet():
@@ -88,7 +135,7 @@ def test_cgnet():
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
-        + LinearLayer(rand, 1, bias=True, activation=nn.Tanh())\
+        + LinearLayer(rand, 1, bias=True, activation=None)\
 
     model = CGnet(arch, ForceLoss(), feature=ProteinBackboneFeature(),
                   priors=[harmonic_potential])
