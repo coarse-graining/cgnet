@@ -6,7 +6,10 @@ import torch
 import torch.nn as nn
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
-from cgnet.network.nnet import CGnet, LinearLayer, ForceLoss
+from cgnet.network.nnet import CGnet, LinearLayer, ForceLoss, RepulsionLayer
+
+from cgnet.feature import ProteinBackboneStatistics, ProteinBackboneFeature
+
 
 # Random test data
 x0 = torch.rand((50, 1), requires_grad=True)
@@ -19,8 +22,8 @@ num_examples = np.random.randint(10, 30)
 num_beads = np.random.randint(5, 10)
 coords = torch.randn((num_examples, num_beads, 3), requires_grad=True)
 stats = ProteinBackboneStatistics(coords.detach().numpy())
-bondsdict = stats.get_bond_constants(flip_dict=True, zscores=True)
-bonds = dict((k, bondsdict[k]) for k in [(i, i+1) for i in range(num_beads-1)])
+bondsdict = stats.get_bond_constants()
+#bonds = dict((k, bondsdict[k]) for k in [(i, i+1) for i in range(num_beads-1)])
 repul_distances = [i for i in stats.distances if abs(i[0]-i[1]) > 2]
 
 
@@ -50,7 +53,8 @@ def test_linear_layer():
 
 def test_repulsion_layer():
     # Tests RepulsionLayer class for calculation and output size
-
+    print(bondsdict)
+    print(stats.distances)
     repulsion_potential = RepulsionLayer(repul_distances, excluded_volume=5.5,
                            exponent=6.0, descriptions=stats.descriptions,
                            feature_type='Distances')

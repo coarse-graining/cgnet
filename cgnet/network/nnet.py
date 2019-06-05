@@ -128,7 +128,7 @@ class RepulsionLayer(nn.Module):
                                 descriptions')
         if descriptions and feature_type:
             self.feature_type = feature_type
-            self.features = []
+            self.features = feat_data
             self.feat_idx = []
             # get number of each feature to determine starting idx
             nums = [len(descriptions['Distances']), len(descriptions['Angles']),
@@ -141,10 +141,9 @@ class RepulsionLayer(nn.Module):
                     break
                 else:
                     start_idx += num
-            for key, params in feat_data.items():
-                self.features.append(key)
+            for feat in self.features:
                 self.feat_idx.append(start_idx +
-                                 descriptions[self.feature_type].index(key))
+                                 descriptions[self.feature_type].index(feat))
 
     def forward(self, in_feat):
         """Calculates repulsion interaction contributions to energy
