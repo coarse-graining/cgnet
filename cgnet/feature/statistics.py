@@ -150,8 +150,8 @@ class ProteinBackboneStatistics():
         zscore_array = np.vstack([
             np.concatenate([self.stats_dict[key][stat]
                             for key in order]) for stat in ['mean', 'std']])
-        if not tensor:
-            zscore_array = torch.from_numpy(zscore_array)
+        if tensor:
+            zscore_array = torch.from_numpy(zscore_array).float()
 
         if as_dict:
             zscore_dict = {}
