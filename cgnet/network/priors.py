@@ -1,5 +1,5 @@
 # Author: Nick Charron
-# Contributors: Brooke Husic, Jiang Wang
+# Contributors: Brooke Husic, Dominik Lemm, Jiang Wang
 
 import torch
 import torch.nn as nn
@@ -19,15 +19,15 @@ class PriorLayer(nn.Module):
         features type from which to select coordinates.
     """
 
-    def __init__(self, feat_data, excluded_volume=5.5, exponent=6.0,
-                 descriptions=None, feature_type=None):
+    def __init__(self, feat_data, descriptions=None, feature_type=None):
         super(PriorLayer, self).__init__()
         if descriptions and not feature_type:
             raise RuntimeError('Must declare feature_type if using \
                                 descriptions')
         if descriptions and feature_type:
+            self.params = []
             self.feature_type = feature_type
-            self.features = feat_data
+            self.features = [feat for feat in feat_data.keys()]
             self.feat_idx = []
             # get number of each feature to determine starting idx
             nums = [len(descriptions['Distances']), len(descriptions['Angles']),
@@ -41,13 +41,56 @@ class PriorLayer(nn.Module):
                     break
                 else:
                     self.start_idx += num
-            if isinstance(type(self.features),list):
-                for feat in self.features:
-                    self.feat_idx.append(self.start_idx +
-                              descriptions[self.feature_type].index(feat))
+            for key, par in feat_data.items():
+                 self.features.append(key)
+                 self.feat_idx.append(self.start_idx +
+                                      descriptions[self.feature_type].index(key))
+                 self.params.append(par)
 
     def forward(self, in_feat):
         raise NotImplementedError
+
+
+class RepulsionLayer(PriorLayer):
+    """Layer for calculating pairwise repulsion energy prior
+    Parameters
+    ----------
+    feat_data: dict
+        list of distance tuples for which to calculate repulsion interactions
+    descriptions: dict
+        dictionary of CG bead indices as tuples, for feature keys.
+    feature_type: str
+        features type from which to select coordinates.
+    """
+
+    def __init__(self, feat_data, descriptions=None, feature_type=None):
+        super(RepulsionLayer, self).__init__(feat_data,
+                                             descriptions=descriptions,
+                                             feature_type=feature_type)
+        self.repulsion_parameters = torch.tensor([])
+        for param_dict in self.params:
+            self.repulsion_parameters = torch.cat((self.repulsion_parameters,
+                       torch.tensor([[param_dict['ex_vol']],
+                       [param_dict['exp']]])),dim=1)
+
+    def forward(self, in_feat):
+        """Calculates repulsion interaction contributions to energy
+        Parameters
+        ----------
+        in_feat: torch.Tensor
+            input features, such as pairwise distances, of size (n,k), for
+            n examples and k features.
+        Returns
+        -------
+        energy: torch.Tensor
+            output energy of size (n,1) for n examples.
+        """
+
+        n = len(in_feat)
+        energy = torch.sum((self.repulsion_parameters[0,:]/in_feat)
+                            ** self.repulsion_parameters[1,:],
+                            1).reshape(n, 1) / 2
+        return energy
 
 
 class HarmonicLayer(PriorLayer):
@@ -71,16 +114,14 @@ class HarmonicLayer(PriorLayer):
     """
 
     def __init__(self, feat_data, descriptions=None, feature_type=None):
-        super(HarmonicLayer, self).__init__(feat_data, descriptions=None,
-                                            feature_type=None)
-            self.harmonic_parameters = torch.tensor([])
-            for key, params in feat_data.items():
-                self.features.append(key)
-                self.feat_idx.append(start_idx +
-                                     descriptions[self.feature_type].index(key))
-                self.harmonic_parameters = torch.cat((self.harmonic_parameters,
-                                           torch.tensor([[params['k']],
-                                           [params['mean']]])), dim=1)
+        super(HarmonicLayer, self).__init__(feat_data,
+                                            descriptions=descriptions,
+                                            feature_type=feature_type)
+        self.harmonic_parameters = torch.tensor([])
+        for param_dict in self.params:
+            self.harmonic_parameters = torch.cat((self.harmonic_parameters,
+                                           torch.tensor([[param_dict['k']],
+                                           [param_dict['mean']]])), dim=1)
 
     def forward(self, in_feat):
         """Calculates harmonic contribution of bond/angle interactions to energy

@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
-from cgnet.network.nnet import CGnet, LinearLayer, ForceLoss,\
-                               RepulsionLayer, HarmonicLayer
+from cgnet.network import CGnet, LinearLayer, ForceLoss
+from cgnet.network import RepulsionLayer, HarmonicLayer
 from cgnet.feature import ProteinBackboneStatistics, ProteinBackboneFeature
 
 # Random test data
@@ -21,10 +21,19 @@ num_examples = np.random.randint(10, 30)
 num_beads = np.random.randint(5, 10)
 coords = torch.randn((num_examples, num_beads, 3), requires_grad=True)
 stats = ProteinBackboneStatistics(coords.detach().numpy())
+
+# Prior variables
 bondsdict = stats.get_bond_constants(flip_dict=True, zscores=True)
 bonds = dict((k, bondsdict[k]) for k in [(i, i+1) for i in range(num_beads-1)])
+
 repul_distances = [i for i in stats.descriptions['Distances']
                    if abs(i[0]-i[1]) > 2]
+ex_vols = np.random.uniform(2,8,len(repul_distances))
+exps = np.random.randint(1,6,len(repul_distances))
+repul_dict = dict((index, {'ex_vol': ex_vol, 'exp': exp})
+                   for index, ex_vol, exp
+                   in zip(repul_distances, ex_vols, exps))
+
 descriptions = stats.descriptions
 nums = [len(descriptions['Distances']), len(descriptions['Angles']),
         len(descriptions['Dihedral_cosines']),
@@ -60,10 +69,7 @@ def test_linear_layer():
 def test_repulsion_layer():
     # Tests RepulsionLayer class for calculation and output size
 
-    ex_vol = np.random.randn()
-    expo = np.random.randint(6, 12)
-    repulsion_potential = RepulsionLayer(repul_distances,
-                                         excluded_volume=ex_vol, exponent=expo,
+    repulsion_potential = RepulsionLayer(repul_dict,
                                          descriptions=descriptions,
                                          feature_type='Distances')
     feat_layer = ProteinBackboneFeature()
@@ -81,7 +87,9 @@ def test_repulsion_layer():
     for pair in repul_distances:
         feat_idx.append(start_idx +
                         descriptions['Distances'].index(pair))
-    energy_check = torch.sum((ex_vol/feat[:, feat_idx]) ** expo,
+    p1 = torch.tensor(ex_vols).float()
+    p2 = torch.tensor(exps).float()
+    energy_check = torch.sum((p1/feat[:, feat_idx]) ** p2,
                              1).reshape(len(feat), 1) / 2
     np.testing.assert_equal(energy.detach().numpy(),
                             energy_check.detach().numpy())
