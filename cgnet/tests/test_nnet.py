@@ -7,7 +7,8 @@ import torch.nn as nn
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
 from cgnet.network.nnet import CGnet, LinearLayer, ForceLoss,\
-                               RepulsionLayer, HarmonicLayer
+                               RepulsionLayer, HarmonicLayer,\
+                               ZscoreLayer
 from cgnet.feature import ProteinBackboneStatistics, ProteinBackboneFeature
 
 # Random test data
@@ -29,7 +30,9 @@ descriptions = stats.descriptions
 nums = [len(descriptions['Distances']), len(descriptions['Angles']),
         len(descriptions['Dihedral_cosines']),
         len(descriptions['Dihedral_sines'])]
-descs = ['Distances', 'Angles', 'Dihedral_cosines', 'Dihedral_sines']
+descs = [key for key in descriptions.keys()]
+zscores = stats.get_zscores(tensor=False, as_dict=False).float()
+
 
 
 def test_linear_layer():
@@ -55,6 +58,19 @@ def test_linear_layer():
     y = seq(x0)
 
     np.testing.assert_equal(x0.size(), y.size())
+
+def test_zscore_layer():
+    # Tests ZscoreLayer() for correct normalization
+
+    feat_layer = ProteinBackboneFeature()
+    feat = feat_layer(coords)
+    rescaled_feat_truth = (feat - zscores[0,:])/zscores[1,:]
+
+    zlayer = ZscoreLayer(zscores)
+    rescaled_feat = zlayer(feat)
+
+    np.testing.assert_equal(rescaled_feat.detach().numpy(),
+                            rescaled_feat_truth.detach().numpy())
 
 
 def test_repulsion_layer():

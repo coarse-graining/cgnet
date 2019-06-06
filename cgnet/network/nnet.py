@@ -108,6 +108,38 @@ def LinearLayer(
         weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
     return seq
 
+class ZscoreLayer(nn.Module):
+    """Layer for Zscore normalization
+    Parameters
+    ----------
+    zscores: torch.Tensor
+        [2, n_features] tensor, where the first row contains the means
+        and the second row contains the standard edeviations of each
+        feature
+
+    """
+    def __init__(self,zscores):
+        super(ZscoreLayer, self).__init__()
+        self.zscores = zscores
+
+    def forward(self, in_feat):
+        """Normalizes each feature by subtracting its mean and dividing by
+           its standard deviation.
+
+        Parameters
+        ----------
+        in_feat: torch.Tensor
+            input data of shape [n_frames, n_features]
+
+        Returns
+        -------
+        rescaled_feat: torch.Tensor
+            Zscore normalized features. Shape [n_frames, n_features]
+
+        """
+        rescaled_feat = (in_feat - self.zscores[0,:])/self.zscores[1,:]
+        return rescaled_feat
+
 
 class RepulsionLayer(nn.Module):
     """Layer for calculating pairwise repulsion energy prior
@@ -116,9 +148,9 @@ class RepulsionLayer(nn.Module):
     feat_data: list
         list of distance tuples for which to calculate repulsion interactions
     excluded_volume: float (default=5.5)
-        Excluded volume parameter.
+        excluded volume parameter.
     exponent: float (default=6.0)
-        Exponent of repulsion interaction. By convention, this value is
+        exponent of repulsion interaction. By convention, this value is
         taken to be positive.
     descriptions: dict
         dictionary of CG bead indices as tuples, for feature keys.
