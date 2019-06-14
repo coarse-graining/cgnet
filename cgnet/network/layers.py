@@ -9,6 +9,7 @@ import numpy as np
 class _PriorLayer(nn.Module):
     """Layer for adding prior energy computations external to CGnet hidden
     output
+
     Parameters
     ----------
     feat_data: dict
@@ -21,7 +22,8 @@ class _PriorLayer(nn.Module):
     descriptions: dict
         dictionary of CG bead indices as tuples, for feature keys. Possible
         feature keys are those implemented in ProteinBackBoneStatistics():
-        "Distacnces", "Angles", "Dihedral_cosines", and/or "Dihedral_sines"
+        \"Distacnces\", \"Angles\", \"Dihedral_cosines\", and/or
+        \"Dihedral_sines\"
     feature_type: str
         features type from which to select coordinates.
     """
@@ -70,15 +72,40 @@ class _PriorLayer(nn.Module):
 
 
 class RepulsionLayer(_PriorLayer):
-    """Layer for calculating pairwise repulsion energy prior
+    """Layer for calculating pairwise repulsion energy prior.
+
     Parameters
     ----------
     feat_data: dict
-        list of distance tuples for which to calculate repulsion interactions
+        dictionary defining the CG beads and interaction parameters for
+        computing the energy contributions of the residual prior energy. The
+        keys are tuples defining the CG beads involved in each pairwise
+        interaction, and the values are dictionaries of physical constants
+        involved in the corresponding repulsion interaction: The keys of this
+        subdictionary are \"ex_vol\", and \"exp\", which are the exlcuded volume
+        parameter (in length units) and the exponent (positive, dimensionless)
+        respectively. The corresponding values are the the numerical values of
+        each constant. For example, for one such feat_dict entry:
+
+            { (3, 9) : {  \"ex_vol\" : 5.5, \"exp\" : 6.0 }}
+
     descriptions: dict
-        dictionary of CG bead indices as tuples, for feature keys.
+        dictionary of CG bead indices as tuples, for feature keys. Possible
+        feature keys are those implemented in ProteinBackBoneStatistics():
+        \"Distacnces\", \"Angles\", \"Dihedral_cosines\", and/or
+        \"Dihedral_sines\"
     feature_type: str
         features type from which to select coordinates.
+
+    Notes
+    -----
+    This prior energy should be used for longer molecules that may possess
+    metastable states in which portions of the molecule that are separated by
+    many CG beads in sequence may nonetheless adopt close physical proximities.
+    Without this prior, it is possilbe for the CGnet to learn energies that do
+    not respect proper physical pairwise repulsions. The interaction is modeled
+    after the VDW interaction term from the classic Leonard Jones potential.
+
     """
 
     def __init__(self, feat_data, descriptions=None, feature_type=None):
