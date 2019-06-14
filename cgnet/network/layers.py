@@ -40,7 +40,7 @@ class _PriorLayer(nn.Module):
             raise RuntimeError('Must declare feature_type if using \
                                 descriptions')
         if feature_type not in descriptions.keys():
-            raise ValueError('Feature type not found in descrptions')
+            raise ValueError('Feature type not found in descriptions')
         if descriptions and feature_type:
             self.params = []
             self.feature_type = feature_type
@@ -74,7 +74,9 @@ class _PriorLayer(nn.Module):
         mathematical steps to form each specific energy contribution to the
         potential energy.;
         """
-        raise NotImplementedError
+
+        raise NotImplementedError('forward() method must be overridden in \
+                                  custom classes inheriting from _PriorLayer()')
 
 
 class RepulsionLayer(_PriorLayer):
@@ -118,6 +120,12 @@ class RepulsionLayer(_PriorLayer):
         super(RepulsionLayer, self).__init__(feat_data,
                                              descriptions=descriptions,
                                              feature_type=feature_type)
+        for param_dict in self.params:
+            if (key in param_dict for key in ('ex_vol', 'exp')):
+                pass
+            else:
+                raise KeyError('Missing or incorrect key for repulsion \
+                                parameters')
         self.repulsion_parameters = torch.tensor([])
         for param_dict in self.params:
             self.repulsion_parameters = torch.cat((self.repulsion_parameters,
@@ -188,6 +196,11 @@ class HarmonicLayer(_PriorLayer):
         super(HarmonicLayer, self).__init__(feat_data,
                                             descriptions=descriptions,
                                             feature_type=feature_type)
+        for param_dict in self.params:
+            if (key in param_dict for key in ('k', 'mean')):
+                pass
+            else:
+                KeyError('Missing or incorrect key for harmonic parameters')
         self.harmonic_parameters = torch.tensor([])
         for param_dict in self.params:
             self.harmonic_parameters = torch.cat((self.harmonic_parameters,
@@ -274,19 +287,27 @@ def LinearLayer(
 
     seq = [nn.Linear(d_in, d_out, bias=bias)]
     if activation:
-        seq += [activation]
+        if isinstance(activation, nn.Module):
+            seq += [activation]
+        else:
+            raise TypeError('Activation\"'+str(activation)+'\" is not a valid \
+                            torch.nn.Module')
     if dropout:
         seq += [nn.Dropout(dropout)]
     if weight_init == 'xavier':
         torch.nn.init.xavier_uniform_(seq[0].weight)
     if weight_init == 'identity':
         torch.nn.init.eye_(seq[0].weight)
-    if isinstance(weight_init, int) or isinstance(weight_init, float):
-        torch.nn.init.constant_(seq[0].weight, weight_init)
-    if callable(weight_init):
-        if weight_init_args is None:
-            weight_init_args = []
-        if weight_init_kwargs is None:
-            weight_inti_kwargs = []
-        weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
+    if weight_init not in ['xavier', 'identity', None]:
+        if isinstance(weight_init, int) or isinstance(weight_init, float):
+            torch.nn.init.constant_(seq[0].weight, weight_init)
+        if callable(weight_init):
+            if weight_init_args is None:
+                weight_init_args = []
+            if weight_init_kwargs is None:
+                weight_inti_kwargs = []
+            weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
+        else:
+            raise RuntimeError('Unknown weight initialization \"'
+                                +str(weight_init)+'\"')
     return seq
