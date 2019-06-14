@@ -6,25 +6,33 @@ import torch.nn as nn
 import numpy as np
 
 
-class PriorLayer(nn.Module):
+class _PriorLayer(nn.Module):
     """Layer for adding prior energy computations external to CGnet hidden
     output
     Parameters
     ----------
-    feat_data: list or dict
-        list of tuples defining each feature from which to calculate
-        interactions
+    feat_data: dict
+        dictionary defining the CG beads and interaction parameters for
+        computing the energy contributions of the residual prior energy. The
+        keys are tuples defining the CG beads involved in each interaction,
+        and the values are dictionaries of physical constants names/values
+        (keys: strings, values: float) involved in the interaction encompassed
+        by those CG beads
     descriptions: dict
-        dictionary of CG bead indices as tuples, for feature keys.
+        dictionary of CG bead indices as tuples, for feature keys. Possible
+        feature keys are those implemented in ProteinBackBoneStatistics():
+        "Distacnces", "Angles", "Dihedral_cosines", and/or "Dihedral_sines"
     feature_type: str
         features type from which to select coordinates.
     """
 
     def __init__(self, feat_data, descriptions=None, feature_type=None):
-        super(PriorLayer, self).__init__()
+        super(_PriorLayer, self).__init__()
         if descriptions and not feature_type:
             raise RuntimeError('Must declare feature_type if using \
                                 descriptions')
+        if feature_type not in descriptions.keys():
+            raise ValueError('Feature type not found in descrptions')
         if descriptions and feature_type:
             self.params = []
             self.feature_type = feature_type
@@ -49,10 +57,19 @@ class PriorLayer(nn.Module):
                 self.params.append(par)
 
     def forward(self, in_feat):
+        """Forward method to compute the prior energy contribution.
+
+        Notes
+        -----
+        This must be explicitly implemented in a child class that inherits from
+        _PriorLayer(). The details of this method should encompass the
+        mathematical steps to form each specific energy contribution to the
+        potential energy.;
+        """
         raise NotImplementedError
 
 
-class RepulsionLayer(PriorLayer):
+class RepulsionLayer(_PriorLayer):
     """Layer for calculating pairwise repulsion energy prior
     Parameters
     ----------
@@ -94,7 +111,7 @@ class RepulsionLayer(PriorLayer):
         return energy
 
 
-class HarmonicLayer(PriorLayer):
+class HarmonicLayer(_PriorLayer):
     """Layer for calculating bond/angle harmonic energy prior
 
     Parameters
