@@ -26,6 +26,17 @@ class _PriorLayer(nn.Module):
         \"Dihedral_sines\"
     feature_type: str
         features type from which to select coordinates.
+
+    Examples
+    --------
+    To assemble the feat_dict input for a HarmonicLayer prior for bonds from an
+    instance of a stats = ProteinBackboneStatistics():
+
+    features = stats.get_bond_constants(flip_dict=True, zscores=True)
+    bonds = dict((k, features[k]) for k in [(i, i+1) for i in
+                  range(stats.n_beads)])
+    bond_layer = HarmonicLayer(bonds, stats.descriptions, "Distances")
+
     """
 
     def __init__(self, feat_data, descriptions=None, feature_type=None):
@@ -129,8 +140,8 @@ class RepulsionLayer(_PriorLayer):
         self.repulsion_parameters = torch.tensor([])
         for param_dict in self.params:
             self.repulsion_parameters = torch.cat((self.repulsion_parameters,
-                                        torch.tensor([[param_dict['ex_vol']],
-                                        [param_dict['exp']]])), dim=1)
+                                            torch.tensor([[param_dict['ex_vol']],
+                                            [param_dict['exp']]])), dim=1)
 
     def forward(self, in_feat):
         """Calculates repulsion interaction contributions to energy
@@ -204,8 +215,8 @@ class HarmonicLayer(_PriorLayer):
         self.harmonic_parameters = torch.tensor([])
         for param_dict in self.params:
             self.harmonic_parameters = torch.cat((self.harmonic_parameters,
-                                       torch.tensor([[param_dict['k']],
-                                       [param_dict['mean']]])), dim=1)
+                                                  torch.tensor([[param_dict['k']],
+                                                                [param_dict['mean']]])), dim=1)
 
     def forward(self, in_feat):
         """Calculates harmonic contribution of bond/angle interactions to energy
@@ -309,5 +320,5 @@ def LinearLayer(
             weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
         else:
             raise RuntimeError('Unknown weight initialization \"'
-                                +str(weight_init)+'\"')
+                               + str(weight_init)+'\"')
     return seq
