@@ -34,151 +34,6 @@ class ForceLoss(torch.nn.Module):
         return loss
 
 
-def LinearLayer(
-        d_in,
-        d_out,
-        bias=True,
-        activation=None,
-        dropout=0,
-        weight_init='xavier',
-        weight_init_args=None,
-        weight_init_kwargs=None):
-    """Linear layer function
-
-    Parameters
-    ----------
-    d_in : int
-        input dimension
-    d_out : int
-        output dimension
-    bias : bool (default=True)
-        specifies whether or not to add a bias node
-    activation : torch.nn.Module() (default=None)
-        activation function for the layer
-    dropout : float (default=0)
-        if > 0, a dropout layer with the specified dropout frequency is
-        added after the activation.
-    weight_init : str, float, or nn.init function (default=\'xavier\')
-        specifies the initialization of the layer weights. For non-option
-        initializations (eg, xavier initialization), a string may be used
-        for simplicity. If a float or int is passed, a constant initialization
-        is used. For more complicated initializations, a torch.nn.init function
-        object can be passed in.
-    weight_init_args : list or tuple (default=None)
-        arguments (excluding the layer.weight argument) for a torch.nn.init
-        function.
-    weight_init_kwargs : dict (default=None)
-        keyword arguements for a torch.nn.init function
-
-    Returns
-    -------
-    seq : list of torch.nn.Module() instances
-        the full linear layer, including activation and optional dropout.
-
-    Example
-    -------
-    MyLayer = LinearLayer(5,10,bias=True,activation=nn.Softplus(beta=2),
-                               weight_init=nn.init.kaiming_uniform_,
-                               weight_init_kwargs={"a":0,"mode":"fan_out",
-                               "nonlinearity":"leaky_relu"})
-
-    Produces a linear layer with input dimension 5, output dimension 10, bias
-    inclusive, followed by a beta=2 softplus activation, with the layer weights
-    intialized according to kaiming uniform procedure with preservation of weight
-    variance magnitudes during backpropagation.
-
-    """
-
-    seq = [nn.Linear(d_in, d_out, bias=bias)]
-    if activation:
-        seq += [activation]
-    if dropout:
-        seq += [nn.Dropout(dropout)]
-    if weight_init == 'xavier':
-        torch.nn.init.xavier_uniform_(seq[0].weight)
-    if weight_init == 'identity':
-        torch.nn.init.eye_(seq[0].weight)
-    if isinstance(weight_init, int) or isinstance(weight_init, float):
-        torch.nn.init.constant_(seq[0].weight, weight_init)
-    if callable(weight_init):
-        if weight_init_args is None:
-            weight_init_args = []
-        if weight_init_kwargs is None:
-            weight_inti_kwargs = []
-        weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
-    return seq
-
-
-class HarmonicLayer(nn.Module):
-    """Layer for calculating bond/angle harmonic energy prior
-
-    Parameters
-    ----------
-    feat_data: dict
-        dictionary of means and bond constants. Keys are tuples that provide the
-        descriptions of each contributing feature. THe values of each key are in
-        turn dictionarys that have the following keys. The \'mean\' key is mapped
-        to the numerical mean of the feature over the trajectory. The \'std\' key
-        is mapped to the numerical standard deviation of the feature over the
-        trajectory. The \'k\' is mapped to the harmonic constant derived from the
-        feature.
-    descriptions: dict
-        dictionary of CG bead indices as tuples, for feature keys.
-    feature_type: str
-        features type from which to select coordinates.
-
-    """
-
-    def __init__(self, feat_data, descriptions=None, feature_type=None):
-        super(HarmonicLayer, self).__init__()
-        if descriptions and not feature_type:
-            raise RuntimeError('Must declare feature_type is using \
-                                descriptions')
-        if descriptions and feature_type:
-            self.feature_type = feature_type
-            self.features = []
-            self.feat_idx = []
-            self.harmonic_parameters = torch.tensor([])
-            # get number of each feature to determine starting idx
-            nums = [len(descriptions['Distances']), len(descriptions['Angles']),
-                    len(descriptions['Dihedral_cosines']),
-                    len(descriptions['Dihedral_sines'])]
-            descs = ['Distances', 'Angles', 'Dihedral_cosines', 'Dihedral_sines']
-            start_idx = 0
-            for num, desc in zip(nums, descs):
-                if self.feature_type == desc:
-                    break
-                else:
-                    start_idx += num
-            for key, params in feat_data.items():
-                self.features.append(key)
-                self.feat_idx.append(start_idx +
-                                 descriptions[self.feature_type].index(key))
-                self.harmonic_parameters = torch.cat((self.harmonic_parameters,
-                     torch.tensor([[params['k']], [params['mean']]])), dim=1)
-
-    def forward(self, in_feat):
-        """Calculates harmonic contribution of bond/angle interactions to energy
-
-        Parameters
-        ----------
-        in_feat: torch.Tensor
-            input features, such as bond distances or angles of size (n,k), for
-            n examples and k features.
-
-        Returns
-        -------
-        energy: torch.Tensor
-            output energy of size (n,1) for n examples.
-
-        """
-
-        n = len(in_feat)
-        energy = torch.sum(
-            self.harmonic_parameters[0, :] * (in_feat -
-                                              self.harmonic_parameters[1, :]) ** 2, 1).reshape(n, 1) / 2
-        return energy
-
 
 class CGnet(nn.Module):
     """CGnet neural network class
@@ -232,9 +87,10 @@ class CGnet(nn.Module):
         (9): Linear(in_features=160, out_features=160, bias=True)
         (10): Tanh()
         (11): Linear(in_features=160, out_features=1, bias=True)
-        (12): torch.sum((11) + BondPotential(bonds, angles))
-        (13): torch.autograd.grad(-(12), input, create_graph=True,
-                                  retain_graph=True)
+        (12): HarmonicLayer(bonds)
+        (13): HarmonicLayer(angles)
+        (14): torch.autograd.grad(-((11) + (12) + (13)), input,
+                                  create_graph=True, retain_graph=True)
       )
     (criterion): ForceLoss()
     )
