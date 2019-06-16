@@ -194,7 +194,7 @@ class HarmonicLayer(_PriorLayer):
     Notes
     -----
     This prior energy is useful for constraining the CGnet potential in regions
-    of configuration space in which sampling is normaly precluded by physical
+    of configuration space in which sampling is normally precluded by physical
     harmonic constraints assocaited with the structural integrity of the protein
     along its backbone. The harmonic parameters are also easily estimated from
     all atom simluation data because bond and angle distributions typically have
@@ -257,6 +257,9 @@ class ZscoreLayer(nn.Module):
     after a ProteinBackboneFeature() layer, especially if the input features
     span different orders of magnitudes, such as the combination of angles
     and distances.
+
+    For more information, see the documentation for
+    sklearn.preprocessing.StandardScaler
 
     """
 
