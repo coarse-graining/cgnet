@@ -83,8 +83,9 @@ class CGMolecule():
         self.elements = elements
 
         if not np.array_equal(sorted(resmap.keys()), np.unique(resseq)):
-            raise ValueError('resmap dictionary must have a key for \
-                              each index in resseq')
+            raise ValueError(
+                'resmap dictionary must have a key for each index in resseq'
+                            )
         self.resmap = resmap
         self.bonds = bonds
         self.starting_index = starting_index
@@ -139,11 +140,13 @@ class CGMolecule():
         No unit cell information is specified.
         """
         if len(coordinates.shape) != 3:
-            raise ValueError('coordinates must be a np.array of shape \
-                              [frames, atoms, dimensions]')
+            raise ValueError(
+                    'coordinates shape must be [frames, atoms, dimensions]'
+                            )
         if coordinates.shape[1] != self.top.n_atoms:
-            raise ValueError('coordinates dimension 1 must be the number \
-                              of atoms')
+            raise ValueError(
+                    'coordinates dimension 1 must be the number of atoms'
+                            )
         if coordinates.shape[2] != 3:
             raise ValueError('coordinates must have 3 dimensions')
 
