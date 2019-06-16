@@ -4,6 +4,7 @@
 import numpy as np
 import mdtraj as md
 
+
 class CGMolecule():
     """Casting of a coarse-grained (CG) molecule as an mdtraj-compatible
     topology with the option to input trajectory coordinates to create
@@ -54,27 +55,29 @@ class CGMolecule():
         for the Analysis of Molecular Dynamics Trajectories. Biophys J.
         http://dx.doi.org/10.1016/j.bpj.2015.08.015
     """
+
     def __init__(self, names, resseq, resmap, elements=None,
                  bonds='standard', starting_index=0):
         if len(names) != len(resseq):
-            raise ValueError('Names and resseq must be lists of the same length')
+            raise ValueError(
+                'Names and resseq must be lists of the same length')
         self.names = names
         self.resseq = resseq
-        
+
         if elements is None:
             # this may not be a good idea
             elements = [name[0] for name in self.names]
         self.elements = elements
-        
+
         if not np.array_equal(sorted(resmap.keys()), np.unique(resseq)):
             raise ValueError('resmap dictionary must have a key for \
                               each index in resseq')
         self.resmap = resmap
         self.bonds = bonds
         self.starting_index = starting_index
-        
+
         self.make_topology()
-        
+
     def make_topology(self):
         """Generates an mdtraj.Topology object."""
         pd = md.utils.import_('pandas')
@@ -83,17 +86,18 @@ class CGMolecule():
             row = (i + self.starting_index, name, name[0], self.resseq[i],
                    self.resmap[self.resseq[i]], 0, '')
             data.append(row)
-        atoms = pd.DataFrame(data, columns=["serial", "name", "element",
-                                "resSeq", "resName", "chainID","segmentID"])
+        atoms = pd.DataFrame(data,
+                            columns=["serial", "name", "element", "resSeq",
+                                     "resName", "chainID", "segmentID"])
         if self.bonds == 'standard':
             top = md.Topology.from_dataframe(atoms, None)
             top.create_standard_bonds()
         else:
             top = md.Topology.from_dataframe(atoms, self.bonds)
-            
+
         self.top = top
         self.topology = top
-        
+
     def make_trajectory(self, coordinates):
         """Generates an mdtraj.Trajectory object."""
         if len(coordinates.shape) != 3:
@@ -104,6 +108,6 @@ class CGMolecule():
                               of atoms')
         if coordinates.shape[2] != 3:
             raise ValueError('coordinates must have 3 dimensions')
-        
+
         # this is a hack; NOT recommended for actual use of mdtraj
         return md.core.trajectory.Trajectory(coordinates, self.top)
