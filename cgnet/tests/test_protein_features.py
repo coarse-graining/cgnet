@@ -30,7 +30,7 @@ def test_distance_features():
                           for i in range(len(feature_descriptions))]
 
     np.testing.assert_allclose(x0_feature_distances,
-                               x0_scipy_distances)
+                               x0_scipy_distances, rtol=1e-6)
 
 
 def test_angle_features():

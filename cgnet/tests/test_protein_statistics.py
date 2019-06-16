@@ -27,10 +27,10 @@ def test_distance_statistics():
 
     np.testing.assert_allclose(feature_dist_mean,
                                stats.stats_dict['Distances']['mean'],
-                               rtol=1e-6)
+                               rtol=1e-5)
     np.testing.assert_allclose(feature_dist_std,
                                stats.stats_dict['Distances']['std'],
-                               rtol=1e-6)
+                               rtol=1e-5)
 
 
 def test_angle_statistics():
@@ -54,14 +54,18 @@ def test_dihedral_statistics():
     feature_dihed_sin_std = np.std(f.dihedral_sines.numpy(), axis=0)
 
     np.testing.assert_allclose(feature_dihed_cos_mean,
-                               stats.stats_dict['Dihedral_cosines']['mean'])
+                               stats.stats_dict['Dihedral_cosines']['mean'],
+                               rtol=1e-6)
     np.testing.assert_allclose(feature_dihed_cos_std,
-                               stats.stats_dict['Dihedral_cosines']['std'])
+                               stats.stats_dict['Dihedral_cosines']['std'],
+                               rtol=1e-6)
 
     np.testing.assert_allclose(feature_dihed_sin_mean,
-                               stats.stats_dict['Dihedral_sines']['mean'])
+                               stats.stats_dict['Dihedral_sines']['mean'],
+                               rtol=1e-6)
     np.testing.assert_allclose(feature_dihed_sin_std,
-                               stats.stats_dict['Dihedral_sines']['std'])
+                               stats.stats_dict['Dihedral_sines']['std'],
+                               rtol=1e-6)
 
 
 def test_zscore_dict_1():
