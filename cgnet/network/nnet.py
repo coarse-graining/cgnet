@@ -45,7 +45,7 @@ class CGnet(nn.Module):
         loss function to be used for network.
     feature : nn.Module() instance
         feature layer to transform cartesian coordinates into roto-
-        translationaly invariant features.
+        translationally invariant features.
     priors : list of nn.Module() instances (default=None)
         list of prior layers that provide energy contributions external to
         the hidden architecture of the CGnet.
