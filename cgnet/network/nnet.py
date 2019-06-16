@@ -34,7 +34,6 @@ class ForceLoss(torch.nn.Module):
         return loss
 
 
-
 class CGnet(nn.Module):
     """CGnet neural network class
 
