@@ -140,8 +140,8 @@ class RepulsionLayer(_PriorLayer):
         self.repulsion_parameters = torch.tensor([])
         for param_dict in self.params:
             self.repulsion_parameters = torch.cat((self.repulsion_parameters,
-                                            torch.tensor([[param_dict['ex_vol']],
-                                            [param_dict['exp']]])), dim=1)
+                                                   torch.tensor([[param_dict['ex_vol']],
+                                                                 [param_dict['exp']]])), dim=1)
 
     def forward(self, in_feat):
         """Calculates repulsion interaction contributions to energy
@@ -259,7 +259,8 @@ class ZscoreLayer(nn.Module):
     and distances.
 
     """
-    def __init__(self,zscores):
+
+    def __init__(self, zscores):
         super(ZscoreLayer, self).__init__()
         self.zscores = zscores
 
@@ -278,7 +279,7 @@ class ZscoreLayer(nn.Module):
             Zscore normalized features. Shape [n_frames, n_features]
 
         """
-        rescaled_feat = (in_feat - self.zscores[0,:])/self.zscores[1,:]
+        rescaled_feat = (in_feat - self.zscores[0, :])/self.zscores[1, :]
         return rescaled_feat
 
 

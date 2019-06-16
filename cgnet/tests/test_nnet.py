@@ -28,11 +28,11 @@ bonds = dict((k, bondsdict[k]) for k in [(i, i+1) for i in range(num_beads-1)])
 
 repul_distances = [i for i in stats.descriptions['Distances']
                    if abs(i[0]-i[1]) > 2]
-ex_vols = np.random.uniform(2,8,len(repul_distances))
-exps = np.random.randint(1,6,len(repul_distances))
+ex_vols = np.random.uniform(2, 8, len(repul_distances))
+exps = np.random.randint(1, 6, len(repul_distances))
 repul_dict = dict((index, {'ex_vol': ex_vol, 'exp': exp})
-                   for index, ex_vol, exp
-                   in zip(repul_distances, ex_vols, exps))
+                  for index, ex_vol, exp
+                  in zip(repul_distances, ex_vols, exps))
 
 descriptions = stats.descriptions
 nums = [len(descriptions['Distances']), len(descriptions['Angles']),
@@ -66,12 +66,13 @@ def test_linear_layer():
 
     np.testing.assert_equal(x0.size(), y.size())
 
+
 def test_zscore_layer():
     # Tests ZscoreLayer() for correct normalization
 
     feat_layer = ProteinBackboneFeature()
     feat = feat_layer(coords)
-    rescaled_feat_truth = (feat - zscores[0,:])/zscores[1,:]
+    rescaled_feat_truth = (feat - zscores[0, :])/zscores[1, :]
 
     zlayer = ZscoreLayer(zscores)
     rescaled_feat = zlayer(feat)
@@ -134,9 +135,9 @@ def test_harmonic_layer():
                         descriptions['Distances'].index(key))
         harmonic_parameters = torch.cat((harmonic_parameters,
                                          torch.tensor([[params['k']],
-                                         [params['mean']]])), dim=1)
+                                                       [params['mean']]])), dim=1)
     energy_check = torch.sum(harmonic_parameters[0, :] * (feat[:, feat_idx] -
-                             harmonic_parameters[1, :]) ** 2,
+                                                          harmonic_parameters[1, :]) ** 2,
                              1).reshape(len(feat), 1) / 2
 
     np.testing.assert_equal(energy.detach().numpy(),
