@@ -116,8 +116,8 @@ def test_repulsion_layer():
     p2 = torch.tensor(exps).float()
     energy_check = torch.sum((p1/feat[:, feat_idx]) ** p2,
                              1).reshape(len(feat), 1) / 2
-    np.testing.assert_equal(energy.detach().numpy(),
-                            energy_check.detach().numpy())
+    np.testing.assert_array_equal(energy.detach().numpy(),
+                                  energy_check.detach().numpy())
 
 
 def test_harmonic_layer():
@@ -193,6 +193,9 @@ def test_linear_regression():
     # accuracy is set to one decimal point. It could be lower, but the test
     # might then occassionaly fail due to stochastic reasons associated with
     # the dataset and the limited training routine.
+    #
+    # For this reason, we use np.testing.assert_almost_equal instead of
+    # np.testing.assert_allclose
 
     layers = LinearLayer(1, 15, activation=nn.Softplus(), bias=True)
     layers += LinearLayer(15, 15, activation=nn.Softplus(), bias=True)
