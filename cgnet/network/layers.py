@@ -41,14 +41,8 @@ class _PriorLayer(nn.Module):
 
     def __init__(self, feat_data, descriptions=None, feature_type=None):
         super(_PriorLayer, self).__init__()
-        if not descriptions:
-            raise RuntimeError('Must supply descriptions to determine feature \
-                                indices')
-        if not isinstance(feature_type, str):
-            raise RuntimeError('Must supply feature_type string to determine \
-                                feature indices')
-        if descriptions and not feature_type:
-            raise RuntimeError('Must declare feature_type if using \
+        if not descriptions or not feature_type:
+            raise RuntimeError('Must specify both feature_type and \
                                 descriptions')
         if feature_type not in descriptions.keys():
             raise ValueError('Feature type not found in descriptions')
