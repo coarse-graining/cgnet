@@ -42,7 +42,17 @@ class CGMolecule():
     names = ['C', 'N', 'CA', 'C', 'N']
     resseq = [1, 2, 2, 2, 3]
     resmap = {1 : 'ACE', 2 : 'ALA', 3 : 'NME'}
-    molecule  = CGMolecule(names=names, resseq=resseq, resmap=resmap)
+    
+    # bonds are not necessary in this case, since setting
+    # bonds='standard' gives the desired result
+    bonds = np.array(
+        [[0., 1., 0., 0.],
+         [2., 3., 0., 0.],
+         [1., 2., 0., 0.],
+         [3., 4., 0., 0.]]))
+
+    molecule  = CGMolecule(names=names, resseq=resseq, resmap=resmap,
+                           bonds=bonds)
     traj = molecule.make_trajectory(coordinates)
 
     Notes
@@ -97,9 +107,14 @@ class CGMolecule():
         atoms = pd.DataFrame(data,
                             columns=["serial", "name", "element", "resSeq",
                                      "resName", "chainID", "segmentID"])
-        if self.bonds == 'standard':
-            top = md.Topology.from_dataframe(atoms, None)
-            top.create_standard_bonds()
+        if type(self.bonds) is str:
+            if self.bonds == 'standard':
+                top = md.Topology.from_dataframe(atoms, None)
+                top.create_standard_bonds()
+            else:
+                raise ValueError(
+                    '{} is not an accepted option for bonds'.format(self.bonds)
+                                )
         else:
             top = md.Topology.from_dataframe(atoms, self.bonds)
 
