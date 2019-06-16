@@ -58,7 +58,8 @@ class _PriorLayer(nn.Module):
             self.features = [feat for feat in feat_data.keys()]
             self.feat_idx = []
             # get number of each feature to determine starting idx
-            nums = [len(descriptions['Distances']), len(descriptions['Angles']),
+            nums = [len(descriptions['Distances']),
+                    len(descriptions['Angles']),
                     len(descriptions['Dihedral_cosines']),
                     len(descriptions['Dihedral_sines'])]
             descs = ['Distances', 'Angles',
@@ -72,7 +73,7 @@ class _PriorLayer(nn.Module):
             for key, par in feat_data.items():
                 self.features.append(key)
                 self.feat_idx.append(self.start_idx +
-                                     descriptions[self.feature_type].index(key))
+                                descriptions[self.feature_type].index(key))
                 self.params.append(par)
 
     def forward(self, in_feat):
@@ -139,9 +140,10 @@ class RepulsionLayer(_PriorLayer):
                                 parameters')
         self.repulsion_parameters = torch.tensor([])
         for param_dict in self.params:
-            self.repulsion_parameters = torch.cat((self.repulsion_parameters,
-                                                   torch.tensor([[param_dict['ex_vol']],
-                                                                 [param_dict['exp']]])), dim=1)
+            self.repulsion_parameters = torch.cat((
+                                self.repulsion_parameters,
+                                torch.tensor([[param_dict['ex_vol']],
+                                              [param_dict['exp']]])), dim=1)
 
     def forward(self, in_feat):
         """Calculates repulsion interaction contributions to energy
@@ -215,8 +217,8 @@ class HarmonicLayer(_PriorLayer):
         self.harmonic_parameters = torch.tensor([])
         for param_dict in self.params:
             self.harmonic_parameters = torch.cat((self.harmonic_parameters,
-                                                  torch.tensor([[param_dict['k']],
-                                                                [param_dict['mean']]])), dim=1)
+                                torch.tensor([[param_dict['k']],
+                                              [param_dict['mean']]])), dim=1)
 
     def forward(self, in_feat):
         """Calculates harmonic contribution of bond/angle interactions to energy

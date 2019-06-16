@@ -143,15 +143,16 @@ def test_harmonic_layer():
         features.append(key)
         feat_idx.append(start_idx +
                         descriptions['Distances'].index(key))
-        harmonic_parameters = torch.cat((harmonic_parameters,
-                                         torch.tensor([[params['k']],
-                                                       [params['mean']]])), dim=1)
+        harmonic_parameters = torch.cat((
+                                    harmonic_parameters,
+                                    torch.tensor([[params['k']],
+                                                  [params['mean']]])), dim=1)
     energy_check = torch.sum(harmonic_parameters[0, :] * (feat[:, feat_idx] -
-                                                          harmonic_parameters[1, :]) ** 2,
+                             harmonic_parameters[1, :]) ** 2,
                              1).reshape(len(feat), 1) / 2
 
-    np.testing.assert_equal(energy.detach().numpy(),
-                            energy_check.detach().numpy())
+    np.testing.assert_array_equal(energy.detach().numpy(),
+                                  energy_check.detach().numpy())
 
 
 def test_cgnet():
