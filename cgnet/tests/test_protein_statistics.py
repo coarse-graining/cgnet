@@ -87,6 +87,13 @@ def test_zscore_dict_2():
 
 def test_bondconst_dict_1():
     # Make sure the "flipped" bond constant dict has the right structure
+
+    # Notes
+    # -----
+    # Sometimes this raises a RuntimeWarning about dividing by zero when
+    # the bond constant attribute kb is zero. Perhaps this is due to
+    # creating random features.
+
     bondconst_dict = stats.get_bond_constants(flip_dict=True)
     n_keys = beads*(beads-1)/2 + beads-2 + 2*(beads-3)
 
