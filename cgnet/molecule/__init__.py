@@ -1,1 +1,1 @@
-from .molecule import *
+from .trajectory import *
