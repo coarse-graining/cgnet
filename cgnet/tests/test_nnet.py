@@ -70,6 +70,16 @@ def test_linear_layer():
 def test_zscore_layer():
     # Tests ZscoreLayer() for correct normalization
 
+    # Notes
+    # -----
+    # rescaled_feat_truth is in principle equal to:
+    # 
+    # from sklearn.preprocessing import StandardScaler
+    # scalar = StandardScaler()
+    # rescaled_feat_truth = scalar.fit_transform(feat)
+    # 
+    # However, the equality is only preserved with precision >= 1e-4.
+
     feat_layer = ProteinBackboneFeature()
     feat = feat_layer(coords)
     rescaled_feat_truth = (feat - zscores[0, :])/zscores[1, :]
@@ -77,7 +87,7 @@ def test_zscore_layer():
     zlayer = ZscoreLayer(zscores)
     rescaled_feat = zlayer(feat)
 
-    np.testing.assert_equal(rescaled_feat.detach().numpy(),
+    np.testing.assert_array_equal(rescaled_feat.detach().numpy(),
                             rescaled_feat_truth.detach().numpy())
 
 
