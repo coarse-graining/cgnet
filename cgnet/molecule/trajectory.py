@@ -14,7 +14,7 @@ class CGMolecule():
     Please refer to the mdtraj documentation at http://www.mdtraj.org
     or the code at https://github.com/mdtraj/mdtraj.
 
-    Attributes
+    Parameters
     ----------
     names : list
         List of atom names in the CG molecule
@@ -36,7 +36,9 @@ class CGMolecule():
 
     Example
     -------
-    # Alanine dipeptide backbone
+    # Alanine dipeptide backbone example
+    # coordinates is an np.array of dimension [n_frames, n_atoms, 3]
+    
     names = ['C', 'N', 'CA', 'C', 'N']
     resseq = [1, 2, 2, 2, 3]
     resmap = {1 : 'ACE', 2 : 'ALA', 3 : 'NME'}
@@ -80,7 +82,12 @@ class CGMolecule():
         self.make_topology()
 
     def make_topology(self):
-        """Generates an mdtraj.Topology object."""
+        """Generates an mdtraj.Topology object.
+
+        Notes
+        -----
+        Currently only implemented for a single chain.
+        """
         pd = md.utils.import_('pandas')
         data = []
         for i, name in enumerate(self.names):
@@ -100,7 +107,22 @@ class CGMolecule():
         self.topology = top
 
     def make_trajectory(self, coordinates):
-        """Generates an mdtraj.Trajectory object."""
+        """Generates an mdtraj.Trajectory object.
+
+        Parameters
+        ----------
+        coordinates : np.array
+            Coordinate data of dimension [n_frames, n_atoms, n_dimensions],
+            where n_dimensions must be 3.
+
+        Notes
+        -----
+        This is a bit of a hack, and the user is responsible for using
+        care with this method and ensuring the resulting trajectory
+        is the intended output.
+
+        No unit cell information is specified.
+        """
         if len(coordinates.shape) != 3:
             raise ValueError('coordinates must be a np.array of shape \
                               [frames, atoms, dimensions]')
