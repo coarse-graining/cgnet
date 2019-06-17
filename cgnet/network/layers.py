@@ -82,7 +82,7 @@ class _PriorLayer(nn.Module):
         """
 
         raise NotImplementedError('forward() method must be overridden in \
-                                  custom classes inheriting from _PriorLayer()')
+                                custom classes inheriting from _PriorLayer()')
 
 
 class RepulsionLayer(_PriorLayer):
@@ -132,13 +132,13 @@ class RepulsionLayer(_PriorLayer):
             else:
                 raise KeyError(
                     'Missing or incorrect key for repulsion parameters'
-                              )
+                )
         self.repulsion_parameters = torch.tensor([])
         for param_dict in self.params:
             self.repulsion_parameters = torch.cat((
-                                self.repulsion_parameters,
-                                torch.tensor([[param_dict['ex_vol']],
-                                              [param_dict['exp']]])), dim=1)
+                self.repulsion_parameters,
+                torch.tensor([[param_dict['ex_vol']],
+                              [param_dict['exp']]])), dim=1)
 
     def forward(self, in_feat):
         """Calculates repulsion interaction contributions to energy
@@ -212,8 +212,8 @@ class HarmonicLayer(_PriorLayer):
         self.harmonic_parameters = torch.tensor([])
         for param_dict in self.params:
             self.harmonic_parameters = torch.cat((self.harmonic_parameters,
-                                torch.tensor([[param_dict['k']],
-                                              [param_dict['mean']]])), dim=1)
+                                            torch.tensor([[param_dict['k']],
+                                            [param_dict['mean']]])), dim=1)
 
     def forward(self, in_feat):
         """Calculates harmonic contribution of bond/angle interactions to energy
@@ -345,8 +345,8 @@ def LinearLayer(
         else:
             raise TypeError(
                 'Activation \"{}\" is not a valid torch.nn.Module'.format(
-                                                            str(activation))
-                           )
+                    str(activation))
+            )
     if dropout:
         seq += [nn.Dropout(dropout)]
     if weight_init == 'xavier':
@@ -365,5 +365,5 @@ def LinearLayer(
         else:
             raise RuntimeError(
                 'Unknown weight initialization \"{}\"'.format(str(weight_init))
-                              )
+            )
     return seq
