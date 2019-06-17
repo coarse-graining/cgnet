@@ -22,7 +22,7 @@ class _PriorLayer(nn.Module):
     descriptions: dict
         dictionary of CG bead indices as tuples, for feature keys. Possible
         feature keys are those implemented in ProteinBackBoneStatistics():
-        \"Distacnces\", \"Angles\", \"Dihedral_cosines\", and/or
+        \"Distances\", \"Angles\", \"Dihedral_cosines\", and/or
         \"Dihedral_sines\"
     feature_type: str
         features type from which to select coordinates.
@@ -39,41 +39,32 @@ class _PriorLayer(nn.Module):
 
     """
 
-    def __init__(self, feat_data, descriptions=None, feature_type=None):
+    def __init__(self, feat_data, descriptions, feature_type):
         super(_PriorLayer, self).__init__()
-        if not descriptions:
-            raise RuntimeError('Must supply descriptions to determine feature \
-                                indices')
-        if not isinstance(feature_type, str):
-            raise RuntimeError('Must supply feature_type string to determine \
-                                feature indices')
-        if descriptions and not feature_type:
-            raise RuntimeError('Must declare feature_type if using \
-                                descriptions')
         if feature_type not in descriptions.keys():
             raise ValueError('Feature type not found in descriptions')
-        if descriptions and feature_type:
-            self.params = []
-            self.feature_type = feature_type
-            self.features = [feat for feat in feat_data.keys()]
-            self.feat_idx = []
-            # get number of each feature to determine starting idx
-            nums = [len(descriptions['Distances']), len(descriptions['Angles']),
-                    len(descriptions['Dihedral_cosines']),
-                    len(descriptions['Dihedral_sines'])]
-            descs = ['Distances', 'Angles',
-                     'Dihedral_cosines', 'Dihedral_sines']
-            self.start_idx = 0
-            for num, desc in zip(nums, descs):
-                if self.feature_type == desc:
-                    break
-                else:
-                    self.start_idx += num
-            for key, par in feat_data.items():
-                self.features.append(key)
-                self.feat_idx.append(self.start_idx +
-                                     descriptions[self.feature_type].index(key))
-                self.params.append(par)
+        self.params = []
+        self.feature_type = feature_type
+        self.features = [feat for feat in feat_data.keys()]
+        self.feat_idx = []
+        # get number of each feature to determine starting idx
+        nums = [len(descriptions['Distances']),
+                len(descriptions['Angles']),
+                len(descriptions['Dihedral_cosines']),
+                len(descriptions['Dihedral_sines'])]
+        descs = ['Distances', 'Angles',
+                 'Dihedral_cosines', 'Dihedral_sines']
+        self.start_idx = 0
+        for num, desc in zip(nums, descs):
+            if self.feature_type == desc:
+                break
+            else:
+                self.start_idx += num
+        for key, par in feat_data.items():
+            self.features.append(key)
+            self.feat_idx.append(self.start_idx +
+                            descriptions[self.feature_type].index(key))
+            self.params.append(par)
 
     def forward(self, in_feat):
         """Forward method to compute the prior energy contribution.
@@ -87,7 +78,7 @@ class _PriorLayer(nn.Module):
         """
 
         raise NotImplementedError('forward() method must be overridden in \
-                                  custom classes inheriting from _PriorLayer()')
+                                custom classes inheriting from _PriorLayer()')
 
 
 class RepulsionLayer(_PriorLayer):
@@ -135,13 +126,15 @@ class RepulsionLayer(_PriorLayer):
             if (key in param_dict for key in ('ex_vol', 'exp')):
                 pass
             else:
-                raise KeyError('Missing or incorrect key for repulsion \
-                                parameters')
+                raise KeyError(
+                    'Missing or incorrect key for repulsion parameters'
+                )
         self.repulsion_parameters = torch.tensor([])
         for param_dict in self.params:
-            self.repulsion_parameters = torch.cat((self.repulsion_parameters,
-                                            torch.tensor([[param_dict['ex_vol']],
-                                            [param_dict['exp']]])), dim=1)
+            self.repulsion_parameters = torch.cat((
+                self.repulsion_parameters,
+                torch.tensor([[param_dict['ex_vol']],
+                              [param_dict['exp']]])), dim=1)
 
     def forward(self, in_feat):
         """Calculates repulsion interaction contributions to energy
@@ -194,7 +187,7 @@ class HarmonicLayer(_PriorLayer):
     Notes
     -----
     This prior energy is useful for constraining the CGnet potential in regions
-    of configuration space in which sampling is normaly precluded by physical
+    of configuration space in which sampling is normally precluded by physical
     harmonic constraints assocaited with the structural integrity of the protein
     along its backbone. The harmonic parameters are also easily estimated from
     all atom simluation data because bond and angle distributions typically have
@@ -215,8 +208,8 @@ class HarmonicLayer(_PriorLayer):
         self.harmonic_parameters = torch.tensor([])
         for param_dict in self.params:
             self.harmonic_parameters = torch.cat((self.harmonic_parameters,
-                                                  torch.tensor([[param_dict['k']],
-                                                                [param_dict['mean']]])), dim=1)
+                                            torch.tensor([[param_dict['k']],
+                                            [param_dict['mean']]])), dim=1)
 
     def forward(self, in_feat):
         """Calculates harmonic contribution of bond/angle interactions to energy
@@ -239,6 +232,51 @@ class HarmonicLayer(_PriorLayer):
                            (in_feat - self.harmonic_parameters[1, :]) ** 2,
                            1).reshape(n, 1) / 2
         return energy
+
+
+class ZscoreLayer(nn.Module):
+    """Layer for Zscore normalization
+
+    Parameters
+    ----------
+    zscores: torch.Tensor
+        [2, n_features] tensor, where the first row contains the means
+        and the second row contains the standard deviations of each
+        feature
+
+    Notes
+    -----
+    Zscore normalization can accelerate training convergence if placed
+    after a ProteinBackboneFeature() layer, especially if the input features
+    span different orders of magnitudes, such as the combination of angles
+    and distances.
+
+    For more information, see the documentation for
+    sklearn.preprocessing.StandardScaler
+
+    """
+
+    def __init__(self, zscores):
+        super(ZscoreLayer, self).__init__()
+        self.zscores = zscores
+
+    def forward(self, in_feat):
+        """Normalizes each feature by subtracting its mean and dividing by
+           its standard deviation.
+
+        Parameters
+        ----------
+        in_feat: torch.Tensor
+            input data of shape [n_frames, n_features]
+
+        Returns
+        -------
+        rescaled_feat: torch.Tensor
+            Zscore normalized features. Shape [n_frames, n_features]
+
+        """
+        rescaled_feat = (in_feat - self.zscores[0, :])/self.zscores[1, :]
+        return rescaled_feat
 
 
 def LinearLayer(
@@ -301,8 +339,10 @@ def LinearLayer(
         if isinstance(activation, nn.Module):
             seq += [activation]
         else:
-            raise TypeError('Activation\"'+str(activation)+'\" is not a valid \
-                            torch.nn.Module')
+            raise TypeError(
+                'Activation \"{}\" is not a valid torch.nn.Module'.format(
+                    str(activation))
+            )
     if dropout:
         seq += [nn.Dropout(dropout)]
     if weight_init == 'xavier':
@@ -319,6 +359,7 @@ def LinearLayer(
                 weight_inti_kwargs = []
             weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
         else:
-            raise RuntimeError('Unknown weight initialization \"'
-                               + str(weight_init)+'\"')
+            raise RuntimeError(
+                'Unknown weight initialization \"{}\"'.format(str(weight_init))
+            )
     return seq

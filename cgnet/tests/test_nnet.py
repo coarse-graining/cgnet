@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
-from cgnet.network import CGnet, LinearLayer, ForceLoss
-from cgnet.network import RepulsionLayer, HarmonicLayer
+from cgnet.network import (CGnet, LinearLayer, ForceLoss,
+                           RepulsionLayer, HarmonicLayer, ZscoreLayer)
 from cgnet.feature import ProteinBackboneStatistics, ProteinBackboneFeature
 
 # Random test data
@@ -28,17 +28,18 @@ bonds = dict((k, bondsdict[k]) for k in [(i, i+1) for i in range(num_beads-1)])
 
 repul_distances = [i for i in stats.descriptions['Distances']
                    if abs(i[0]-i[1]) > 2]
-ex_vols = np.random.uniform(2,8,len(repul_distances))
-exps = np.random.randint(1,6,len(repul_distances))
+ex_vols = np.random.uniform(2, 8, len(repul_distances))
+exps = np.random.randint(1, 6, len(repul_distances))
 repul_dict = dict((index, {'ex_vol': ex_vol, 'exp': exp})
-                   for index, ex_vol, exp
-                   in zip(repul_distances, ex_vols, exps))
+                  for index, ex_vol, exp
+                  in zip(repul_distances, ex_vols, exps))
 
 descriptions = stats.descriptions
 nums = [len(descriptions['Distances']), len(descriptions['Angles']),
         len(descriptions['Dihedral_cosines']),
         len(descriptions['Dihedral_sines'])]
-descs = ['Distances', 'Angles', 'Dihedral_cosines', 'Dihedral_sines']
+descs = [key for key in descriptions.keys()]
+zscores = stats.get_zscores(tensor=True, as_dict=False).float()
 
 
 def test_linear_layer():
@@ -66,6 +67,30 @@ def test_linear_layer():
     np.testing.assert_equal(x0.size(), y.size())
 
 
+def test_zscore_layer():
+    # Tests ZscoreLayer() for correct normalization
+
+    # Notes
+    # -----
+    # rescaled_feat_truth is in principle equal to:
+    # 
+    # from sklearn.preprocessing import StandardScaler
+    # scalar = StandardScaler()
+    # rescaled_feat_truth = scalar.fit_transform(feat)
+    # 
+    # However, the equality is only preserved with precision >= 1e-4.
+
+    feat_layer = ProteinBackboneFeature()
+    feat = feat_layer(coords)
+    rescaled_feat_truth = (feat - zscores[0, :])/zscores[1, :]
+
+    zlayer = ZscoreLayer(zscores)
+    rescaled_feat = zlayer(feat)
+
+    np.testing.assert_array_equal(rescaled_feat.detach().numpy(),
+                            rescaled_feat_truth.detach().numpy())
+
+
 def test_repulsion_layer():
     # Tests RepulsionLayer class for calculation and output size
 
@@ -91,8 +116,8 @@ def test_repulsion_layer():
     p2 = torch.tensor(exps).float()
     energy_check = torch.sum((p1/feat[:, feat_idx]) ** p2,
                              1).reshape(len(feat), 1) / 2
-    np.testing.assert_equal(energy.detach().numpy(),
-                            energy_check.detach().numpy())
+    np.testing.assert_array_equal(energy.detach().numpy(),
+                                  energy_check.detach().numpy())
 
 
 def test_harmonic_layer():
@@ -118,15 +143,16 @@ def test_harmonic_layer():
         features.append(key)
         feat_idx.append(start_idx +
                         descriptions['Distances'].index(key))
-        harmonic_parameters = torch.cat((harmonic_parameters,
-                                         torch.tensor([[params['k']],
-                                         [params['mean']]])), dim=1)
+        harmonic_parameters = torch.cat((
+                                    harmonic_parameters,
+                                    torch.tensor([[params['k']],
+                                                  [params['mean']]])), dim=1)
     energy_check = torch.sum(harmonic_parameters[0, :] * (feat[:, feat_idx] -
                              harmonic_parameters[1, :]) ** 2,
                              1).reshape(len(feat), 1) / 2
 
-    np.testing.assert_equal(energy.detach().numpy(),
-                            energy_check.detach().numpy())
+    np.testing.assert_array_equal(energy.detach().numpy(),
+                                  energy_check.detach().numpy())
 
 
 def test_cgnet():
@@ -168,6 +194,9 @@ def test_linear_regression():
     # accuracy is set to one decimal point. It could be lower, but the test
     # might then occassionaly fail due to stochastic reasons associated with
     # the dataset and the limited training routine.
+    #
+    # For this reason, we use np.testing.assert_almost_equal instead of
+    # np.testing.assert_allclose
 
     layers = LinearLayer(1, 15, activation=nn.Softplus(), bias=True)
     layers += LinearLayer(15, 15, activation=nn.Softplus(), bias=True)
