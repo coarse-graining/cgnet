@@ -22,7 +22,7 @@ class _PriorLayer(nn.Module):
     descriptions: dict
         dictionary of CG bead indices as tuples, for feature keys. Possible
         feature keys are those implemented in ProteinBackBoneStatistics():
-        \"Distacnces\", \"Angles\", \"Dihedral_cosines\", and/or
+        \"Distances\", \"Angles\", \"Dihedral_cosines\", and/or
         \"Dihedral_sines\"
     feature_type: str
         features type from which to select coordinates.
@@ -245,7 +245,7 @@ class ZscoreLayer(nn.Module):
     ----------
     zscores: torch.Tensor
         [2, n_features] tensor, where the first row contains the means
-        and the second row contains the standard edeviations of each
+        and the second row contains the standard deviations of each
         feature
 
     Notes
