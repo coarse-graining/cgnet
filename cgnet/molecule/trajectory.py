@@ -38,11 +38,11 @@ class CGMolecule():
     -------
     # Alanine dipeptide backbone example
     # coordinates is an np.array of dimension [n_frames, n_atoms, 3]
-    
+
     names = ['C', 'N', 'CA', 'C', 'N']
     resseq = [1, 2, 2, 2, 3]
     resmap = {1 : 'ACE', 2 : 'ALA', 3 : 'NME'}
-    
+
     # bonds are not necessary in this case, since setting
     # bonds='standard' gives the desired result
     bonds = np.array(
@@ -85,7 +85,7 @@ class CGMolecule():
         if not np.array_equal(sorted(resmap.keys()), np.unique(resseq)):
             raise ValueError(
                 'resmap dictionary must have a key for each index in resseq'
-                            )
+            )
         self.resmap = resmap
         self.bonds = bonds
         self.starting_index = starting_index
@@ -106,8 +106,8 @@ class CGMolecule():
                    self.resmap[self.resseq[i]], 0, '')
             data.append(row)
         atoms = pd.DataFrame(data,
-                            columns=["serial", "name", "element", "resSeq",
-                                     "resName", "chainID", "segmentID"])
+                             columns=["serial", "name", "element", "resSeq",
+                                      "resName", "chainID", "segmentID"])
         if type(self.bonds) is str:
             if self.bonds == 'standard':
                 top = md.Topology.from_dataframe(atoms, None)
@@ -115,7 +115,7 @@ class CGMolecule():
             else:
                 raise ValueError(
                     '{} is not an accepted option for bonds'.format(self.bonds)
-                                )
+                )
         else:
             top = md.Topology.from_dataframe(atoms, self.bonds)
 
@@ -141,12 +141,12 @@ class CGMolecule():
         """
         if len(coordinates.shape) != 3:
             raise ValueError(
-                    'coordinates shape must be [frames, atoms, dimensions]'
-                            )
+                'coordinates shape must be [frames, atoms, dimensions]'
+            )
         if coordinates.shape[1] != self.top.n_atoms:
             raise ValueError(
-                    'coordinates dimension 1 must be the number of atoms'
-                            )
+                'coordinates dimension 1 must be the number of atoms'
+            )
         if coordinates.shape[2] != 3:
             raise ValueError('coordinates must have 3 dimensions')
 
