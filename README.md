@@ -8,6 +8,8 @@ Requirements
 + ``numpy``
 + ``pytorch``
 + ``scipy``
++ ``mdtraj`` (for ``cgnet.molecule`` only)
++ ``pandas`` (for ``cgnet.molecule`` only)
 + ``sklearn`` (for testing)
 
 Usage
