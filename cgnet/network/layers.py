@@ -39,36 +39,32 @@ class _PriorLayer(nn.Module):
 
     """
 
-    def __init__(self, feat_data, descriptions=None, feature_type=None):
+    def __init__(self, feat_data, descriptions, feature_type):
         super(_PriorLayer, self).__init__()
-        if not descriptions or not feature_type:
-            raise RuntimeError('Must specify both feature_type and \
-                                descriptions')
         if feature_type not in descriptions.keys():
             raise ValueError('Feature type not found in descriptions')
-        if descriptions and feature_type:
-            self.params = []
-            self.feature_type = feature_type
-            self.features = [feat for feat in feat_data.keys()]
-            self.feat_idx = []
-            # get number of each feature to determine starting idx
-            nums = [len(descriptions['Distances']),
-                    len(descriptions['Angles']),
-                    len(descriptions['Dihedral_cosines']),
-                    len(descriptions['Dihedral_sines'])]
-            descs = ['Distances', 'Angles',
-                     'Dihedral_cosines', 'Dihedral_sines']
-            self.start_idx = 0
-            for num, desc in zip(nums, descs):
-                if self.feature_type == desc:
-                    break
-                else:
-                    self.start_idx += num
-            for key, par in feat_data.items():
-                self.features.append(key)
-                self.feat_idx.append(self.start_idx +
-                                descriptions[self.feature_type].index(key))
-                self.params.append(par)
+        self.params = []
+        self.feature_type = feature_type
+        self.features = [feat for feat in feat_data.keys()]
+        self.feat_idx = []
+        # get number of each feature to determine starting idx
+        nums = [len(descriptions['Distances']),
+                len(descriptions['Angles']),
+                len(descriptions['Dihedral_cosines']),
+                len(descriptions['Dihedral_sines'])]
+        descs = ['Distances', 'Angles',
+                 'Dihedral_cosines', 'Dihedral_sines']
+        self.start_idx = 0
+        for num, desc in zip(nums, descs):
+            if self.feature_type == desc:
+                break
+            else:
+                self.start_idx += num
+        for key, par in feat_data.items():
+            self.features.append(key)
+            self.feat_idx.append(self.start_idx +
+                            descriptions[self.feature_type].index(key))
+            self.params.append(par)
 
     def forward(self, in_feat):
         """Forward method to compute the prior energy contribution.
