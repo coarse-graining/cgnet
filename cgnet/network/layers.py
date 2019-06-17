@@ -130,8 +130,9 @@ class RepulsionLayer(_PriorLayer):
             if (key in param_dict for key in ('ex_vol', 'exp')):
                 pass
             else:
-                raise KeyError('Missing or incorrect key for repulsion \
-                                parameters')
+                raise KeyError(
+                    'Missing or incorrect key for repulsion parameters'
+                              )
         self.repulsion_parameters = torch.tensor([])
         for param_dict in self.params:
             self.repulsion_parameters = torch.cat((
@@ -342,8 +343,10 @@ def LinearLayer(
         if isinstance(activation, nn.Module):
             seq += [activation]
         else:
-            raise TypeError('Activation\"'+str(activation)+'\" is not a valid \
-                            torch.nn.Module')
+            raise TypeError(
+                'Activation \"{}\" is not a valid torch.nn.Module'.format(
+                                                            str(activation))
+                           )
     if dropout:
         seq += [nn.Dropout(dropout)]
     if weight_init == 'xavier':
@@ -360,6 +363,7 @@ def LinearLayer(
                 weight_inti_kwargs = []
             weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
         else:
-            raise RuntimeError('Unknown weight initialization \"'
-                               + str(weight_init)+'\"')
+            raise RuntimeError(
+                'Unknown weight initialization \"{}\"'.format(str(weight_init))
+                              )
     return seq
