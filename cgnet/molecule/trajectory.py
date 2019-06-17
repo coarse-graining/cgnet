@@ -57,8 +57,8 @@ class CGMolecule():
 
     Notes
     -----
-    Currently there is no option to have more than one chain
-    Unitcells are not implemented
+    Currently there is no option to have more than one chain.
+    Unitcells are not implemented.
 
     References
     ----------
