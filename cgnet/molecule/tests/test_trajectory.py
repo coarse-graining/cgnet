@@ -202,4 +202,4 @@ def test_equality_with_cgnet_distances():
     cgnet_CA_dists = f.distances.numpy()[:, [CA_ind_dict[key]
                                              for key in CA_pairs]]
 
-    np.testing.assert_allclose(mdtraj_CA_dists, cgnet_CA_dists)
+    np.testing.assert_allclose(mdtraj_CA_dists, cgnet_CA_dists, rtol=1e-6)
