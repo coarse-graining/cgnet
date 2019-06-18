@@ -172,13 +172,13 @@ def test_equality_with_cgnet_dihedrals():
     cgnet_psi_sines = f.dihedral_sines.numpy().T[psi_inds].T
 
     np.testing.assert_allclose(mdtraj_phi_cosines, cgnet_phi_cosines,
-                               rtol=1e-5)
+                               rtol=1e-4)
     np.testing.assert_allclose(mdtraj_phi_sines, cgnet_phi_sines,
-                               rtol=1e-5)
+                               rtol=1e-4)
     np.testing.assert_allclose(mdtraj_psi_cosines, cgnet_psi_cosines,
-                               rtol=1e-5)
+                               rtol=1e-4)
     np.testing.assert_allclose(mdtraj_psi_sines, cgnet_psi_sines,
-                               rtol=1e-5)
+                               rtol=1e-4)
 
 
 def test_equality_with_cgnet_distances():
