@@ -3,6 +3,7 @@
 
 import numpy as np
 import json
+import tempfile
 import torch
 import torch.nn as nn
 from torch.optim import Adam
@@ -13,12 +14,12 @@ from cgnet.train import Trainer
 from cgnet.feature import MoleculeDataset
 
 # Random train data
-x0 = np.random.randn(300,2).astype('float32')
-y0 = np.random.randn(300,2).astype('float32')
+x0 = np.random.randn(10,2).astype('float32')
+y0 = np.random.randn(10,2).astype('float32')
 
 # Random test data
-x0_test = np.random.randn(300,2).astype('float32')
-y0_test = np.random.randn(300,2).astype('float32')
+x0_test = np.random.randn(10,2).astype('float32')
+y0_test = np.random.randn(10,2).astype('float32')
 
 
 # Placeholder dataset 
@@ -27,7 +28,7 @@ test_set = MoleculeDataset(x0_test,y0_test)
 
 # Toy model
 arch = LinearLayer(2,10) +\
-       3*LinearLayer(10,10) +\
+       LinearLayer(10,10) +\
        LinearLayer(10,1)
 
 batch_sizes = [32,64,128,256,512,1024]
@@ -44,18 +45,21 @@ testloader = DataLoader(test_set, batch_size=64, sampler=test_sampler)
 
 def test_train_class():
     """Test Trainer class"""
-    num_epochs = 10#np.random.randint(1,10)
-    gam = 0.001#np.random.randn(1)
-    scheduler = MultiStepLR(optimizer,milestones = [1,2,3,4,5],\
-                                         gamma =  gam)
 
-    trainer = Trainer(trainloader=trainloader,testloader=testloader,
-                      optimizer=optimizer,scheduler=scheduler,log=True)
-    trainer.train(model,num_epochs,verbose=False)
+    with tempfile.TemporaryDirectory() as tmp:
+        num_epochs = 10#np.random.randint(1,high=10)
+        gam = np.random.uniform(low=0.1,high=0.9)
+        scheduler = MultiStepLR(optimizer,milestones = [1,2,3,4,5],\
+                                             gamma =  gam)
 
-    np.testing.assert_equal(num_epochs,len(trainer.epochal_train_losses))
-    np.testing.assert_equal(num_epochs,len(trainer.epochal_test_losses))
-    data_loss = trainer.dataset_loss(model,testloader)
+        trainer = Trainer(trainloader=trainloader,testloader=testloader,
+                          optimizer=optimizer,scheduler=scheduler,log=True,
+                          save_dir=tmp+"/",save_freq=5)
+
+        trainer.train(model,num_epochs,verbose=False)
+
+        np.testing.assert_equal(num_epochs,len(trainer.epochal_train_losses))
+        np.testing.assert_equal(num_epochs,len(trainer.epochal_test_losses))
 
 
 

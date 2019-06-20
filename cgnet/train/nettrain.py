@@ -11,7 +11,7 @@ class Trainer():
 
     def __init__(self, trainloader=None, testloader=None, optimizer=None,
                  scheduler=None, lipschitz=False, name='MyModel', save_dir=None,
-                 log=False):
+                 save_freq=None, log=False):
         """Initializaiton
 
         Parameters
@@ -20,14 +20,24 @@ class Trainer():
             dataoder for training dataset
         testloader : torch.data.loader() object (default=None)
             dataloader for testing dataset
-        optimizer : torch.optim.optimzer class (default=torch.optim.Adam())
+        optimizer : torch.optim.optimzer class (default=None)
             optimizer used for updating network weights
         scheduler : torch.optim.lr_scheduler object (default=None)
             learning rate scheduler
         lipschitz : bool or float (default=False)
-            strength of L2 lipschitz projection after each
-            optimizer step
-
+            strength of L2 lipschitz projection after each optimizer
+            step
+        name: str (default=\"MyModel\")
+            name of the model/training routine
+        save_dir: str (default=None)
+            forward slash-terminated directory in which to save models and
+            training logs
+        save_freq: int (default=None)
+            epochal frequency with which intermediate models are saved,
+            provided that save_dir is specified
+        log: bool (default=False)
+            if True, a JSON logfile of training parameters and metadata
+            will be saved in the save_dir directory (if specified)
 
         Attributes
         ----------
@@ -35,10 +45,42 @@ class Trainer():
             losses recorded over the entire training set every epoch
         epochal_test_losses : list
             losses recorded over the entire test set every epoch
+        num_epochs: int
+            the number of epochs over which the model is trained. An epoch is
+            defined when the optimizer has step over all examples in the
+            training set
+        train_time: float
+            time (in ticks) taken for model to train from the start of the
+            first epoch to the last
+        date: str
+            Date in format [weekday] [month] [day] [h:m:s] [year] that the
+            training finished.
+        log_data: dict
+            dictionary of training and metadata with the following structure:
+
+            {
+              'training':
+                {
+                  'epochs': (int) number of training epochs,
+                  'lr': (float) (initial) learning rate,
+                  'lipschitz': (float) strength of lipschitz projection,
+                  'batch_size': (int) batch size used for training,
+                  'scheduler': (dict or None) output of scheduler.state_dict(),
+                  'optimizer': (str) type of optimizer used
+                }
+              'meta':
+                {
+                  'date': (str) date and time  of training completion,
+                  'train_time': (float) time taken to train model (in ticks),
+                  'save_dir': (str) directory in which results are saved,
+                  'name': (str) name of model/training routine
+                }
+            }
 
         """
         self.name = name
         self.save_dir = save_dir
+        self.save_freq = save_freq
         self.log = log
         self.trainloader = trainloader
         self.testloader = testloader
@@ -74,7 +116,7 @@ class Trainer():
         self.log_data['training']['lipschitz'] = self.lipschitz
         self.log_data['training']['batch_size'] = self.trainloader.batch_size
         self.log_data['training']['split'] = test_train_split
-        self.log_data['training']['scheduler'] = scheduler_dict
+        self.log_data['training'] ['scheduler'] = scheduler_dict
         self.log_data['training']['optimizer'] = self.optimizer.__class__.__name__
 
         self.log_data['meta']['date'] = self.date
@@ -82,8 +124,9 @@ class Trainer():
         self.log_data['meta']['save_dir'] = self.save_dir
         self.log_data['meta']['name'] = self.name
 
-#        with open(self.save_dir + self.name + '.json') as log_file:
-#            json.dump(self.log_data, log_file)
+        if self.save_dir:
+            with open(self.save_dir + self.name + '.json','w') as log_file:
+                json.dump(self.log_data, log_file)
 
     def load_routine(self,routine):
         with open(routine) as log_file:
@@ -160,7 +203,7 @@ class Trainer():
         self.num_epochs = num_epochs
         self.date = time.asctime(time.localtime(time.time()))
         start = time.time()
-        for epoch in range(0,num_epochs):
+        for epoch in range(1,num_epochs+1):
             if self.scheduler:
                 self.scheduler.step()
             test_loss = 0.00
@@ -188,7 +231,13 @@ class Trainer():
         epoch, train_loss, test_loss))
             self.epochal_train_losses.append(train_loss)
             self.epochal_test_losses.append(test_loss)
+            if self.save_freq % epoch == 0 and self.save_freq and self.save_dir:
+                torch.save(model, self.save_dir+self.name+
+                           "_epoch_{}".format(epoch)+".pt")
         end = time.time()
         self.train_time = end - start
         if self.log:
             self.make_log()
+        if self.save_dir:
+            torch.save(model, self.save_dir+self.name+".pt")
+
