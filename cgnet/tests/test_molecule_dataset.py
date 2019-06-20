@@ -2,6 +2,7 @@
 
 import numpy as np
 import torch
+import warnings
 
 from cgnet.feature import MoleculeDataset
 
@@ -48,3 +49,24 @@ def test_indexing():
 
     assert xt_from_ds.requires_grad
     np.testing.assert_array_equal(xt_from_numpy, xt_from_ds.detach().numpy())
+
+def test_gpu_mount():
+    #Make sure tensors are being mapped to the correct device
+
+    selection = np.random.randint(20)
+    ds = MoleculeDataset(x, y)
+
+    np.testing.assert_equal(ds[selection][0].device.type, 'cpu')
+    np.testing.assert_equal(ds[selection][1].device.type, 'cpu')
+
+    if torch.cuda.is_available():
+        ds = MoleculeDataset(x, y, cuda=torch.device('cuda'))
+
+        np.testing.assert_equal(ds[selection][0].device.type, 'cuda')
+        np.testing.assert_equal(ds[selection][1].device.type, 'cuda')
+    else:
+        warnings.warn("No CUDA device avaiable for testing", UserWarning)
+
+
+
+
