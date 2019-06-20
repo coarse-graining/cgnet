@@ -3,13 +3,15 @@
 
 import torch
 import torch.nn as nn
-
+import time
+import json
 
 class Trainer():
     """Class or training networks"""
 
-    def __init__(self, trainloader=None, testloader=None, optimizer=torch.optim.Adam(),
-                 scheduler=None, lipschitz=False):
+    def __init__(self, trainloader=None, testloader=None, optimizer=None,
+                 scheduler=None, lipschitz=False, name='MyModel', save_dir=None,
+                 log=False):
         """Initializaiton
 
         Parameters
@@ -26,6 +28,7 @@ class Trainer():
             strength of L2 lipschitz projection after each
             optimizer step
 
+
         Attributes
         ----------
         epochal_train_losses : list
@@ -34,13 +37,57 @@ class Trainer():
             losses recorded over the entire test set every epoch
 
         """
+        self.name = name
+        self.save_dir = save_dir
+        self.log = log
         self.trainloader = trainloader
         self.testloader = testloader
         self.optimizer = optimizer
         self.lipschitz = lipschitz
+        self.scheduler = scheduler
 
         self.epochal_train_losses = []
         self.epochal_test_losses = []
+
+    def make_log(self):
+        """Produce JSON log of training and dump to file in the directory
+        specified by self.save_dir
+
+        Attributes
+        ----------
+
+        """
+
+        self.log_data = {'training': {}, 'meta': {}}
+        for param_group in self.optimizer.param_groups:
+            lr = param_group['lr']
+        if self.testloader:
+            test_train_split = float(self.testloader.dataset.__len__())/self.trainloader.dataset.__len__()
+        else:
+            test_train_split = 0.00
+        if self.scheduler:
+            scheduler_dict = self.scheduler.state_dict()
+        else:
+            scheduler_dict = None
+        self.log_data['training']['epochs'] = self.num_epochs
+        self.log_data['training']['lr'] = lr
+        self.log_data['training']['lipschitz'] = self.lipschitz
+        self.log_data['training']['batch_size'] = self.trainloader.batch_size
+        self.log_data['training']['split'] = test_train_split
+        self.log_data['training']['scheduler'] = scheduler_dict
+        self.log_data['training']['optimizer'] = self.optimizer.__class__.__name__
+
+        self.log_data['meta']['date'] = self.date
+        self.log_data['meta']['train_time'] = self.train_time
+        self.log_data['meta']['save_dir'] = self.save_dir
+        self.log_data['meta']['name'] = self.name
+
+#        with open(self.save_dir + self.name + '.json') as log_file:
+#            json.dump(self.log_data, log_file)
+
+    def load_routine(self,routine):
+        with open(routine) as log_file:
+           self.log_data = json.load(routine)
 
     def dataset_loss(self, model, loader):
         """Compute average loss over arbitrary loader/dataset
@@ -60,8 +107,9 @@ class Trainer():
         """
         loss = 0
         num_batch = 0
-        for batch in enumerate(loader):
-            loss += model.predict(batch)
+        for num, batch in enumerate(loader):
+            coords, force = batch
+            loss += model.predict(coords, force)
             num_batch += 1
         loss /= num_batch
         return loss
@@ -75,17 +123,17 @@ class Trainer():
             model to perform Lipschitz projection upon
 
         """
-		for layer in model.layers:
-			if isinstance(layer, nn.Linear):
-				weight = layer.weight.data
-				u, s, v = torch.svd(weight)
-				if next(model.parameters()).is_cuda:
-					lip_reg = torch.max(((s[0]) / self.lipschitz),
-										torch.tensor([1.0]).double().cuda())
-				else:
-					lip_reg = torch.max(((s[0]) / self.lipschitz),
-										torch.tensor([1.0]).double())
-				layer.weight.data = weight / (lip_reg)
+        for layer in model.layers:
+            if isinstance(layer, nn.Linear):
+                weight = layer.weight.data
+                u, s, v = torch.svd(weight)
+                if next(model.parameters()).is_cuda:
+                    lip_reg = torch.max(((s[0]) / self.lipschitz),
+                                        torch.tensor([1.0]).double().cuda())
+                else:
+                    lip_reg = torch.max(((s[0]) / self.lipschitz),
+                                        torch.tensor([1.0]).double())
+                layer.weight.data = weight / (lip_reg)
 
     def train(self, model, num_epochs, verbose=True,
               batch_freq=1, epoch_freq=1):
@@ -109,8 +157,11 @@ class Trainer():
             frequency of epochs with which verbose messages are printed
 
         """
-        for epoch in num_epochs:
-            if self.scheduler():
+        self.num_epochs = num_epochs
+        self.date = time.asctime(time.localtime(time.time()))
+        start = time.time()
+        for epoch in range(0,num_epochs):
+            if self.scheduler:
                 self.scheduler.step()
             test_loss = 0.00
             for num, batch in enumerate(self.trainloader):
@@ -119,7 +170,7 @@ class Trainer():
                 energy, pred_force = model.forward(coords)
                 batch_loss = model.criterion(pred_force, force)
                 batch_loss.backward()
-                self.optimzer.step()
+                self.optimizer.step()
                 # perform L2 lipschitz check and projection
                 if self.lipschitz:
                     self.lipschitz_projection(model)
@@ -137,3 +188,7 @@ class Trainer():
         epoch, train_loss, test_loss))
             self.epochal_train_losses.append(train_loss)
             self.epochal_test_losses.append(test_loss)
+        end = time.time()
+        self.train_time = end - start
+        if self.log:
+            self.make_log()
