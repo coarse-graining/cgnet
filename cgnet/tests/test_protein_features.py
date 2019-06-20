@@ -1,10 +1,12 @@
+# Author: Brooke Husic
+
 import numpy as np
 import scipy.spatial
 import torch
 
-from cgtools.feature import ProteinBackboneFeature
+from cgnet.feature import ProteinBackboneFeature
 
-frames = np.random.randint(10)
+frames = np.random.randint(1, 10)
 beads = np.random.randint(4, 10)
 dims = 3
 
@@ -13,6 +15,8 @@ xt = torch.Tensor(x)
 
 
 def test_distance_features():
+    # Make sure pairwise distance features are consistent with scipy
+
     f = ProteinBackboneFeature()
     out = f.forward(xt)
 
@@ -25,11 +29,13 @@ def test_distance_features():
     x0_scipy_distances = [Dmat_x0[feature_descriptions[i]]
                           for i in range(len(feature_descriptions))]
 
-    np.testing.assert_array_almost_equal(x0_feature_distances,
-                                         x0_scipy_distances)
+    np.testing.assert_allclose(x0_feature_distances,
+                               x0_scipy_distances, rtol=1e-6)
 
 
 def test_angle_features():
+    # Make sure angle features are consistent with manual calculation
+
     f = ProteinBackboneFeature()
     out = f.forward(xt)
 
@@ -50,10 +56,12 @@ def test_angle_features():
             angle_list.append(angle)
         angles.append(angle_list)
 
-    np.testing.assert_array_almost_equal(f.angles, angles, decimal=5)
+    np.testing.assert_allclose(f.angles, angles, rtol=1e-5)
 
 
 def test_dihedral_features():
+    # Make sure dihedral features are consistent with manual calculation
+    
     f = ProteinBackboneFeature()
     out = f.forward(xt)
 
@@ -81,5 +89,5 @@ def test_dihedral_features():
     feature_diheds = [np.arctan2(f.dihedral_sines[i].numpy(),
                                  f.dihedral_cosines[i].numpy())
                       for i in range(len(f.dihedral_sines))]
-    np.testing.assert_array_almost_equal(np.abs(feature_diheds),
-                                         np.abs(diheds), decimal=4)
+    np.testing.assert_allclose(np.abs(feature_diheds),
+                               np.abs(diheds), rtol=1e-4)

@@ -33,8 +33,8 @@ class MoleculeDataset(Dataset):
         self.len = len(self.coordinates)
 
     def __getitem__(self, index):
-        return (torch.from_numpy(self.coordinates[index]),
-                torch.from_numpy(self.forces[index]))
+        return (torch.tensor(self.coordinates[index], requires_grad=True),
+                torch.tensor(self.forces[index]))
 
     def __len__(self):
         return self.len

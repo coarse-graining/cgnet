@@ -6,12 +6,12 @@ In development!
 Requirements
 ---
 + ``numpy``
-+ ``pytorch``
++ ``pytorch`` (1.0 or higher)
 + ``scipy``
++ ``sklearn`` (for testing)
 
 Usage
 ---
-
 Coming soon
 
 Cite
