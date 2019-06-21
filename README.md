@@ -6,7 +6,7 @@ In development!
 Requirements
 ---
 + ``numpy``
-+ ``pytorch``
++ ``pytorch`` (1.0 or higher)
 + ``scipy``
 + ``mdtraj`` (for ``cgnet.molecule`` only)
 + ``pandas`` (for ``cgnet.molecule`` only)
@@ -14,7 +14,6 @@ Requirements
 
 Usage
 ---
-
 Coming soon
 
 Cite

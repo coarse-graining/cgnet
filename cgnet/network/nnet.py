@@ -1,5 +1,5 @@
 # Author: Nick Charron
-# Contributors: Brooke Husic, Dominik Lemm
+# Contributors: Brooke Husic, Dominik Lemm, Jiang Wang
 
 import torch
 import torch.nn as nn
@@ -34,74 +34,6 @@ class ForceLoss(torch.nn.Module):
         return loss
 
 
-def LinearLayer(d_in, d_out, bias=True, activation=None, dropout=0, weight_init='xavier',
-                weight_init_args=None, weight_init_kwargs=None):
-    """Linear layer function
-
-    Parameters
-    ----------
-    d_in : int
-        input dimension
-    d_out : int
-        output dimension
-    bias : bool (default=True)
-        specifies whether or not to add a bias node
-    activation : torch.nn.Module() (default=None)
-        activation function for the layer
-    dropout : float (default=0)
-        if > 0, a dropout layer with the specified dropout frequency is
-        added after the activation.
-    weight_init : str, float, or nn.init function (default=\'xavier\')
-        specifies the initialization of the layer weights. For non-option
-        initializations (eg, xavier initialization), a string may be used
-        for simplicity. If a float or int is passed, a constant initialization
-        is used. For more complicated initializations, a torch.nn.init function
-        object can be passed in.
-    weight_init_args : list or tuple (default=None)
-        arguments (excluding the layer.weight argument) for a torch.nn.init
-        function.
-    weight_init_kwargs : dict (default=None)
-        keyword arguements for a torch.nn.init function
-
-    Returns
-    -------
-    seq : list of torch.nn.Module() instances
-        the full linear layer, including activation and optional dropout.
-
-    Example
-    -------
-    MyLayer = LinearLayer(5,10,bias=True,activation=nn.Softplus(beta=2),
-                               weight_init=nn.init.kaiming_uniform_,
-                               weight_init_kwargs={"a":0,"mode":"fan_out",
-                               "nonlinearity":"leaky_relu"})
-
-    Produces a linear layer with input dimension 5, output dimension 10, bias
-    inclusive, followed by a beta=2 softplus activation, with the layer weights
-    intialized according to kaiming uniform procedure with preservation of weight
-    variance magnitudes during backpropagation.
-
-    """
-
-    seq = [nn.Linear(d_in, d_out, bias=bias)]
-    if activation:
-        seq += [activation]
-    if dropout:
-        seq += [nn.Dropout(dropout)]
-    if weight_init == 'xavier':
-        torch.nn.init.xavier_uniform_(seq[0].weight)
-    if weight_init == 'identity':
-        torch.nn.init.eye_(seq[0].weight)
-    if isinstance(weight_init, int) or isinstance(weight_init, float):
-        torch.nn.init.constant_(seq[0].weight, weight_init)
-    if callable(weight_init):
-        if weight_init_args is None:
-            weight_init_args = []
-        if weight_init_kwargs is None:
-            weight_inti_kwargs = []
-        weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
-    return seq
-
-
 class CGnet(nn.Module):
     """CGnet neural network class
 
@@ -111,6 +43,12 @@ class CGnet(nn.Module):
         underlying sequential network architecture.
     criterion : nn.Module() instances
         loss function to be used for network.
+    feature : nn.Module() instance
+        feature layer to transform cartesian coordinates into roto-
+        translationally invariant features.
+    priors : list of nn.Module() instances (default=None)
+        list of prior layers that provide energy contributions external to
+        the hidden architecture of the CGnet.
 
     Notes
     -----
@@ -125,7 +63,7 @@ class CGnet(nn.Module):
     inputs into roto-translationally invariant features, thereby yeilding a PMF
     that respects these invarainces. CGnets may additionally be supplied with
     external prior functions, which are useful for regularizing network behavior
-    in sparsely smaple, unphysical regions of molecular configuration space.
+    in sparsely sampled, unphysical regions of molecular configuration space.
 
     Examples
     --------
@@ -148,9 +86,10 @@ class CGnet(nn.Module):
         (9): Linear(in_features=160, out_features=160, bias=True)
         (10): Tanh()
         (11): Linear(in_features=160, out_features=1, bias=True)
-        (12): torch.sum((11) + BondPotential(bonds, angles))
-        (13): torch.autograd.grad(-(12), input, create_graph=True,
-                                  retain_graph=True)
+        (12): HarmonicLayer(bonds)
+        (13): HarmonicLayer(angles)
+        (14): torch.autograd.grad(-((11) + (12) + (13)), input,
+                                  create_graph=True, retain_graph=True)
       )
     (criterion): ForceLoss()
     )
@@ -164,11 +103,16 @@ class CGnet(nn.Module):
 
     """
 
-    def __init__(self, arch, criterion):
+    def __init__(self, arch, criterion, feature=None, priors=None):
         super(CGnet, self).__init__()
 
         self.arch = nn.Sequential(*arch)
+        if priors:
+            self.priors = nn.Sequential(*priors)
+        else:
+            self.priors = None
         self.criterion = criterion
+        self.feature = feature
 
     def forward(self, coord):
         """Forward pass through the network ending with autograd layer.
@@ -181,12 +125,23 @@ class CGnet(nn.Module):
         Returns
         -------
         energy : torch.Tensor
-            scalar potential energy of size [n_examples, 1].
+            scalar potential energy of size [n_examples, 1]. If priors are
+            supplied to the CGnet, then this energy is the sum of network
+            and prior energies.
         force  : torch.Tensor
             vector forces of size [n_examples, n_degrees_of_freedom].
         """
+        feat = coord
+        if self.feature:
+            feat = self.feature(feat)
 
-        energy = self.arch(coord)
+        # forward pass through the hidden architecture of the CGnet
+        energy = self.arch(feat)
+        # addition of external priors to form total energy
+        if self.priors:
+            for prior in self.priors:
+                energy += prior(feat[:, prior.feat_idx])
+
         # Perform autograd to learn potential of conservative force field
         force = torch.autograd.grad(-torch.sum(energy),
                                     coord,

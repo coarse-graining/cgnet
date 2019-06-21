@@ -13,8 +13,8 @@ y = np.random.randn(20, beads, dims)
 
 
 def test_adding_data():
-    """Make sure data is added correctly to a dataset"""
-    
+    # Make sure data is added correctly to a dataset
+
     ds1 = MoleculeDataset(x, y)
 
     ds2 = MoleculeDataset(x, y, selection=np.arange(10))
@@ -25,7 +25,7 @@ def test_adding_data():
 
 
 def test_stride():
-    """Make sure dataset stride returns correct results"""
+    # Make sure dataset stride returns correct results
 
     stride = np.random.randint(1, 4)
     ds = MoleculeDataset(x, y, stride=stride)
@@ -35,3 +35,16 @@ def test_stride():
 
     np.testing.assert_array_equal(ds.coordinates, strided_x)
     np.testing.assert_array_equal(ds.forces, strided_y)
+
+
+def test_indexing():
+    # Make sure dataset indexing works
+
+    selection = np.random.randint(20)
+    ds = MoleculeDataset(x, y)
+
+    xt_from_numpy = torch.from_numpy(x[selection])
+    xt_from_ds = ds[selection][0]
+
+    assert xt_from_ds.requires_grad
+    np.testing.assert_array_equal(xt_from_numpy, xt_from_ds.detach().numpy())
