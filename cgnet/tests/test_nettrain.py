@@ -58,8 +58,8 @@ def test_train_class():
 
         trainer.train(model,num_epochs,verbose=False)
 
-        np.testing.assert_equal(num_epochs,len(trainer.epochal_train_losses))
-        np.testing.assert_equal(num_epochs,len(trainer.epochal_test_losses))
+        np.testing.assert_equal(num_epochs+1,len(trainer.epochal_train_losses))
+        np.testing.assert_equal(num_epochs+1,len(trainer.epochal_test_losses))
 
 
 

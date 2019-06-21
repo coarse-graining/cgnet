@@ -126,7 +126,7 @@ class Trainer():
 
         if self.save_dir:
             with open(self.save_dir + self.name + '.json','w') as log_file:
-                json.dump(self.log_data, log_file)
+                json.dump(self.log_data, log_file, indent=4)
 
     def load_routine(self,routine):
         with open(routine) as log_file:
@@ -166,16 +166,16 @@ class Trainer():
             model to perform Lipschitz projection upon
 
         """
-        for layer in model.layers:
+        for layer in model.arch:
             if isinstance(layer, nn.Linear):
                 weight = layer.weight.data
                 u, s, v = torch.svd(weight)
                 if next(model.parameters()).is_cuda:
                     lip_reg = torch.max(((s[0]) / self.lipschitz),
-                                        torch.tensor([1.0]).double().cuda())
+                                        torch.tensor([1.0]).cuda())
                 else:
                     lip_reg = torch.max(((s[0]) / self.lipschitz),
-                                        torch.tensor([1.0]).double())
+                                        torch.tensor([1.0]))
                 layer.weight.data = weight / (lip_reg)
 
     def train(self, model, num_epochs, verbose=True,
@@ -203,10 +203,20 @@ class Trainer():
         self.num_epochs = num_epochs
         self.date = time.asctime(time.localtime(time.time()))
         start = time.time()
+        if verbose:
+            print("Computing zeroth model error...")
+        train_loss = self.dataset_loss(model, self.trainloader).data
+        test_loss = self.dataset_loss(model, self.testloader).data
+        self.epochal_train_losses.append(train_loss)
+        self.epochal_test_losses.append(test_loss)
+        if verbose:
+            print("Epoch: {}\tTrain: {}\tTest: {}".format(0, train_loss,
+                   test_loss))
         for epoch in range(1,num_epochs+1):
             if self.scheduler:
                 self.scheduler.step()
-            test_loss = 0.00
+                if verbose:
+                    print("Learning rate: {}".format(self.scheduler.get_lr()))
             for num, batch in enumerate(self.trainloader):
                 self.optimizer.zero_grad()
                 coords, force = batch
@@ -225,13 +235,13 @@ class Trainer():
             train_loss = self.dataset_loss(model, self.trainloader).data
             test_loss = self.dataset_loss(model, self.testloader).data
             if verbose:
-                if epoch % epoch_feq == 0:
+                if epoch % epoch_freq == 0:
                     print(
                         "Epoch: {}\tTrain: {}\tTest: {}".format(
         epoch, train_loss, test_loss))
             self.epochal_train_losses.append(train_loss)
             self.epochal_test_losses.append(test_loss)
-            if self.save_freq % epoch == 0 and self.save_freq and self.save_dir:
+            if epoch % self.save_freq == 0 and self.save_freq and self.save_dir:
                 torch.save(model, self.save_dir+self.name+
                            "_epoch_{}".format(epoch)+".pt")
         end = time.time()
