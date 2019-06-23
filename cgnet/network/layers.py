@@ -101,7 +101,7 @@ class RBFLayer(nn.Module):
         variences are prescribed to each function in the same order as centers
     """
 
-    def __init__(self):
+    def __init__(self,d_in, centers, variance=1.0, weights=None):
         super(RBFLayer, self).__init__()
         self.d_in = d_in
         self.centers = centers
@@ -120,6 +120,8 @@ class RBFLayer(nn.Module):
          centers = self.centers.unsqueeze(dim=1).expand(centers.size()[0], input_data.size()[1])
          mag = torch.norm(input_data.unsqueeze(dim=1) - centers, dim=1)**2
          output = torch.exp( -(0.5/self.variance) * mag )
+         if self.weights:
+             output = output.matmul(self.weights.t())
          return output
 
 
