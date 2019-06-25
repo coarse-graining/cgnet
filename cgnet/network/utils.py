@@ -2,6 +2,7 @@
 
 
 import torch
+import torch.nn as nn
 
 
 def lipschitz_projection(model):
