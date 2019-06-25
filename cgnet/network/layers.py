@@ -63,7 +63,7 @@ class _PriorLayer(nn.Module):
         for key, par in feat_data.items():
             self.features.append(key)
             self.feat_idx.append(self.start_idx +
-                            descriptions[self.feature_type].index(key))
+                                 descriptions[self.feature_type].index(key))
             self.params.append(par)
 
     def forward(self, in_feat):
@@ -79,6 +79,52 @@ class _PriorLayer(nn.Module):
 
         raise NotImplementedError('forward() method must be overridden in \
                                 custom classes inheriting from _PriorLayer()')
+
+
+class RBFLayer(nn.Module):
+    """Radial basis function layer
+
+    Parameters
+    ----------
+    d_in : int
+        Input dimension of the radial basis function layer
+    centers : torch.Tensor (default=None)
+        tensor of scalar centers for one dimensional basis of Gaussian
+        functions. The number of centers is also the dimension of the
+        RBF layer output
+    weights : torch.Tensor (default=None)
+        weights for each basis function. If None, the weights are initialized
+        as learnable parameters according to weight_init. Shape [n_centers]
+    variance : float or torch.Tensor (default=1.0)
+        the variance (standard deviation squared) of the Gaussian functions.
+        If float, the same variance is used for each function. If tensor, the
+        variences are prescribed to each function in the same order as centers
+    """
+
+    def __init__(self, d_in, centers, variance=1.0, weights=None):
+        super(RBFLayer, self).__init__()
+        self.d_in = d_in
+        self.centers = centers
+        self.variance = variance
+        self.weights = torch.diag(weights)
+
+    def forward(self, input_data):
+        """Forward layer for radial basis function
+
+        Parameters
+        ----------
+        input_data : torch.Tensor
+            input data of shape [n_examples, n_features]
+
+        """
+        centers = self.centers.unsqueeze(dim=1).expand(
+            centers.size()[0], input_data.size()[1])
+        magnitude_squared = torch.norm(
+            input_data.unsqueeze(dim=1) - centers, dim=1)**2
+        output = torch.exp(-(0.5/self.variance) * magnitude_squared)
+        if self.weights:
+            output = output.matmul(self.weights.t())
+        return output
 
 
 class RepulsionLayer(_PriorLayer):
@@ -208,8 +254,8 @@ class HarmonicLayer(_PriorLayer):
         self.harmonic_parameters = torch.tensor([])
         for param_dict in self.params:
             self.harmonic_parameters = torch.cat((self.harmonic_parameters,
-                                            torch.tensor([[param_dict['k']],
-                                            [param_dict['mean']]])), dim=1)
+                                                  torch.tensor([[param_dict['k']],
+                                                                [param_dict['mean']]])), dim=1)
 
     def forward(self, in_feat):
         """Calculates harmonic contribution of bond/angle interactions to energy
