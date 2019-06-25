@@ -2,7 +2,9 @@
 
 import torch
 import torch.nn as nn
-import torch.utils.data.DataLoader
+from torch.utils.data import DataLoader, Dataset
+import numpy as np
+
 
 def lipschitz_projection(model,strength=10.0):
     """Performs L2 Lipschitz Projection via spectral normalization
