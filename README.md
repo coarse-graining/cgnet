@@ -14,7 +14,16 @@ Requirements
 
 Usage
 ---
-Coming soon
+Clone the repository:
+```
+git clone git@github.com:coarse-graining/cgnet.git
+```
+
+Install any missing dependencies, and then run:
+```
+cd cgnet
+python setup.py install
+```
 
 Cite
 ---
