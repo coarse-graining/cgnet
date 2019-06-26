@@ -1,4 +1,5 @@
 # Authors: Nick Charron
+# Contributors: Brooke Husic
 
 import torch.nn as nn
 import torch

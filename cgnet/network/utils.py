@@ -11,7 +11,7 @@ def lipschitz_projection(model, strength=10.0):
 
     Parameters
     ----------
-    model : CGnet() instance
+    model : cgnet.network.CGnet() instance
         model to perform Lipschitz projection upon
     strength : float (default=10.0)
         Strength of L2 lipschitz projection via spectral normalization.
@@ -22,7 +22,7 @@ def lipschitz_projection(model, strength=10.0):
     References
     ----------
     Gouk, H., Frank, E., Pfahringer, B., & Cree, M. (2018). Regularisation
-    of Neural Networks by Enforcing Lipschitz Continuity. ArXiv:1804.04368
+    of Neural Networks by Enforcing Lipschitz Continuity. arXiv:1804.04368
     [Cs, Stat]. Retrieved from http://arxiv.org/abs/1804.04368
     """
     for layer in model.arch:
@@ -43,7 +43,7 @@ def dataset_loss(model, loader):
 
     Parameters
     ----------
-    model : CGNet() instance
+    model : cgnet.network.CGNet() instance
         model to calculate loss
     loader : torch.utils.data.DataLoader() instance
         loader (with associated dataset)
@@ -53,8 +53,8 @@ def dataset_loss(model, loader):
     loss : float
         loss computed over the entire dataset. If the last batch consists of a
         smaller set of left over examples, its contribution to the loss is
-        weighted by the ratio of number elements in the MSE matrix to that of the
-        normal number of elements assocatied with the loader's batch size
+        weighted by the ratio of number elements in the MSE matrix to that of
+        the normal number of elements assocatied with the loader's batch size
         before summation to a scalar.
 
     Example
