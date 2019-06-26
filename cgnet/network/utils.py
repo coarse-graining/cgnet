@@ -103,6 +103,8 @@ class Simulation():
         The interval at which simulation timesteps should be saved
     dt : float (default=5e-4)
         TODO
+    diffusion : float (default=1.0)
+        TODO
     beta : float (default=0.01)
         TODO
     verbose : bool (default=False)
@@ -114,7 +116,7 @@ class Simulation():
     """
 
     def __init__(self, model, initial_coordinates, save_forces=False,
-                 length=100, save_interval=10, dt=5e-4,
+                 length=100, save_interval=10, dt=5e-4, diffusion=1.0,
                  beta=0.01, verbose=False):
         self.model = model
 
@@ -138,6 +140,7 @@ class Simulation():
         self.length = length
         self.save_interval = save_interval
         self.dt = dt
+        self.diffusion = diffusion
         self.beta = beta
         self.verbose = verbose
 
@@ -160,13 +163,16 @@ class Simulation():
         if self.save_forces:
             self.simulated_forces = np.zeros((int(self.length/self.save_interval),
                                         self.n_sims, self.n_beads, self.n_dims))
+
         x_old = self.initial_coordinates
+        dtau = self.diffusion * self.dt
+
         for t in range(self.length):
             _, forces = self.model(x_old)
             noise = torch.tensor(np.random.randn(self.n_sims,
                                                  self.n_beads,
                                                  self.n_dims)).float()
-            x_new = x_old + forces*self.dt + np.sqrt(2*self.dt/self.beta)*noise
+            x_new = x_old + forces*dtau + np.sqrt(2*dtau/self.beta)*noise
             if t % self.save_interval == 0:
                 self.simulated_traj[t//self.save_interval,
                                     :, :] = x_new.detach().numpy()
