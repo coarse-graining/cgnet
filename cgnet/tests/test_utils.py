@@ -67,4 +67,4 @@ def test_dataset_loss():
     loader2 = DataLoader(dataset, sampler=sampler, batch_size=1)
     loss2 = dataset_loss(model, loader2)
 
-    np.testing.assert_almost_equal(loss, loss2, decimal=5)
+    np.testing.assert_allclose(loss, loss2, rtol=1e-5)
