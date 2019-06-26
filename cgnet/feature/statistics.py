@@ -208,7 +208,7 @@ class ProteinBackboneStatistics():
             raise RuntimeError('Must compute distances and angles in \
                                 order to get bond constants')
 
-        self.kb = JPERKCAL/KBOLTZMANN/AVOGARDO/self.temperature
+        self.beta = JPERKCAL/KBOLTZMANN/AVOGARDO/self.temperature
 
         bond_mean = self.stats_dict['Distances']['mean'][:self.n_beads-1]
         angle_mean = self.stats_dict['Angles']['mean']
@@ -219,8 +219,8 @@ class ProteinBackboneStatistics():
         bond_keys = self.descriptions['Distances'][:self.n_beads-1]
         angle_keys = self.descriptions['Angles']
 
-        K_bond = 1/bond_var/self.kb
-        K_angle = 1/angle_var/self.kb
+        K_bond = 1/bond_var/self.beta
+        K_angle = 1/angle_var/self.beta
 
         bondconst_keys = np.sum([bond_keys, angle_keys])
         bondconst_array = np.vstack([np.concatenate([K_bond, K_angle]),

@@ -117,7 +117,7 @@ class Simulation():
 
     def __init__(self, model, initial_coordinates, save_forces=False,
                  length=100, save_interval=10, dt=5e-4, diffusion=1.0,
-                 beta=0.01, verbose=False):
+                 beta=1.0, verbose=False):
         self.model = model
 
         if len(initial_coordinates.shape) != 3:
