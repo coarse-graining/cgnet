@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, Dataset
 import numpy as np
 
 
-def lipschitz_projection(model,strength=10.0):
+def lipschitz_projection(model, strength=10.0):
     """Performs L2 Lipschitz Projection via spectral normalization
 
     Parameters
@@ -50,8 +50,12 @@ def dataset_loss(model, loader):
 
     Returns
     -------
-    loss : torch.Variable
-        loss computed over the dataset
+    loss : float
+        loss computed over the entire dataset. If the last batch consists of a
+        smaller set of left over examples, its contribution to the loss is
+        weighted by the ratio of number elements in the MSE matrix to that of the
+        normal number of elements assocatied with the loader's batch size
+        before summation to a scalar.
 
     Example
     -------
@@ -64,11 +68,16 @@ def dataset_loss(model, loader):
     """
     loss = 0
     num_batch = 0
+    ref_numel = 0
     for num, batch in enumerate(loader):
         coords, force = batch
+        if num == 0:
+            ref_numel = coords.numel()
         potential, pred_force = model.forward(coords)
-        loss += model.criterion(pred_force, force) * (coords.size()[0] /
-                                                      loader.batch_size)
-        num_batch += 1
+        #print(coords.size()[0] / loader.batch_size)
+        # print(coords.size()[0])
+        loss += model.criterion(pred_force,
+                                force) * (coords.numel() / ref_numel)
+        num_batch += (coords.numel() / ref_numel)
     loss /= num_batch
     return loss.data.item()
