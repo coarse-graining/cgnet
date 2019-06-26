@@ -1,6 +1,3 @@
 numpy
-torch>1.0
+torch>=1.0
 scipy
-mdtraj
-pandas
-scikit-learn
