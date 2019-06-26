@@ -85,7 +85,7 @@ def dataset_loss(model, loader):
 
 class Simulation():
     """Simulate an artificial trajectory from a CGnet using overdamped Langevin
-    dyanmics.
+    dynamics.
 
     Parameters
     ----------
