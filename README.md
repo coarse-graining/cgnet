@@ -3,11 +3,14 @@ cgnet
 
 In development!
 
-Requirements
+Dependencies
 ---
+Required:
 + ``numpy``
 + ``pytorch`` (1.0 or higher)
 + ``scipy``
+
+Optional:
 + ``mdtraj`` (for ``cgnet.molecule`` only)
 + ``pandas`` (for ``cgnet.molecule`` only)
 + ``sklearn`` (for testing)
