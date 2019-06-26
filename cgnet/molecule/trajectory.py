@@ -141,7 +141,7 @@ class CGMolecule():
         No unit cell information is specified.
         """
         if type(coordinates) is torch.Tensor:
-            coords = coords.detach().numpy()
+            coordinates = coordinates.detach().numpy()
 
         if len(coordinates.shape) != 3:
             raise ValueError(
