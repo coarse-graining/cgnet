@@ -1,4 +1,4 @@
-# Authors: Nick Charron, Brooke Husic
+# Authors: Nick Charron, Brooke Husic, Jiang Wang
 
 import torch
 import torch.nn as nn
@@ -81,3 +81,93 @@ def dataset_loss(model, loader):
         num_batch += (coords.numel() / ref_numel)
     loss /= num_batch
     return loss.data.item()
+
+
+class Simulation():
+    """Simulate an artificial trajectory from a CGnet.
+
+    Parameters
+    ----------
+    model : cgnet.network.CGNet() instance
+        model to calculate loss
+    initial_coordinates : np.array
+            Coordinate data of dimension [n_simulations, n_atoms, n_dimensions].
+            Each entry in the first dimension represents the first frame of an
+            independent simulation.
+    length : int (default=100)
+            The length of the simulation in simulation timesteps
+    save_interval : int (default=10)
+            The interval at which simulation timesteps should be saved
+    dt : float (default=5e-4)
+            TODO
+    beta : float (default=0.01)
+            TODO
+    verbose : bool (default=False)
+            Whether to print simulation progress information
+
+    Notes
+    -----
+    Long simulation lengths may take a significant amount of time.
+    """
+
+    def __init__(self, model, initial_coordinates,
+                 length=100, save_interval=10, dt=5e-4,
+                 beta=0.01, verbose=False):
+        self.model = model
+
+        if len(initial_coordinates.shape) != 3:
+            raise ValueError(
+                'initial_coordinates shape must be [frames, atoms, dimensions]'
+            )
+
+        if type(initial_coordinates) is not torch.Tensor:
+            initial_coordinates = torch.tensor(initial_coordinates,
+                                               requires_grad=True)
+        elif initial_coordinates.requires_grad is False:
+            initial_coordinates.requires_grad = True
+
+        self.initial_coordinates = initial_coordinates
+        self.n_sims = self.initial_coordinates.shape[0]
+        self.n_beads = self.initial_coordinates.shape[1]
+        self.n_dims = self.initial_coordinates.shape[2]
+
+        self.length = length
+        self.save_interval = save_interval
+        self.dt = dt
+        self.beta = beta
+        self.verbose = verbose
+
+    def simulate(self):
+        """Generates independent simulations.
+
+        Returns
+        -------
+        simulated_traj : np.array
+            Dimensions [n_simulations, n_frames, n_atoms, n_dimensions]
+        """
+        if self.verbose:
+            i = 1
+            print(
+        "Generating {} simulations of length {} at {}-step intervals".format(
+                    self.n_sims, self.length, self.save_interval)
+            )
+        self.simulated_traj = np.zeros((int(self.length/self.save_interval),
+                                        self.n_sims, self.n_beads, self.n_dims))
+        x_old = self.initial_coordinates
+        for t in range(self.length):
+            _, forces = self.model(x_old)
+            noise = torch.tensor(np.random.randn(self.n_sims,
+                                                 self.n_beads,
+                                                 self.n_dims)).float()
+            x_new = x_old + forces*self.dt + np.sqrt(2*self.dt/self.beta)*noise
+            if t % self.save_interval == 0:
+                # print(forces)
+                self.simulated_traj[t//self.save_interval,
+                                    :, :] = x_new.detach().numpy()
+            x_old = x_new
+            if t % (self.length/10) == 0:
+                print('{}0% finished'.format(i))
+                i += 1
+
+        self.simulated_traj = np.swapaxes(self.simulated_traj, 0, 1)
+        return self.simulated_traj
