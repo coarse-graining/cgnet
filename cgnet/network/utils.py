@@ -88,7 +88,7 @@ class Simulation():
     Parameters
     ----------
     model : cgnet.network.CGNet() instance
-        model to calculate loss
+        Trained model used to generate simulation  data
     initial_coordinates : np.ndarray
         Coordinate data of dimension [n_simulations, n_atoms, n_dimensions].
         Each entry in the first dimension represents the first frame of an

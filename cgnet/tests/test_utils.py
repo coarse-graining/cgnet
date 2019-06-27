@@ -24,6 +24,9 @@ arch = (LinearLayer(dims, dims, activation=nn.Tanh()) +
 
 model = CGnet(arch, ForceLoss()).float()
 
+length = np.random.choice([2,4])*2
+save = np.random.choice([2,4])
+
 
 def test_lipschitz():
     # Test hard lipschitz projection
@@ -75,8 +78,8 @@ def test_dataset_loss():
 def test_regular_simulation():
     # Test shape of simulation with nothing else saved
     initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
-    length = np.random.choice([5,10])*10
-    save = np.random.choice([5,10])
+    length = np.random.choice([2,4])*2
+    save = np.random.choice([2,4])
     my_sim = Simulation(model, initial_coordinates, length=length,
                         save_interval=save)
     traj = my_sim.simulate()
@@ -89,8 +92,6 @@ def test_regular_simulation():
 def test_simulation_saved_forces():
     # Test shape of simulation and and forces with forces saved
     initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
-    length = np.random.choice([5,10])*10
-    save = np.random.choice([5,10])
     my_sim = Simulation(model, initial_coordinates, length=length,
                         save_interval=save, save_forces=True)
     traj = my_sim.simulate()
@@ -103,8 +104,6 @@ def test_simulation_saved_forces():
 def test_simulation_saved_potential():
     # Test shape of simulation and potential with forces saved
     initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
-    length = np.random.choice([5,10])*10
-    save = np.random.choice([5,10])
     my_sim = Simulation(model, initial_coordinates, length=length,
                         save_interval=save, save_potential=True)
     traj = my_sim.simulate()
@@ -117,8 +116,6 @@ def test_simulation_saved_potential():
 def test_simulation_seeding():
     # Test determinism of simulation with random seed
     initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
-    length = np.random.choice([5,10])*10
-    save = np.random.choice([5,10])
     seed = np.random.randint(1000)
 
     sim1 = Simulation(model, initial_coordinates, length=length,

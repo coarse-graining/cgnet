@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
-from cgnet.network import (CGnet, LinearLayer, ForceLoss,
-                           RepulsionLayer, HarmonicLayer, ZscoreLayer)
+from cgnet.network import (CGnet, LinearLayer, ForceLoss, RepulsionLayer,
+                           HarmonicLayer, ZscoreLayer, Simulation)
 from cgnet.feature import ProteinBackboneStatistics, ProteinBackboneFeature
 
 # Random test data
@@ -184,6 +184,46 @@ def test_cgnet():
     energy, force = model.forward(coords)
     np.testing.assert_equal(energy.size(), (coords.size()[0], 1))
     np.testing.assert_equal(force.size(), coords.size())
+
+
+def test_cgnet_simulation():
+    # Tests CGnet class criterion attribute, architecture size, and network
+    # output size. Also tests prior embedding.
+
+    harmonic_potential = HarmonicLayer(bonds, descriptions=stats.descriptions,
+                                       feature_type='Distances')
+    feature_layer = ProteinBackboneFeature()
+    num_feats = feature_layer(coords).size()[1]
+
+    rand = np.random.randint(1, 10)
+    arch = LinearLayer(num_feats, rand, bias=True, activation=nn.Tanh())\
+        + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
+        + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
+        + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
+        + LinearLayer(rand, 1, bias=True, activation=None)\
+
+    model = CGnet(arch, ForceLoss(), feature=ProteinBackboneFeature(),
+                  priors=[harmonic_potential])
+
+    forces = torch.randn((frames, beads, 3), requires_grad=False)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.05, weight_decay=0)
+    optimizer.zero_grad()
+    U, F = model.forward(coords)
+    loss = model.criterion(F, forces)
+    loss.backward()
+    optimizer.step()
+
+    length = np.random.choice([2,4])*2
+    save = np.random.choice([2,4])
+    my_sim = Simulation(model, coords, beta=stats.beta, length=length,
+                        save_interval=save, save_forces=True,
+                        save_potential=True)
+
+    traj = my_sim.simulate()
+    assert traj.shape == (frames, length // save, beads, dims)
+    assert my_sim.simulated_forces.shape == (frames, length // save, beads, dims)
+    assert my_sim.simulated_potential.shape == (frames, length // save, 1)
 
 
 def test_linear_regression():
