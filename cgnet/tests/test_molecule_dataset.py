@@ -5,6 +5,7 @@ import torch
 import warnings
 
 from cgnet.feature import MoleculeDataset
+from nose.exc import SkipTest
 
 beads = np.random.randint(1, 10)
 dims = np.random.randint(1, 5)
@@ -50,8 +51,9 @@ def test_indexing():
     assert xt_from_ds.requires_grad
     np.testing.assert_array_equal(xt_from_numpy, xt_from_ds.detach().numpy())
 
-def test_gpu_mount():
-    #Make sure tensors are being mapped to the correct device
+
+def test_cpu_mount():
+    # Make sure tensors are being mapped to cpu
 
     selection = np.random.randint(20)
     ds = MoleculeDataset(x, y)
@@ -59,14 +61,12 @@ def test_gpu_mount():
     np.testing.assert_equal(ds[selection][0].device.type, 'cpu')
     np.testing.assert_equal(ds[selection][1].device.type, 'cpu')
 
-    if torch.cuda.is_available():
-        ds = MoleculeDataset(x, y, cuda=torch.device('cuda'))
 
+def test_gpu_mount():
+    # Make sure tensors are being mapped to gpu
+    if not torch.cuda.is_available():
+        raise SkipTest('GPU not available for testing.')
+    else:
+        ds = MoleculeDataset(x, y, cuda=torch.device('cuda'))
         np.testing.assert_equal(ds[selection][0].device.type, 'cuda')
         np.testing.assert_equal(ds[selection][1].device.type, 'cuda')
-    else:
-        warnings.warn("No CUDA device avaiable for testing", UserWarning)
-
-
-
-
