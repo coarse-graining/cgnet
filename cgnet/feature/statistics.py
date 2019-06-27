@@ -205,8 +205,9 @@ class ProteinBackboneStatistics():
             raise RuntimeError('zscores can only be True if as_dict is True')
 
         if self.distances is None or self.angles is None:
-            raise RuntimeError('Must compute distances and angles in \
-                                order to get bond constants')
+            raise RuntimeError(
+            'Must compute distances and angles in order to get bond constants'
+                )
 
         self.beta = JPERKCAL/KBOLTZMANN/AVOGARDO/self.temperature
 

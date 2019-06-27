@@ -75,11 +75,11 @@ def test_zscore_layer():
     # Notes
     # -----
     # rescaled_feat_truth is in principle equal to:
-    # 
+    #
     # from sklearn.preprocessing import StandardScaler
     # scalar = StandardScaler()
     # rescaled_feat_truth = scalar.fit_transform(feat)
-    # 
+    #
     # However, the equality is only preserved with precision >= 1e-4.
 
     feat_layer = ProteinBackboneFeature()
@@ -90,7 +90,7 @@ def test_zscore_layer():
     rescaled_feat = zlayer(feat)
 
     np.testing.assert_array_equal(rescaled_feat.detach().numpy(),
-                            rescaled_feat_truth.detach().numpy())
+                                  rescaled_feat_truth.detach().numpy())
 
 
 def test_repulsion_layer():
@@ -146,11 +146,11 @@ def test_harmonic_layer():
         feat_idx.append(start_idx +
                         descriptions['Distances'].index(key))
         harmonic_parameters = torch.cat((
-                                    harmonic_parameters,
-                                    torch.tensor([[params['k']],
-                                                  [params['mean']]])), dim=1)
+            harmonic_parameters,
+            torch.tensor([[params['k']],
+                          [params['mean']]])), dim=1)
     energy_check = torch.sum(harmonic_parameters[0, :] * (feat[:, feat_idx] -
-                             harmonic_parameters[1, :]) ** 2,
+                                                          harmonic_parameters[1, :]) ** 2,
                              1).reshape(len(feat), 1) / 2
 
     np.testing.assert_array_equal(energy.detach().numpy(),
@@ -214,15 +214,16 @@ def test_cgnet_simulation():
     loss.backward()
     optimizer.step()
 
-    length = np.random.choice([2,4])*2
-    save = np.random.choice([2,4])
+    length = np.random.choice([2, 4])*2
+    save = np.random.choice([2, 4])
     my_sim = Simulation(model, coords, beta=stats.beta, length=length,
                         save_interval=save, save_forces=True,
                         save_potential=True)
 
     traj = my_sim.simulate()
     assert traj.shape == (frames, length // save, beads, dims)
-    assert my_sim.simulated_forces.shape == (frames, length // save, beads, dims)
+    assert my_sim.simulated_forces.shape == (
+        frames, length // save, beads, dims)
     assert my_sim.simulated_potential.shape == (frames, length // save, 1)
 
 

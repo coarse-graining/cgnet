@@ -24,8 +24,8 @@ arch = (LinearLayer(dims, dims, activation=nn.Tanh()) +
 
 model = CGnet(arch, ForceLoss()).float()
 
-length = np.random.choice([2,4])*2
-save = np.random.choice([2,4])
+length = np.random.choice([2, 4])*2
+save = np.random.choice([2, 4])
 
 
 def test_lipschitz():
@@ -78,8 +78,8 @@ def test_dataset_loss():
 def test_regular_simulation():
     # Test shape of simulation with nothing else saved
     initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
-    length = np.random.choice([2,4])*2
-    save = np.random.choice([2,4])
+    length = np.random.choice([2, 4])*2
+    save = np.random.choice([2, 4])
     my_sim = Simulation(model, initial_coordinates, length=length,
                         save_interval=save)
     traj = my_sim.simulate()
@@ -97,7 +97,8 @@ def test_simulation_saved_forces():
     traj = my_sim.simulate()
 
     assert traj.shape == (frames, length // save, beads, dims)
-    assert my_sim.simulated_forces.shape == (frames, length // save, beads, dims)
+    assert my_sim.simulated_forces.shape == (
+        frames, length // save, beads, dims)
     assert my_sim.simulated_potential is None
 
 
@@ -110,7 +111,8 @@ def test_simulation_saved_potential():
 
     assert traj.shape == (frames, length // save, beads, dims)
     assert my_sim.simulated_forces is None
-    assert my_sim.simulated_potential.shape == (frames, length // save, beads, 1)
+    assert my_sim.simulated_potential.shape == (
+        frames, length // save, beads, 1)
 
 
 def test_simulation_seeding():
@@ -119,13 +121,13 @@ def test_simulation_seeding():
     seed = np.random.randint(1000)
 
     sim1 = Simulation(model, initial_coordinates, length=length,
-                        save_interval=save, save_forces=True,
-                        save_potential=True, random_seed=seed)
+                      save_interval=save, save_forces=True,
+                      save_potential=True, random_seed=seed)
     traj1 = sim1.simulate()
 
     sim2 = Simulation(model, initial_coordinates, length=length,
-                        save_interval=save, save_forces=True,
-                        save_potential=True, random_seed=seed)
+                      save_interval=save, save_forces=True,
+                      save_potential=True, random_seed=seed)
     traj2 = sim2.simulate()
 
     np.testing.assert_array_equal(traj1, traj2)

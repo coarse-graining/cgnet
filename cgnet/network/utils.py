@@ -142,7 +142,7 @@ class Simulation():
         if length % save_interval != 0:
             raise ValueError(
                 'The save_interval must be a factor of the simulation length'
-                )
+            )
 
         self.model = model
 
@@ -221,8 +221,8 @@ class Simulation():
         for t in range(self.length):
             potential, forces = self.model(x_old)
             noise = torch.tensor(self.rng.randn(self.n_sims,
-                                                 self.n_beads,
-                                                 self.n_dims)).float()
+                                                self.n_beads,
+                                                self.n_dims)).float()
             x_new = x_old + forces*dtau + np.sqrt(2*dtau/self.beta)*noise
             if t % self.save_interval == 0:
                 self.simulated_traj[t//self.save_interval,
@@ -256,6 +256,7 @@ class Simulation():
             self.simulated_forces = np.swapaxes(self.simulated_forces, 0, 1)
 
         if self.save_potential:
-            self.simulated_potential = np.swapaxes(self.simulated_potential, 0, 1)
+            self.simulated_potential = np.swapaxes(
+                self.simulated_potential, 0, 1)
 
         return self.simulated_traj
