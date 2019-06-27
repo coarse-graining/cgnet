@@ -6,6 +6,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+from cgnet.network.layers import LinearLayer
+
 
 class ProteinBackboneFeature(nn.Module):
     """Featurization of a protein backbone into pairwise distances,
@@ -124,3 +126,50 @@ class ProteinBackboneFeature(nn.Module):
             self.description_order.append('Dihedral_sines')
 
         return out
+
+
+class RBF(nn.Module):
+    """Radial basis function layer
+
+    Parameters
+    ----------
+    d_in : int
+        Input dimension of the radial basis function layer
+    centers : torch.Tensor (default=None)
+        tensor of scalar centers for one dimensional basis of Gaussian
+        functions. The number of centers is also the dimension of the
+        RBF layer output
+    weights : torch.Tensor (default=None)
+        weights for each basis function. If None, the weights are initialized
+        as learnable parameters according to weight_init. Shape [n_centers]
+    variance : float or torch.Tensor (default=1.0)
+        the variance (standard deviation squared) of the Gaussian functions.
+        If float, the same variance is used for each function. If tensor, the
+        variences are prescribed to each function in the same order as centers
+    """
+
+    def __init__(self, d_in, centers, variance=1.0, weights=None):
+        super(RBF, self).__init__()
+        self.d_in = d_in
+        self.centers = centers
+        self.variance = variance
+        self.weights = torch.diag(weights)
+
+    def forward(self, input_data):
+        """Forward layer for radial basis function
+
+        Parameters
+        ----------
+        input_data : torch.Tensor
+            input data of shape [n_examples, n_features]
+
+        """
+        centers = self.centers.unsqueeze(dim=1).expand(self.centers.size()[0],
+                                                       input_data.size()[1])
+        magnitude_squared = torch.norm(input_data.unsqueeze(dim=1) - centers,
+                                       dim=1) ** 2
+        output = torch.exp(-(0.5 / self.variance) * magnitude_squared)
+        if self.weights:
+            output = output.matmul(self.weights.t())
+        return output
+
