@@ -73,7 +73,7 @@ def test_dataset_loss():
 
 
 def test_regular_simulation():
-    # Test simulation with nothing else saved
+    # Test shape of simulation with nothing else saved
     initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
     length = np.random.choice([5,10])*10
     save = np.random.choice([5,10])
@@ -87,7 +87,7 @@ def test_regular_simulation():
 
 
 def test_simulation_saved_forces():
-    # Test simulation with forces saved
+    # Test shape of simulation and and forces with forces saved
     initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
     length = np.random.choice([5,10])*10
     save = np.random.choice([5,10])
@@ -101,7 +101,7 @@ def test_simulation_saved_forces():
 
 
 def test_simulation_saved_potential():
-    # Test simulation with forces saved
+    # Test shape of simulation and potential with forces saved
     initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
     length = np.random.choice([5,10])*10
     save = np.random.choice([5,10])
