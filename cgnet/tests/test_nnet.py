@@ -187,8 +187,8 @@ def test_cgnet():
 
 
 def test_cgnet_simulation():
-    # Tests CGnet class criterion attribute, architecture size, and network
-    # output size. Also tests prior embedding.
+    # Tests a simulation from a CGnet built with the ProteinBackboneFeature
+    # for the shapes of its coordinate, force, and potential outputs
 
     harmonic_potential = HarmonicLayer(bonds, descriptions=stats.descriptions,
                                        feature_type='Distances')
