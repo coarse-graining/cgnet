@@ -70,3 +70,45 @@ def test_dataset_loss():
     loss2 = dataset_loss(model, loader2)
 
     np.testing.assert_allclose(loss, loss2, rtol=1e-5)
+
+
+def test_regular_simulation():
+    # Test simulation with nothing else saved
+    initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
+    length = np.random.choice([5,10])*10
+    save = np.random.choice([5,10])
+    my_sim = Simulation(model, initial_coordinates, length=length,
+                        save_interval=save)
+    traj = my_sim.simulate()
+
+    assert traj.shape == (frames, length // save, beads, dims)
+    assert my_sim.simulated_forces is None
+    assert my_sim.simulated_potential is None
+
+
+def test_simulation_saved_forces():
+    # Test simulation with forces saved
+    initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
+    length = np.random.choice([5,10])*10
+    save = np.random.choice([5,10])
+    my_sim = Simulation(model, initial_coordinates, length=length,
+                        save_interval=save, save_forces=True)
+    traj = my_sim.simulate()
+
+    assert traj.shape == (frames, length // save, beads, dims)
+    assert my_sim.simulated_forces.shape == (frames, length // save, beads, dims)
+    assert my_sim.simulated_potential is None
+
+
+def test_simulation_saved_potential():
+    # Test simulation with forces saved
+    initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
+    length = np.random.choice([5,10])*10
+    save = np.random.choice([5,10])
+    my_sim = Simulation(model, initial_coordinates, length=length,
+                        save_interval=save, save_potential=True)
+    traj = my_sim.simulate()
+
+    assert traj.shape == (frames, length // save, beads, dims)
+    assert my_sim.simulated_forces is None
+    assert my_sim.simulated_potential.shape == (frames, length // save, beads, 1)

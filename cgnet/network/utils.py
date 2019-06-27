@@ -138,7 +138,7 @@ class Simulation():
     def __init__(self, model, initial_coordinates, save_forces=False,
                  save_potential=False, length=100, save_interval=10, dt=5e-4,
                  diffusion=1.0, beta=1.0, verbose=False):
-        if length % save != 0:
+        if length % save_interval != 0:
             raise ValueError(
                 'The save_interval must be a factor of the simulation length'
                 )
@@ -247,5 +247,8 @@ class Simulation():
 
         if self.save_forces:
             self.simulated_forces = np.swapaxes(self.simulated_forces, 0, 1)
+
+        if self.save_potential:
+            self.simulated_potential = np.swapaxes(self.simulated_potential, 0, 1)
 
         return self.simulated_traj
