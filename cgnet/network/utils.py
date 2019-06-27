@@ -135,7 +135,7 @@ class Simulation():
 
     def __init__(self, model, initial_coordinates, save_forces=False,
                  save_potential=False, length=100, save_interval=10, dt=5e-4,
-                 diffusion=1.0, beta=1.0, verbose=False):
+                 diffusion=1.0, beta=1.0, verbose=False, random_seed=None):
         if length % save_interval != 0:
             raise ValueError(
                 'The save_interval must be a factor of the simulation length'
@@ -167,6 +167,12 @@ class Simulation():
         self.diffusion = diffusion
         self.beta = beta
         self.verbose = verbose
+
+        if self.random_seed is None:
+            self.rng = np.random
+        else:
+            self.rng = np.random.RandomState(random_seed)
+        self.random_seed = random_seed
 
     def simulate(self):
         """Generates independent simulations.
@@ -211,7 +217,7 @@ class Simulation():
 
         for t in range(self.length):
             potential, forces = self.model(x_old)
-            noise = torch.tensor(np.random.randn(self.n_sims,
+            noise = torch.tensor(self.rng.randn(self.n_sims,
                                                  self.n_beads,
                                                  self.n_dims)).float()
             x_new = x_old + forces*dtau + np.sqrt(2*dtau/self.beta)*noise
