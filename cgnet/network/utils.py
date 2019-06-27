@@ -74,8 +74,6 @@ def dataset_loss(model, loader):
         if num == 0:
             ref_numel = coords.numel()
         potential, pred_force = model.forward(coords)
-        #print(coords.size()[0] / loader.batch_size)
-        # print(coords.size()[0])
         loss += model.criterion(pred_force,
                                 force) * (coords.numel() / ref_numel)
         num_batch += (coords.numel() / ref_numel)
