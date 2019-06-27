@@ -84,7 +84,8 @@ def dataset_loss(model, loader):
 
 
 class Simulation():
-    """Simulate an artificial trajectory from a CGnet.
+    """Simulate an artificial trajectory from a CGnet using overdamped Langevin
+    dynamics.
 
     Parameters
     ----------
@@ -102,16 +103,34 @@ class Simulation():
     save_interval : int (default=10)
         The interval at which simulation timesteps should be saved
     dt : float (default=5e-4)
-        TODO
+        The integration time step for Langevin dynamics. Units are determined
+        by the frame striding of the original training data simulation
     diffusion : float (default=1.0)
-        TODO
+        The constant diffusion parameter for overdamped Langevin dynamics. By
+        default, the diffusion is set to unity and is absorbed into the dt
+        argument. However, users may specify separate diffusion and dt
+        parameters in the case that they habe some estimate of the CG diffusion
     beta : float (default=0.01)
-        TODO
+        The thermodynamic inverse temperature, 1/(k_B T), for Boltzman constant
+        k_B and temperature T. The units of k_B and T are fixed from the units
+        of training forces and settings of the training simulation data
+        respectively
     verbose : bool (default=False)
         Whether to print simulation progress information
 
     Notes
     -----
+    A system evolves under Langevin dyanmics using the following, stochastic
+    differential equation:
+
+        dX_t = - grad( U( X_t ) ) * a * dt + sqrt( 2 * a * dt / beta ) * dW_t
+
+    for coordinates X_t at time t, potential energy U, diffusion a,
+    thermodynamic inverse temperature beta, time step dt, and stochastic Weiner
+    process W. The choice of Langevin dynamics is made because CG systems
+    possess no explicit solvent, and so Brownian-like collisions must be
+    modeled indirectly using a stochastic term.
+
     Long simulation lengths may take a significant amount of time.
     """
 
@@ -155,14 +174,14 @@ class Simulation():
         if self.verbose:
             i = 1
             print(
-        "Generating {} simulations of length {} at {}-step intervals".format(
+                "Generating {} simulations of length {} at {}-step intervals".format(
                     self.n_sims, self.length, self.save_interval)
             )
         self.simulated_traj = np.zeros((int(self.length/self.save_interval),
                                         self.n_sims, self.n_beads, self.n_dims))
         if self.save_forces:
             self.simulated_forces = np.zeros((int(self.length/self.save_interval),
-                                        self.n_sims, self.n_beads, self.n_dims))
+                                              self.n_sims, self.n_beads, self.n_dims))
 
         x_old = self.initial_coordinates
         dtau = self.diffusion * self.dt
@@ -178,7 +197,7 @@ class Simulation():
                                     :, :] = x_new.detach().numpy()
                 if self.save_forces:
                     self.simulated_forces[t//self.save_interval,
-                                        :, :] = forces.detach().numpy()
+                                          :, :] = forces.detach().numpy()
             x_old = x_new
             if t % (self.length/10) == 0:
                 print('{}0% finished'.format(i))
