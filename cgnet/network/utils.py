@@ -187,7 +187,7 @@ class Simulation():
         if self.verbose:
             i = 1
             print(
-        "Generating {} simulations of length {} at {}-step intervals".format(
+                "Generating {} simulations of length {} at {}-step intervals".format(
                     self.n_sims, self.length, self.save_interval)
             )
         save_size = int(self.length/self.save_interval)
@@ -224,12 +224,12 @@ class Simulation():
                     if self.simulated_potential is None:
                         assert potential.shape[0] == self.n_sims
                         potential_dims = ([save_size, self.n_sims] +
-                                    [potential.shape[j]
-                                     for j in range(1, len(potential.shape))])
+                                          [potential.shape[j]
+                                           for j in range(1, len(potential.shape))])
                         self.simulated_potential = np.zeros((potential_dims))
 
                     self.simulated_potential[
-                            t//self.save_interval] = potential.detach().numpy()
+                        t//self.save_interval] = potential.detach().numpy()
             x_old = x_new
 
             if self.verbose:
