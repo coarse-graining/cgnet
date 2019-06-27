@@ -171,6 +171,18 @@ class Simulation():
         -------
         simulated_traj : np.ndarray
             Dimensions [n_simulations, n_frames, n_atoms, n_dimensions]
+            Also an attribute; stores the simulation coordinates
+
+        Attributes
+        ----------
+        simulated_forces : np.ndarray or None
+            Dimensions [n_simulations, n_frames, n_atoms, n_dimensions]
+            If simulated_forces is True, stores the simulation forces
+        simulated_potential : np.ndarray or None
+            Dimensions [n_simulations, n_frames, [potential dimensions]]
+            If simulated_potential is True, stores the potential calculated
+            for each frame in simulation 
+
         """
         if self.verbose:
             i = 1
@@ -185,9 +197,10 @@ class Simulation():
         if self.save_forces:
             self.simulated_forces = np.zeros((save_size, self.n_sims,
                                               self.n_beads, self.n_dims))
+        else:
+            self.simulated_forces = None
 
-        if self.save_potential:
-                self.simulated_potential = np.zeros((save_size))
+        self.simulated_potential = None
 
         x_old = self.initial_coordinates
         dtau = self.diffusion * self.dt
@@ -205,6 +218,16 @@ class Simulation():
                     self.simulated_forces[t//self.save_interval,
                                           :, :] = forces.detach().numpy()
                 if self.save_potential:
+                    # The potential will look different for different
+                    # network structures, so determine its dimensionality
+                    # on the fly
+                    if self.simulated_potential is None:
+                        assert potential.shape[0] == self.n_sims
+                        potential_dims = ([save_size, self.n_sims] +
+                                    [potential.shape[j]
+                                     for j in range(1, len(potential.shape))])
+                        self.simulated_potential = np.zeros((potential_dims))
+
                     self.simulated_potential[
                             t//self.save_interval] = potential.detach().numpy()
             x_old = x_new
