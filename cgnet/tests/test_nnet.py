@@ -17,14 +17,16 @@ noise = 0.7*torch.rand((50, 1))
 y0 = x0.detach()*slope + noise
 
 # Random linear protein
-num_examples = np.random.randint(10, 30)
-num_beads = np.random.randint(5, 10)
-coords = torch.randn((num_examples, num_beads, 3), requires_grad=True)
+frames = np.random.randint(10, 30)
+beads = np.random.randint(5, 10)
+dims = 3
+
+coords = torch.randn((frames, beads, 3), requires_grad=True)
 stats = ProteinBackboneStatistics(coords.detach().numpy())
 
 # Prior variables
 bondsdict = stats.get_bond_constants(flip_dict=True, zscores=True)
-bonds = dict((k, bondsdict[k]) for k in [(i, i+1) for i in range(num_beads-1)])
+bonds = dict((k, bondsdict[k]) for k in [(i, i+1) for i in range(beads-1)])
 
 repul_distances = [i for i in stats.descriptions['Distances']
                    if abs(i[0]-i[1]) > 2]
@@ -101,7 +103,7 @@ def test_repulsion_layer():
     feat = feat_layer(coords)
     energy = repulsion_potential(feat[:, repulsion_potential.feat_idx])
 
-    np.testing.assert_equal(energy.size(), (num_examples, 1))
+    np.testing.assert_equal(energy.size(), (frames, 1))
     start_idx = 0
     feat_idx = []
     for num, desc in zip(nums, descs):
@@ -129,7 +131,7 @@ def test_harmonic_layer():
     feat = feat_layer(coords)
     energy = harmonic_potential(feat[:, harmonic_potential.feat_idx])
 
-    np.testing.assert_equal(energy.size(), (num_examples, 1))
+    np.testing.assert_equal(energy.size(), (frames, 1))
     start_idx = 0
     feat_idx = []
     features = []
