@@ -112,3 +112,26 @@ def test_simulation_saved_potential():
     assert traj.shape == (frames, length // save, beads, dims)
     assert my_sim.simulated_forces is None
     assert my_sim.simulated_potential.shape == (frames, length // save, beads, 1)
+
+
+def test_simulation_seeding():
+    # Test determinism of simulation with random seed
+    initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
+    length = np.random.choice([5,10])*10
+    save = np.random.choice([5,10])
+    seed = np.random.randint(1000)
+
+    sim1 = Simulation(model, initial_coordinates, length=length,
+                        save_interval=save, save_forces=True,
+                        save_potential=True, random_seed=seed)
+    traj1 = sim1.simulate()
+
+    sim2 = Simulation(model, initial_coordinates, length=length,
+                        save_interval=save, save_forces=True,
+                        save_potential=True, random_seed=seed)
+    traj2 = sim2.simulate()
+
+    np.testing.assert_array_equal(traj1, traj2)
+    np.testing.assert_array_equal(sim1.simulated_forces, sim2.simulated_forces)
+    np.testing.assert_array_equal(sim1.simulated_potential,
+                                  sim2.simulated_potential)
