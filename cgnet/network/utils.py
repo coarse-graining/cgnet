@@ -135,8 +135,8 @@ class Simulation():
     """
 
     def __init__(self, model, initial_coordinates, save_forces=False,
-                 length=100, save_interval=10, dt=5e-4, diffusion=1.0,
-                 beta=1.0, verbose=False):
+                 save_potential=False, length=100, save_interval=10, dt=5e-4,
+                 diffusion=1.0, beta=1.0, verbose=False):
         self.model = model
 
         if len(initial_coordinates.shape) != 3:
@@ -156,6 +156,7 @@ class Simulation():
         self.n_dims = self.initial_coordinates.shape[2]
 
         self.save_forces = save_forces
+        self.save_potential = save_potential
         self.length = length
         self.save_interval = save_interval
         self.dt = dt
@@ -177,17 +178,22 @@ class Simulation():
         "Generating {} simulations of length {} at {}-step intervals".format(
                     self.n_sims, self.length, self.save_interval)
             )
-        self.simulated_traj = np.zeros((int(self.length/self.save_interval),
-                                    self.n_sims, self.n_beads, self.n_dims))
+        save_size = int(self.length/self.save_interval)
+
+        self.simulated_traj = np.zeros((save_size, self.n_sims, self.n_beads,
+                                        self.n_dims))
         if self.save_forces:
-            self.simulated_forces = np.zeros((int(self.length/self.save_interval),
-                                    self.n_sims, self.n_beads, self.n_dims))
+            self.simulated_forces = np.zeros((save_size, self.n_sims,
+                                              self.n_beads, self.n_dims))
+
+        if self.save_potential:
+                self.simulated_potential = np.zeros((save_size))
 
         x_old = self.initial_coordinates
         dtau = self.diffusion * self.dt
 
         for t in range(self.length):
-            _, forces = self.model(x_old)
+            potential, forces = self.model(x_old)
             noise = torch.tensor(np.random.randn(self.n_sims,
                                                  self.n_beads,
                                                  self.n_dims)).float()
@@ -198,10 +204,15 @@ class Simulation():
                 if self.save_forces:
                     self.simulated_forces[t//self.save_interval,
                                           :, :] = forces.detach().numpy()
+                if self.save_potential:
+                    self.simulated_potential[
+                            t//self.save_interval] = potential.detach().numpy()
             x_old = x_new
-            if t % (self.length/10) == 0:
-                print('{}0% finished'.format(i))
-                i += 1
+
+            if self.verbose:
+                if t % (self.length/10) == 0:
+                    print('{}0% finished'.format(i))
+                    i += 1
 
         self.simulated_traj = np.swapaxes(self.simulated_traj, 0, 1)
 
