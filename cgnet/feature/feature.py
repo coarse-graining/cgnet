@@ -173,3 +173,90 @@ class RBF(nn.Module):
             output = output.matmul(self.weights.t())
         return output
 
+
+class SchNetFeature(nn.Module):
+    """
+    The SchNet featurization is characterized by:
+
+    1. Elemental Embedding
+    2. n Interaction blocks that are characterized by a residual branch
+
+    """
+    def __init__(self):
+        super(SchNetFeature, self).__init__()
+
+    def forward(self, input):
+        # Atom embedding
+        x = self.embedding(input['atomic_numbers'])
+
+        # Calculate distances and RBF expansion
+        distances_rj = self.distances(input['coordinates'])
+        rbf_expansion = RBF(distances_rj)
+
+        # Loop over interaction blocks and add outputs
+        for interaction_block in self.interactions:
+            v = interaction_block(x, rbf_expansion)
+            x += v
+
+        return x
+
+
+class InteractionBlock(nn.Module):
+    """
+    Interaction block consists of:
+
+    1. Atom-wise/Linear layer without activation
+    2. CfConv, which is a filter-generator * x (output of linear layer)
+    3. Atom-wise/Linear layer with activation
+    4. Atom-wise/Linear layer without activation
+
+
+    """
+    def __init__(self):
+        super(InteractionBlock, self).__init__()
+        self.cfconv = CFilterConv(rbf_size, n_filter)
+
+    def forward(self, x, rbf_expansion):
+        x = LinearLayer(d_in, d_out, bias=True, activation=None)
+        x = self.cfconv(x, rbf_expansion)
+        x = LinearLayer(d_in, d_out, bias=True, activation=ShiftedSoftplus())
+        x = LinearLayer(d_in, d_out, bias=True, activation=None)
+        return x
+
+
+class CFilterConv(nn.Module):
+    """
+    Continuous-filter convolution block, should contain:
+
+    Filter Generator:
+        1. Featurization of cartesian positions into distances (which are roto-translationally invariant)
+           (already precomputed so will be parsed as arguments)
+        2. Atom-wise/Linear layer with activation
+        3. Atom-wise/Linear layer with activation (in SchNet Code there is no activation here, but in paper there is)
+    Element-wise multiplication with input to form a residual connection
+
+
+    """
+    def __init__(self, d_in, d_filters):
+        super(CFilterConv, self).__init__()
+
+        self.filter_generator = LinearLayer(d_in, d_filters, bias=True,
+                                            activation=ShiftedSoftplus())\
+                                + LinearLayer(d_filters, d_filters, bias=True,
+                                              # in SchNetPack they don't use any activation here
+                                              activation=ShiftedSoftplus())
+
+    def forward(self, x, rbf_expansion):
+        W = self.filter_generator(rbf_expansion)
+        # Probably some input reshaping etc
+        # Also space for cutoff and neighbor_list filtering
+        # And Pooling
+        return x*W
+
+
+class ShiftedSoftplus(nn.Module):
+    def __init__(self):
+        super(ShiftedSoftplus, self).__init__()
+
+    def forward(self, x):
+        return nn.functional.softplus(x) - np.log(2.0)
