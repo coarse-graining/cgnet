@@ -1,25 +1,26 @@
-# Authors: Nick Charron
-# Contributors: Brooke Husic
+# Authors: Nick Charron, Brooke Husic
 
 import torch.nn as nn
 import torch
 import numpy as np
 from torch.utils.data import SubsetRandomSampler, DataLoader
-from cgnet.network import lipschitz_projection, dataset_loss
+from cgnet.network import lipschitz_projection, dataset_loss, Simulation
 from cgnet.network import CGnet, ForceLoss, LinearLayer
 from cgnet.feature import MoleculeDataset
 
-coords = np.random.randn(10, 2).astype('float32')
-forces = np.random.randn(10, 2).astype('float32')
+frames = np.random.randint(1, 3)
+beads = np.random.randint(4, 10)
+dims = 2
+
+coords = np.random.randn(frames, beads, dims).astype('float32')
+forces = np.random.randn(frames, beads, dims).astype('float32')
 dataset = MoleculeDataset(coords, forces)
-sampler = SubsetRandomSampler(np.arange(0, 10, 1))
+sampler = SubsetRandomSampler(np.arange(0, frames, 1))
 loader = DataLoader(dataset, sampler=sampler,
                     batch_size=np.random.randint(2, high=10))
 
-width = np.random.randint(3, high=10)
-
-arch = LinearLayer(2, 2, activation=nn.Tanh()) +\
-    LinearLayer(2, 1, activation=None)
+arch = (LinearLayer(dims, dims, activation=nn.Tanh()) +
+        LinearLayer(dims, 1, activation=None))
 
 model = CGnet(arch, ForceLoss()).float()
 
