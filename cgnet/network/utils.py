@@ -174,14 +174,14 @@ class Simulation():
         if self.verbose:
             i = 1
             print(
-                "Generating {} simulations of length {} at {}-step intervals".format(
+        "Generating {} simulations of length {} at {}-step intervals".format(
                     self.n_sims, self.length, self.save_interval)
             )
         self.simulated_traj = np.zeros((int(self.length/self.save_interval),
-                                        self.n_sims, self.n_beads, self.n_dims))
+                                    self.n_sims, self.n_beads, self.n_dims))
         if self.save_forces:
             self.simulated_forces = np.zeros((int(self.length/self.save_interval),
-                                              self.n_sims, self.n_beads, self.n_dims))
+                                    self.n_sims, self.n_beads, self.n_dims))
 
         x_old = self.initial_coordinates
         dtau = self.diffusion * self.dt
