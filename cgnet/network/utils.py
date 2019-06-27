@@ -116,6 +116,9 @@ class Simulation():
         respectively
     verbose : bool (default=False)
         Whether to print simulation progress information
+    random_seed : int or None (default=None)
+        Seed for random number generator; if seeded, results always will be
+        identical for the same random seed
 
     Notes
     -----
