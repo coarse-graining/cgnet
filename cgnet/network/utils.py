@@ -168,7 +168,7 @@ class Simulation():
         self.beta = beta
         self.verbose = verbose
 
-        if self.random_seed is None:
+        if random_seed is None:
             self.rng = np.random
         else:
             self.rng = np.random.RandomState(random_seed)
