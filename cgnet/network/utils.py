@@ -101,7 +101,8 @@ class Simulation():
     length : int (default=100)
         The length of the simulation in simulation timesteps
     save_interval : int (default=10)
-        The interval at which simulation timesteps should be saved
+        The interval at which simulation timesteps should be saved. Must be
+        a factor of the simulation length
     dt : float (default=5e-4)
         The integration time step for Langevin dynamics. Units are determined
         by the frame striding of the original training data simulation
@@ -137,6 +138,11 @@ class Simulation():
     def __init__(self, model, initial_coordinates, save_forces=False,
                  save_potential=False, length=100, save_interval=10, dt=5e-4,
                  diffusion=1.0, beta=1.0, verbose=False):
+        if length % save != 0:
+            raise ValueError(
+                'The save_interval must be a factor of the simulation length'
+                )
+
         self.model = model
 
         if len(initial_coordinates.shape) != 3:
