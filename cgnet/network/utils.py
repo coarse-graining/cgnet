@@ -109,7 +109,7 @@ class Simulation():
         The constant diffusion parameter for overdamped Langevin dynamics. By
         default, the diffusion is set to unity and is absorbed into the dt
         argument. However, users may specify separate diffusion and dt
-        parameters in the case that they habe some estimate of the CG diffusion
+        parameters in the case that they have some estimate of the CG diffusion
     beta : float (default=0.01)
         The thermodynamic inverse temperature, 1/(k_B T), for Boltzman constant
         k_B and temperature T. The units of k_B and T are fixed from the units
