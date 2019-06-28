@@ -27,10 +27,10 @@ def test_distance_statistics():
 
     np.testing.assert_allclose(feature_dist_mean,
                                stats.stats_dict['Distances']['mean'],
-                               rtol=1e-5)
+                               rtol=1e-4)
     np.testing.assert_allclose(feature_dist_std,
                                stats.stats_dict['Distances']['std'],
-                               rtol=1e-5)
+                               rtol=1e-4)
 
 
 def test_angle_statistics():
@@ -40,9 +40,9 @@ def test_angle_statistics():
     feature_angle_std = np.std(f.angles.numpy(), axis=0)
 
     np.testing.assert_allclose(feature_angle_mean,
-                               stats.stats_dict['Angles']['mean'], rtol=1e-6)
+                               stats.stats_dict['Angles']['mean'], rtol=1e-5)
     np.testing.assert_allclose(feature_angle_std,
-                               stats.stats_dict['Angles']['std'], rtol=1e-6)
+                               stats.stats_dict['Angles']['std'], rtol=1e-5)
 
 
 def test_dihedral_statistics():

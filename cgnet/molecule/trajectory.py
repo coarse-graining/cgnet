@@ -1,6 +1,7 @@
 # Author: B Husic
 
 
+import torch
 import numpy as np
 import mdtraj as md
 
@@ -139,6 +140,9 @@ class CGMolecule():
 
         No unit cell information is specified.
         """
+        if type(coordinates) is torch.Tensor:
+            coordinates = coordinates.detach().numpy()
+
         if len(coordinates.shape) != 3:
             raise ValueError(
                 'coordinates shape must be [frames, atoms, dimensions]'
