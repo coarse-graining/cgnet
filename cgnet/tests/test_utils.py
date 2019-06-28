@@ -90,7 +90,7 @@ def test_regular_simulation():
 
 
 def test_simulation_saved_forces():
-    # Test shape of simulation and and forces with forces saved
+    # Test shape of simulation and forces saved
     initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
     my_sim = Simulation(model, initial_coordinates, length=length,
                         save_interval=save, save_forces=True)
@@ -103,7 +103,7 @@ def test_simulation_saved_forces():
 
 
 def test_simulation_saved_potential():
-    # Test shape of simulation and potential with forces saved
+    # Test shape of simulation, potential, and forces saved
     initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
     my_sim = Simulation(model, initial_coordinates, length=length,
                         save_interval=save, save_potential=True)

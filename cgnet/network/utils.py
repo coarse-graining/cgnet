@@ -19,6 +19,21 @@ def lipschitz_projection(model, strength=10.0):
         is compared to unity, and the weight matrix is rescaled by the max
         of this comparison
 
+    Notes
+    -----
+    L2 Lipshitz regularization is a per-layer regularization that constrains
+    the Lipschitz constant of each mapping from one linear layer to the next.
+    As formulated by Gouk et. al. (2018), this constraint can be enforced by
+    comparing the magnitudes between the weighted dominant singular value of
+    the linear layer weight matrix and unity, taking the maximum, and
+    normalizing the weight matrix by this result:
+
+        W = W / max( s_dom / lambda, 1.0 )
+
+    for weight matrix W, dominant singular value s_dom, and regularization
+    strength lambda. In this form, a strong regularization is achieved for
+    lambda -> 0, and a weak regularization is achieved for lambda -> inf.
+
     References
     ----------
     Gouk, H., Frank, E., Pfahringer, B., & Cree, M. (2018). Regularisation
@@ -88,7 +103,7 @@ class Simulation():
     Parameters
     ----------
     model : cgnet.network.CGNet() instance
-        Trained model used to generate simulation  data
+        Trained model used to generate simulation data
     initial_coordinates : np.ndarray
         Coordinate data of dimension [n_simulations, n_atoms, n_dimensions].
         Each entry in the first dimension represents the first frame of an
