@@ -246,9 +246,12 @@ class Simulation():
             x_old = x_new
 
             if self.verbose:
-                if t % (self.length/10) == 0:
+                if t % (self.length/10) == 0 and t > 0:
                     print('{}0% finished'.format(i))
                     i += 1
+
+        if self.verbose:
+            print('100% finished.')
 
         self.simulated_traj = np.swapaxes(self.simulated_traj, 0, 1)
 
