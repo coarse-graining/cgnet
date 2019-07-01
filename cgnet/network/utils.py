@@ -215,8 +215,8 @@ class Simulation():
         if self.verbose:
             i = 1
             print(
-                "Generating {} simulations of length {} at {}-step intervals".format(
-                    self.n_sims, self.length, self.save_interval)
+            "Generating {} simulations of length {} at {}-step intervals".format(
+                self.n_sims, self.length, self.save_interval)
             )
         save_size = int(self.length/self.save_interval)
 
@@ -239,7 +239,8 @@ class Simulation():
             noise = self.rng.randn(self.n_sims,
                                    self.n_beads,
                                    self.n_dims)
-            x_new = x_old.detach().numpy() + forces*dtau + np.sqrt(2*dtau/self.beta)*noise
+            x_new = x_old.detach().numpy() + forces*dtau + \
+                    np.sqrt(2*dtau/self.beta)*noise
             if t % self.save_interval == 0:
                 self.simulated_traj[t//self.save_interval, :, :] = x_new
                 if self.save_forces:
@@ -253,7 +254,8 @@ class Simulation():
                         assert potential.shape[0] == self.n_sims
                         potential_dims = ([save_size, self.n_sims] +
                                           [potential.shape[j]
-                                           for j in range(1, len(potential.shape))])
+                                           for j in range(1,
+                                           len(potential.shape))])
                         self.simulated_potential = np.zeros((potential_dims))
 
                     self.simulated_potential[
