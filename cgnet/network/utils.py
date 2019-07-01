@@ -239,8 +239,8 @@ class Simulation():
             noise = self.rng.randn(self.n_sims,
                                    self.n_beads,
                                    self.n_dims)
-            x_new = x_old.detach().numpy() + forces*dtau + \
-                    np.sqrt(2*dtau/self.beta)*noise
+            x_new = (x_old.detach().numpy() + forces*dtau +
+                     np.sqrt(2*dtau/self.beta)*noise)
             if t % self.save_interval == 0:
                 self.simulated_traj[t//self.save_interval, :, :] = x_new
                 if self.save_forces:
