@@ -2,7 +2,6 @@
 
 import numpy as np
 import torch
-import warnings
 
 from cgnet.feature import MoleculeDataset
 from nose.exc import SkipTest
