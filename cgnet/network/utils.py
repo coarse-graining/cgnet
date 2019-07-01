@@ -215,8 +215,8 @@ class Simulation():
         if self.verbose:
             i = 1
             print(
-                "Generating {} simulations of length {} at {}-step intervals".format(
-                    self.n_sims, self.length, self.save_interval)
+            "Generating {} simulations of length {} at {}-step intervals".format(
+                self.n_sims, self.length, self.save_interval)
             )
         save_size = int(self.length/self.save_interval)
 
@@ -232,19 +232,20 @@ class Simulation():
 
         x_old = self.initial_coordinates
         dtau = self.diffusion * self.dt
-
         for t in range(self.length):
             potential, forces = self.model(x_old)
-            noise = torch.tensor(self.rng.randn(self.n_sims,
-                                                self.n_beads,
-                                                self.n_dims)).float()
-            x_new = x_old + forces*dtau + np.sqrt(2*dtau/self.beta)*noise
+            potential = potential.detach().numpy()
+            forces = forces.detach().numpy()
+            noise = self.rng.randn(self.n_sims,
+                                   self.n_beads,
+                                   self.n_dims)
+            x_new = (x_old.detach().numpy() + forces*dtau +
+                     np.sqrt(2*dtau/self.beta)*noise)
             if t % self.save_interval == 0:
-                self.simulated_traj[t//self.save_interval,
-                                    :, :] = x_new.detach().numpy()
+                self.simulated_traj[t//self.save_interval, :, :] = x_new
                 if self.save_forces:
                     self.simulated_forces[t//self.save_interval,
-                                          :, :] = forces.detach().numpy()
+                                          :, :] = forces
                 if self.save_potential:
                     # The potential will look different for different
                     # network structures, so determine its dimensionality
@@ -253,12 +254,13 @@ class Simulation():
                         assert potential.shape[0] == self.n_sims
                         potential_dims = ([save_size, self.n_sims] +
                                           [potential.shape[j]
-                                           for j in range(1, len(potential.shape))])
+                                           for j in range(1,
+                                           len(potential.shape))])
                         self.simulated_potential = np.zeros((potential_dims))
 
                     self.simulated_potential[
-                        t//self.save_interval] = potential.detach().numpy()
-            x_old = x_new
+                        t//self.save_interval] = potential
+            x_old = torch.tensor(x_new,requires_grad=True).float()
 
             if self.verbose:
                 if t % (self.length/10) == 0 and t > 0:
@@ -275,6 +277,6 @@ class Simulation():
 
         if self.save_potential:
             self.simulated_potential = np.swapaxes(
-                self.simulated_potential, 0, 1)
+            self.simulated_potential, 0, 1)
 
         return self.simulated_traj

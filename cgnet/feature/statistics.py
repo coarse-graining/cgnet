@@ -8,7 +8,7 @@ import scipy.spatial
 
 
 KBOLTZMANN = 1.38064852e-23
-AVOGARDO = 6.022140857e23
+AVOGADRO = 6.022140857e23
 JPERKCAL = 4184
 
 
@@ -209,7 +209,7 @@ class ProteinBackboneStatistics():
             'Must compute distances and angles in order to get bond constants'
                 )
 
-        self.beta = JPERKCAL/KBOLTZMANN/AVOGARDO/self.temperature
+        self.beta = JPERKCAL/KBOLTZMANN/AVOGADRO/self.temperature
 
         bond_mean = self.stats_dict['Distances']['mean'][:self.n_beads-1]
         angle_mean = self.stats_dict['Angles']['mean']
