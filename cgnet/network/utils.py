@@ -90,10 +90,13 @@ def dataset_loss(model, loader):
             ref_numel = coords.numel()
         potential, pred_force = model.forward(coords)
         loss += model.criterion(pred_force,
-                                force) * (coords.numel() / ref_numel)
+                                force).data.item() * (coords.numel() / ref_numel)
         num_batch += (coords.numel() / ref_numel)
+        if next(model.parameters()).is_cuda == True:
+            del coords
+            del force
     loss /= num_batch
-    return loss.data.item()
+    return loss
 
 
 class Simulation():

@@ -66,6 +66,7 @@ def test_gpu_mount():
     if not torch.cuda.is_available():
         raise SkipTest('GPU not available for testing.')
     else:
-        ds = MoleculeDataset(x, y, cuda=torch.device('cuda'))
+        selection = np.random.randint(20)
+        ds = MoleculeDataset(x, y, device=torch.device('cuda'))
         np.testing.assert_equal(ds[selection][0].device.type, 'cuda')
         np.testing.assert_equal(ds[selection][1].device.type, 'cuda')
