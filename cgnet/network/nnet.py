@@ -105,9 +105,8 @@ class CGnet(nn.Module):
 
     def __init__(self, arch, criterion, feature=None, priors=None):
         super(CGnet, self).__init__()
-
+        zscore_idx = 1
         for layer in arch:
-            zscore_idx = 1
             if isinstance(layer, ZscoreLayer):
                 self.register_buffer('zscores_{}'.format(zscore_idx),
                                      layer.zscores)
@@ -115,9 +114,9 @@ class CGnet(nn.Module):
         self.arch = nn.Sequential(*arch)
         if priors:
             self.priors = nn.Sequential(*priors)
+            harmonic_idx = 1
+            repul_idx = 1
             for layer in self.priors:
-               harmonic_idx = 1
-               repul_idx = 1
                if isinstance(layer, HarmonicLayer):
                    self.register_buffer('harmonic_params_{}'.format(harmonic_idx),
                                      layer.harmonic_parameters)

@@ -38,11 +38,8 @@ class _PriorLayer(nn.Module):
     bond_layer = HarmonicLayer(bonds, stats.descriptions, "Distances")
 
     """
-
-    def __init__(self, feat_data, descriptions, feature_type,
-                 device=torch.device('cpu')):
+    def __init__(self, feat_data, descriptions, feature_type):
         super(_PriorLayer, self).__init__()
-        self.device = device
         if feature_type not in descriptions.keys():
             raise ValueError('Feature type not found in descriptions')
         self.params = []
@@ -120,12 +117,10 @@ class RepulsionLayer(_PriorLayer):
 
     """
 
-    def __init__(self, feat_data, descriptions=None, feature_type=None,
-                 device=torch.device('cpu')):
+    def __init__(self, feat_data, descriptions=None, feature_type=None):
         super(RepulsionLayer, self).__init__(feat_data,
                                              descriptions=descriptions,
-                                             feature_type=feature_type,
-                                             device=device)
+                                             feature_type=feature_type)
         for param_dict in self.params:
             if (key in param_dict for key in ('ex_vol', 'exp')):
                 pass
@@ -133,12 +128,13 @@ class RepulsionLayer(_PriorLayer):
                 raise KeyError(
                     'Missing or incorrect key for repulsion parameters'
                 )
-        self.repulsion_parameters = torch.tensor([], device=self.device)
+        repulsion_parameters = torch.tensor([])
         for param_dict in self.params:
-            self.repulsion_parameters = torch.cat((
-                self.repulsion_parameters,
+            repulsion_parameters = torch.cat((
+                repulsion_parameters,
                 torch.tensor([[param_dict['ex_vol']],
-                              [param_dict['exp']]], device=self.device)), dim=1)
+                              [param_dict['exp']]])), dim=1)
+        self.register_buffer('repulsion_parameters', repulsion_parameters)
 
     def forward(self, in_feat):
         """Calculates repulsion interaction contributions to energy
@@ -200,23 +196,21 @@ class HarmonicLayer(_PriorLayer):
 
     """
 
-    def __init__(self, feat_data, descriptions=None, feature_type=None,
-                 device=torch.device('cpu')):
+    def __init__(self, feat_data, descriptions=None, feature_type=None):
         super(HarmonicLayer, self).__init__(feat_data,
                                             descriptions=descriptions,
-                                            feature_type=feature_type,
-                                            device=device)
+                                            feature_type=feature_type)
         for param_dict in self.params:
             if (key in param_dict for key in ('k', 'mean')):
                 pass
             else:
                 KeyError('Missing or incorrect key for harmonic parameters')
-        self.harmonic_parameters = torch.tensor([], device=self.device)
+        harmonic_parameters = torch.tensor([])
         for param_dict in self.params:
-            self.harmonic_parameters = torch.cat((self.harmonic_parameters,
-                                                  torch.tensor([[param_dict['k']],
-                                                  [param_dict['mean']]],
-                                                  device=self.device)), dim=1)
+            harmonic_parameters = torch.cat((harmonic_parameters,
+                                             torch.tensor([[param_dict['k']],
+                                             [param_dict['mean']]])), dim=1)
+        self.register_buffer('harmonic_parameters', harmonic_parameters)
 
     def forward(self, in_feat):
         """Calculates harmonic contribution of bond/angle interactions to energy
@@ -263,10 +257,9 @@ class ZscoreLayer(nn.Module):
 
     """
 
-    def __init__(self, zscores, device=torch.device('cpu')):
+    def __init__(self, zscores):
         super(ZscoreLayer, self).__init__()
-        self.device = device
-        self.zscores = zscores.to(self.device)
+        self.register_buffer('zscores', zscores)
 
     def forward(self, in_feat):
         """Normalizes each feature by subtracting its mean and dividing by

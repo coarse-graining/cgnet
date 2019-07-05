@@ -48,13 +48,13 @@ def test_model_gpu_mount():
     device = torch.device('cuda')
     dataset = MoleculeDataset(coords, forces, device=device)
     loader = DataLoader(dataset, batch_size=1)
-    arch = [ZscoreLayer(zscores, device=device)]
+    arch = [ZscoreLayer(zscores)]
     arch += LinearLayer(sum(nums), width)
     arch += LinearLayer(width, 1)
 
-    priors = [HarmonicLayer(bonds, descriptions, "Distances", device=device)]
+    priors = [HarmonicLayer(bonds, descriptions, "Distances")]
     priors += [RepulsionLayer(repul_dict, descriptions,
-                              "Distances", device=device)]
+                              "Distances")]
 
     model = CGnet(arch, ForceLoss(), feature=ProteinBackboneFeature(),
                   priors=priors).float().to(device)
