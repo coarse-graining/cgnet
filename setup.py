@@ -19,10 +19,10 @@ def readlist(filename):
 setup(
     name=NAME,
     version=VERSION,
-    author="Jiang Wang, B Husic, Nick Charron, ...",
+    author="Nick Charron, Brooke Husic, Dominik Lemm, Jiang Wang",
     author_email="bhusic@stanford.edu",
     url='https://github.com/coarse-graining/cgnet',
-    download_url='https://github.com/coarse-graining/cgnet/tarball/master',
+    #download_url='https://github.com/coarse-graining/cgnet/tarball/master',
     #long_description=read('README.md'),
     license='BSD-3-Clause',
     packages=find_packages(),
