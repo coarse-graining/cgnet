@@ -16,8 +16,21 @@ class ShiftedSoftplus(nn.Module):
     def __init__(self):
         super(ShiftedSoftplus, self).__init__()
 
-    def forward(self, x):
-        return nn.functional.softplus(x) - np.log(2.0)
+    def forward(self, input_tensor):
+        """ Applies the shifted soft-plus function element-wise
+
+        Parameters
+        ----------
+        input_tensor: torch.Tensor
+            Input tensor of shape (n_examples, *) where `*` means, any number of
+            additional dimensions
+
+        Returns
+        -------
+        Output: torch.Tensor
+            Same shape (n_examples, *) as the input.
+        """
+        return nn.functional.softplus(input_tensor) - np.log(2.0)
 
 
 class RadialBasisFunction(nn.Module):
