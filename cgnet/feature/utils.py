@@ -48,8 +48,8 @@ class RadialBasisFunction(nn.Module):
     Parameters
     ----------
     cutoff : float (default 5.0)
-        Distance cutoff for the Gaussian function. Cutoff will be the center of
-        the last function.
+        Distance cutoff for the Gaussian function. The cutoff represents the
+        center of the last gaussian function in basis.
     num_gaussians : int (default 50)
         Total number of Gaussian functions to calculate. Number will be used to
         create a uniform grid from 0.0 to cutoff. The number of Gaussians will
