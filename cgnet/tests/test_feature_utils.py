@@ -16,18 +16,22 @@ def test_radial_basis_function():
 
     # Distances need to have shape (n_batch, n_beads, n_neighbors)
     distances = torch.randn((num_examples, num_beads, num_beads - 1))
-    variance = 1.0
+    variance = np.random.random()
+    n_gaussians = np.random.randint(5, 10)
+    cutoff = np.random.uniform(1.0, 5.0)
 
     # Calculate Gaussian expansion using the implemented layer
-    rbf = RadialBasisFunction(cutoff=4.0, num_gaussians=6, variance=variance)
+    rbf = RadialBasisFunction(cutoff=cutoff, num_gaussians=n_gaussians,
+                              variance=variance)
     gauss_layer = rbf.forward(distances)
 
     # Manually calculate expansion
-    centers = torch.tensor([0.0000, 0.8000, 1.6000, 2.4000, 3.2000, 4.0000])
+    centers = torch.linspace(0.0, cutoff, n_gaussians)
     coefficient = -0.5 / variance
-    magnitude_squared = (distances.unsqueeze(dim=3) - centers)**2
+    magnitude_squared = torch.pow(distances.unsqueeze(dim=3) - centers, 2)
     gauss_manual = torch.exp(coefficient * magnitude_squared)
 
+    np.testing.assert_equal(centers.shape, rbf.centers.shape)
     np.testing.assert_allclose(gauss_layer, gauss_manual)
 
 
