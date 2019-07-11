@@ -7,12 +7,28 @@ import torch.nn as nn
 
 
 class ShiftedSoftplus(nn.Module):
-    """
-    Shifted soft-plus activation function with the form:
+    r""" Shifted softplus (SSP) activation function
 
-        y = \ln\left(1 + e^{-x}\right) - \ln(2)
+    SSP originates from the softplus function:
 
-    Guarantees smooth derivates and conserves zero-activations.
+        y = \ln\left(1 + e^{-x}\right)
+
+    Schütt et al. (2018) introduced a shifting factor to the function in order
+    to ensure that SSP(0) = 0 while having infinite order of continuity:
+
+         y = \ln\left(1 + e^{-x}\right) - \ln(2)
+
+    SSP allows to obtain smooth potential energy surfaces and second derivatives
+    that are required for training with forces as well as the calculation of
+    vibrational modes (Schütt et al. 2018).
+
+    References
+    ----------
+    K.T. Schütt. P.-J. Kindermans, H. E. Sauceda, S. Chmiela,
+        A. Tkatchenko, K.-R. Müller. (2018)
+        SchNet - a deep learning architecture for molecules and materials.
+        The Journal of Chemical Physics.
+        https://doi.org/10.1063/1.5019779
 
     """
 
@@ -20,13 +36,13 @@ class ShiftedSoftplus(nn.Module):
         super(ShiftedSoftplus, self).__init__()
 
     def forward(self, input_tensor):
-        """ Applies the shifted soft-plus function element-wise
+        """ Applies the shifted softplus function element-wise
 
         Parameters
         ----------
         input_tensor: torch.Tensor
             Input tensor of shape (n_examples, *) where `*` means, any number of
-            additional dimensions
+            additional dimensions.
 
         Returns
         -------
@@ -37,27 +53,28 @@ class ShiftedSoftplus(nn.Module):
 
 
 class RadialBasisFunction(nn.Module):
-    """Radial basis function layer
+    r"""Radial basis function (RBF) layer
 
     This layer serves as a distance expansion using radial basis functions with
     the following form:
 
         e_k (r_j - r_i) = exp(- \gamma (\left \| r_j - r_i \right \| - \mu_k)^2)
 
-    with mu_k being the centers chosen on a uniform grid and gamma as  a scaling
-    parameter. The radial basis function has the effect of decorellating the
+    with centers mu_k calculated on a uniform grid between
+    zero and the distance cutoff and gamma as a scaling parameter.
+    The radial basis function has the effect of decorrelating the
     convolutional filter, which improves the training time.
 
     Parameters
     ----------
-    cutoff : float (default 5.0)
+    cutoff : float (default=5.0)
         Distance cutoff for the Gaussian function. The cutoff represents the
         center of the last gaussian function in basis.
-    num_gaussians : int (default 50)
+    num_gaussians : int (default=50)
         Total number of Gaussian functions to calculate. Number will be used to
         create a uniform grid from 0.0 to cutoff. The number of Gaussians will
         also decide the output size of the RBF layer output
-        ([n_examples, n_beads, n_nbh, n_gauss]).
+        ([n_examples, n_beads, n_neighbors, n_gauss]).
     variance : float (default=1.0)
         The variance (standard deviation squared) of the Gaussian functions.
     """
@@ -74,14 +91,15 @@ class RadialBasisFunction(nn.Module):
         Parameters
         ----------
         distances : torch.Tensor
-            Interatomic distances of shape [n_examples, n_beads, n_nbh]
+            Interatomic distances of shape [n_examples, n_beads, n_neighbors]
 
         Returns
         -------
         gaussian_exp: torch.Tensor
-            Gaussian expansions of shape [n_examples, n_beads, n_nbh, n_gauss]
+            Gaussian expansions of shape [n_examples, n_beads, n_neighbors, n_gauss]
         """
         dist_centered_squared = torch.pow(distances.unsqueeze(dim=3) -
-                                      self.centers, 2)
-        gaussian_exp = torch.exp(-(0.5 / self.variance) * dist_centered_squared)
+                                          self.centers, 2)
+        gaussian_exp = torch.exp(-(0.5 / self.variance)
+                                 * dist_centered_squared)
         return gaussian_exp
