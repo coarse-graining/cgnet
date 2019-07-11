@@ -16,7 +16,7 @@ def test_radial_basis_function():
 
     # Distances need to have shape (n_batch, n_beads, n_neighbors)
     distances = torch.randn((num_examples, num_beads, num_beads - 1))
-    variance = np.random.random()
+    variance = np.random.random() + 1
     n_gaussians = np.random.randint(5, 10)
     cutoff = np.random.uniform(1.0, 5.0)
 
