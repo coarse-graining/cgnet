@@ -5,7 +5,7 @@
 import numpy as np
 import torch
 import scipy.spatial
-
+import matplotlib.pyplot as plt
 
 KBOLTZMANN = 1.38064852e-23
 AVOGADRO = 6.022140857e23
@@ -96,7 +96,7 @@ class ProteinBackboneStatistics():
 
     def _flip_dict(self, mydict):
         all_inds = np.unique(np.concatenate([list(mydict[stat].keys())
-                                     for stat in mydict.keys()]))
+                                             for stat in mydict.keys()]))
 
         newdict = {}
         for i in all_inds:
@@ -206,8 +206,8 @@ class ProteinBackboneStatistics():
 
         if self.distances is None or self.angles is None:
             raise RuntimeError(
-            'Must compute distances and angles in order to get bond constants'
-                )
+                'Must compute distances and angles in order to get bond constants'
+            )
 
         self.beta = JPERKCAL/KBOLTZMANN/AVOGADRO/self.temperature
 
@@ -329,3 +329,100 @@ class ProteinBackboneStatistics():
                              for i in range(self.n_beads-3)])
         self.descriptions['Dihedral_cosines'] = descriptions
         self.descriptions['Dihedral_sines'] = descriptions
+
+
+def compute_KLdivergence(dist1, dist2):
+    """Compute the intersection between two histograms
+
+    Parameters
+    ----------
+    dist1 : numpy.array
+        first distribution
+    dist2 : numpy.array
+        second distribution
+
+    Returns
+    -------
+    div : float
+        the Kullback-Leibler divergence of the two histograms
+
+    """
+
+    dist1 = np.ma.masked_where(dist1 == 0, dist1)
+    dist2 = np.ma.masked_where(dist2 == 0, dist2)
+    summand = dist1 * np.ma.log(dist1/dist2)
+    div = np.ma.sum(summand)
+    return div
+
+
+def compare_distributions(traj1, traj2, nbins=60,
+                          labels=['Distribution 1', 'Distribution 2'],
+                          xaxis=None, yaxis=None,
+                          return_hist=False, kl_div=False):
+    """Produces overlaid histogram plots, and optionally computes KL divergence
+
+    Parameters
+    ----------
+    traj1 : numpy.array
+        series of values for first feature with which to compute the first
+        distribution
+    traj2 : numpy.array
+        series of values for second feature with which to compute the second
+        distribution
+    labels : list of strings (default=['Distribution 1', 'Distribution 2'])
+        Optional specification of the labels for the distributions in the
+        plot legend
+    xaxis : string (default=None)
+        optional string for the x-axis of the histogram plot
+    yaxis : string (default=None)
+        optional string for the y-axis of the histogram plot
+    return_hist : bool (default=False)
+        if True, the histograms of each distribution are returned
+    kl_div : bool (default=False)
+        if True, the Kullback-Leibler divergence is calculated for the two
+        distributions
+
+    Returns
+    -------
+    if kl_div and not return_hist :
+        div : float
+            The KL divergence of the two historgrams
+    if return_hist and not kl_div :
+        hist1, hist2, bins : tuple(np.array):
+            The normalized histograms and bins
+    if return_hist and kl_div :
+         hist1, hist2, bins, div : tuple(np.array) :
+            The normalized histograms, bins, and KL divergence
+
+    """
+    l_edge1 = np.min(traj1)
+    r_edge1 = np.max(traj1)
+    l_edge2 = np.min(traj2)
+    r_edge2 = np.max(traj2)
+    l_edge = np.min([l_edge1, l_edge2])
+    r_edge = np.max([r_edge1, r_edge2])
+    bins = np.linspace(l_edge, r_edge, nbins)
+    hist1, bins = np.histogram(traj1, bins=bins)
+    hist2, bins = np.histogram(traj2, bins=bins)
+    hist1 = hist1/np.sum(hist1)
+    hist2 = hist2/np.sum(hist2)
+
+    if labels:
+        plt.hist(traj1, bins=bins, alpha=0.5, label=labels[0], density=True)
+        plt.hist(traj2, bins=bins, alpha=0.5, label=labels[1], density=True)
+        plt.legend(loc='best')
+    else:
+        plt.hist(traj1, bins=bins, alpha=0.5, density=True)
+        plt.hist(traj2, bins=bins, alpha=0.5, density=True)
+    if xaxis:
+        plt.xlabel(xaxis)
+    if yaxis:
+        plt.ylabel(yaxis)
+    if kl_div:
+        div = compute_KLdivergence(hist1, hist2)
+    if return_hist and not kl_div:
+        return hist1, hist2, bins
+    if kl_div and not return_hist:
+        return div
+    if return_hist and kl_div:
+        return hist1, hist2, bins, div

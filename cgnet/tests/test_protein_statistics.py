@@ -6,6 +6,7 @@ import torch
 
 from cgnet.feature import ProteinBackboneFeature
 from cgnet.feature import ProteinBackboneStatistics
+from cgnet.feature import compute_KLdivergence
 
 frames = np.random.randint(1, 10)
 beads = np.random.randint(4, 10)
@@ -111,3 +112,25 @@ def test_bondconst_dict_2():
             assert len(bondconst_dict[k]) == n_keys_bondconst
         else:
             assert len(bondconst_dict[k]) == n_keys
+
+
+def test_compute_KLdivergence():
+    # Tests the calculation of KL divergence for histograms drawn from
+    # unifrom distributions
+    nbins = np.random.randint(0, high=50)
+    bins = np.linspace(0, 1, nbins)
+    hist1, bins = np.histogram(np.random.uniform(size=nbins), bins=bins,
+                               density=True)
+    hist2, bins = np.histogram(np.random.uniform(size=nbins), bins=bins,
+                               density=True)
+
+    div = compute_KLdivergence(hist1, hist1)
+    np.testing.assert_allclose(0.0, div)
+
+    hist1 = np.ma.masked_where(hist1 == 0, hist1)
+    hist2 = np.ma.masked_where(hist2 == 0, hist2)
+    summand = hist1 * np.ma.log(hist1/hist2)
+    div_0 = np.ma.sum(summand)
+    div = compute_KLdivergence(hist1, hist2)
+    print(div)
+    np.testing.assert_equal(div_0, div)
