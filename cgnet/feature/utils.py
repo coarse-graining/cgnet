@@ -82,8 +82,7 @@ class RadialBasisFunction(nn.Module):
     def __init__(self, cutoff=5.0, num_gaussians=50, variance=1.0):
         super(RadialBasisFunction, self).__init__()
         self.centers = torch.linspace(0.0, cutoff, num_gaussians)
-        self.variance = torch.FloatTensor(
-            variance * torch.ones_like(self.centers))
+        self.variance = variance
 
     def forward(self, distances):
         """Calculate Gaussian expansion
