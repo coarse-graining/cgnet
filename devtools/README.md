@@ -5,7 +5,7 @@ Thank you for contributing to `cgnet`! Here are our recommended practices for co
 
 Developer and merging info
 --
-The developers (@developers) are Brooke ([@brookehus](https://github.com/brookehus)), Nick ([@nec4](https://github.com/nec4)), and Dominik ([@Dom1L](https://github.com/Dom1L)). Only developers have merge permissions to master.
+The developers (@coarse-graining/developers) are Brooke ([@brookehus](https://github.com/brookehus)), Nick ([@nec4](https://github.com/nec4)), and Dominik ([@Dom1L](https://github.com/Dom1L)). Only developers have merge permissions to master.
 
 - PRs from non-developers require 2/3 approving developer reviews
 - Major PRs from developers require 2/2 approving reviews from the other developers
@@ -23,7 +23,7 @@ PR best practices
 
 Dependency best practices
 --
-- Discuss with the @developers about how and whether to incorporate a new dependency.
+- Discuss with the @coarse-graining/developers about how and whether to incorporate a new dependency.
 - As of now, we are not adding plotting utilities to the main code; this may change in the future!
 
 Coding best practices (just a small subset!)
