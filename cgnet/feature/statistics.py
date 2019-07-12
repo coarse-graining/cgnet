@@ -422,7 +422,6 @@ def js_divergence(dist1, dist2):
         https://dx.doi.org/10.1109/18.61115
 
     """
-
     dist1 = np.ma.masked_where(dist1 == 0, dist1)
     dist2 = np.ma.masked_where(dist2 == 0, dist2)
     elementwise_mean = 0.5 * (dist1 + dist2)
