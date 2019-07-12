@@ -10,6 +10,7 @@ The developers (@coarse-graining/developers) are Brooke ([@brookehus](https://gi
 - PRs from non-developers require 2/3 approving developer reviews.
 - Major PRs from developers require 2/2 approving reviews from the other developers.
 - Minor PRs from developers require 1/2 approving reviews from the other developers.
+- For now, if it's not obvious, we'll just talk within each PR about whether it's "major" or "minor". If this seems to be a hassle, we can add labels or come up with another method.
 
 
 PR best practices
@@ -34,7 +35,7 @@ Coding best practices (just a small subset!)
 - Use `pep8` formatting! Packages like `autopep8` can help with this.
 - Add yourself to the contributors list at the top of the file.
 - Classes are `CamelCase`, and functions `use_underscores`.
-- Intra-code dependencies should be one-directional: e.g., `cgnet.network` can import from `cgnet.feature`, but not hte other way around.
+- Intra-code dependencies should be one-directional: e.g., `cgnet.network` can import from `cgnet.feature`, but not the other way around.
 - Use descriptive variable names, documentation, and comments! You will thank yourself later.
 - Don't hide problems! Be transparent and add notes about anything that comes up but remains unaddressed. 
 
