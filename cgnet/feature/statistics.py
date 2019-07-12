@@ -332,8 +332,8 @@ class ProteinBackboneStatistics():
 
 
 def kl_divergence(dist1, dist2):
-    r"""Compute the Kullback-Leibler (KL) divergence between two histograms
-    according to:
+    r"""Compute the Kullback-Leibler (KL) divergence between two discrete
+    distributions according to:
 
     \sum_i P_i \log(P_i / Q_i)
 
@@ -349,7 +349,7 @@ def kl_divergence(dist1, dist2):
     Returns
     -------
     divergence : float
-        the Kullback-Leibler divergence of the two histograms
+        the Kullback-Leibler divergence of the two distributions
 
     Notes
     -----
@@ -365,8 +365,8 @@ def kl_divergence(dist1, dist2):
     return divergence
 
 def js_divergence(dist1, dist2):
-    r"""Compute the Jenson-Shannon (JS) divergence between two histograms
-    according to:
+    r"""Compute the Jenson-Shannon (JS) divergence between two discrete
+    distributions according to:
 
     0.5 * \sum_i P_i \log(P_i / M_i) + 0.5 * \sum_i Q_i \log(Q_i / M_i),
 
@@ -384,7 +384,7 @@ def js_divergence(dist1, dist2):
     Returns
     -------
     divergence : float
-        the Jenson-Shannon divergence of the two histograms
+        the Jenson-Shannon divergence of the two distributions
 
     Notes
     -----
