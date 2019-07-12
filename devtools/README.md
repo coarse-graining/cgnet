@@ -7,9 +7,9 @@ Developer and merging info
 --
 The developers (@coarse-graining/developers) are Brooke ([@brookehus](https://github.com/brookehus)), Nick ([@nec4](https://github.com/nec4)), and Dominik ([@Dom1L](https://github.com/Dom1L)). Only developers have merge permissions to master.
 
-- PRs from non-developers require 2/3 approving developer reviews
-- Major PRs from developers require 2/2 approving reviews from the other developers
-- Minor PRs from developers require 1/2 approving reviews from the other developers
+- PRs from non-developers require 2/3 approving developer reviews.
+- Major PRs from developers require 2/2 approving reviews from the other developers.
+- Minor PRs from developers require 1/2 approving reviews from the other developers.
 
 
 PR best practices
@@ -18,6 +18,7 @@ PR best practices
 - Default to PRing to other people's branches, even if it seems obnoxious. Never commit to someone else's branch unless you have cleared it with them first!
 - *Never merge your own PR, especially to master*, but in general to any branch.
 - Never commit any kinds of non-coding files without discussing first.
+- Run `nosetests` before requesting final reviews, and run `nosetests` whenever you review.
 - Be nice and constructive with your feedback!
 - Always give a passing review before merging, even if it's just "LGTM"! 
 
@@ -28,7 +29,7 @@ Dependency best practices
 
 Coding best practices (just a small subset!)
 --
-- *Always* use python 3 and pytorch >= 1.0!
+- *Always* use python 3 and `pytorch >= 1.0`!
 - Use `pep8` formatting! Packages like `autopep8` can help with this.
 - Add yourself to the contributors list at the top of the file.
 - Classes are `CamelCase`, and functions `use_underscores`.
