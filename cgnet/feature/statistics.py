@@ -413,7 +413,7 @@ def compute_JSdivergence(dist1, dist2):
     return div
 
 
-def compare_distributions(traj1, traj2, nbins=60, overlap=False):
+def compare_distributions(traj1, traj2, nbins=60, compute_overlap=None):
     """Produces overlaid histogram plots, and optionally computes KL divergence
 
     Parameters
