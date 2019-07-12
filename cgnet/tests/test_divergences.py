@@ -17,7 +17,7 @@ def _get_random_distr():
 
 
 def _get_uniform_histograms():
-	nbins = np.random.randint(0, high=50)
+	nbins = np.random.randint(2, high=50)
 	bins_ = np.linspace(0, 1, nbins)
 	hist1, bins1 = np.histogram(np.random.uniform(size=nbins), bins=bins_,
 	                           density=True)
@@ -35,7 +35,7 @@ def test_zero_kl_divergence():
     # Tests the calculation of KL divergence for a random distribution from
     # zeros with itself
     div = kl_divergence(dist1, dist1)
-    assert div == 0
+    np.testing.assert_allclose(div, 0.)
 
 
 def test_kl_divergence():
@@ -54,7 +54,7 @@ def test_zero_js_divergence():
     # Tests the calculation of JS divergence for a random distribution from
     # zeros with itself
     div = js_divergence(dist1, dist1)
-    assert div == 0
+    np.testing.assert_allclose(div, 0.)
 
 
 def test_js_divergence():
@@ -109,3 +109,11 @@ def test_histogram_intersection():
 
 	cgnet_intersection = histogram_intersection(hist1, hist2, bins_)
 	assert manual_intersection == cgnet_intersection
+
+
+def test_histogram_intersection_no_bins():
+    # Tests the calculation of intersection for histograms drawn from
+    # uniform distributions
+	cgnet_intersection = histogram_intersection(hist1, hist2, bins_)
+	nobins_intersection = histogram_intersection(hist1, hist2, bins=None)
+	np.testing.assert_allclose(cgnet_intersection, nobins_intersection)
