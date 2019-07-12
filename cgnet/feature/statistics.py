@@ -1,10 +1,11 @@
-# Author: B Husic
+# Authors: Brooke Husic, Nick Charron
 # Contributors: Jiang Wang
 
 
 import numpy as np
 import torch
 import scipy.spatial
+
 
 KBOLTZMANN = 1.38064852e-23
 AVOGADRO = 6.022140857e23
@@ -354,47 +355,59 @@ def compute_intersection(dist1, dist2, bins):
     return intersect
 
 
-def compute_KLdivergence(dist1, dist2):
-    """Compute the Kullback-Leibler divergence between two histograms
+def kl_divergence(dist1, dist2):
+    r"""Compute the Kullback-Leibler (KL) divergence between two histograms
+    according to:
+
+    \sum_i P_i \log(P_i / Q_i)
+
+    where P_i is the reference distribution and Q_i is the test distribution
 
     Parameters
     ----------
     dist1 : numpy.array
-        first distribution
+        reference distribution of shape [n,] for n points
     dist2 : numpy.array
-        second distribution
+        test distribution of shape [n,] for n points
 
     Returns
     -------
-    div : float
+    divergence : float
         the Kullback-Leibler divergence of the two histograms
 
     Notes
     -----
-    The KL divergence is not symmetric under distribution exchange.
-    The expectation is taken over the first ditribution.
+    The KL divergence is not symmetric under distribution exchange;
+    the expectation is taken over the reference distribution.
 
     """
 
     dist1 = np.ma.masked_where(dist1 == 0, dist1)
     dist2 = np.ma.masked_where(dist2 == 0, dist2)
     summand = dist1 * np.ma.log(dist1/dist2)
-    div = np.ma.sum(summand)
-    return div
+    divergence = np.ma.sum(summand)
+    return divergence
 
-def compute_JSdivergence(dist1, dist2):
-    """Compute the Jenson-Shannon divergence between two histograms
+def js_divergence(dist1, dist2):
+    r"""Compute the Jenson-Shannon (JS) divergence between two histograms
+    according to:
+
+    0.5 * \sum_i P_i \log(P_i / M_i) + 0.5 * \sum_i Q_i \log(Q_i / M_i),
+
+    where M_i is the elementwise mean of P_i and Q_i. This is equivalent to,
+
+    0.5 * kl_divergence(P, Q) + 0.5 * kl_divergence(Q, P).
 
     Parameters
     ----------
     dist1 : numpy.array
-        first distribution
+        first distribution of shape [n,] for n points
     dist2 : numpy.array
-        second distribution
+        second distribution of shape [n,] for n points
 
     Returns
     -------
-    div : float
+    divergence : float
         the Jenson-Shannon divergence of the two histograms
 
     Notes
@@ -402,15 +415,20 @@ def compute_JSdivergence(dist1, dist2):
     The JS divergence is the symmetrized extension of the KL divergence.
     It is also referred to as the information radius.
 
+    References
+    ----------
+    Lin, J. (1991). Divergence measures based on the Shannon entropy.
+        IEEE Transactions on Information Theory.
+        https://dx.doi.org/10.1109/18.61115
+
     """
 
     dist1 = np.ma.masked_where(dist1 == 0, dist1)
     dist2 = np.ma.masked_where(dist2 == 0, dist2)
-    mix = 0.5 * (dist1 + dist2)
-    summand = 0.5 * (dist1 * np.ma.log(dist1/mix))
-    summand += 0.5 * (dist2 * np.ma.log(dist2/mix))
-    div = np.ma.sum(summand)
-    return div
+    elementwise_mean = 0.5 * (dist1 + dist2)
+    divergence = (0.5*kl_divergence(dist1, elementwise_mean) +
+                  0.5*kl_divergence(dist2, elementwise_mean))
+    return divergence
 
 
 def compare_distributions(traj1, traj2, nbins=60, compute_overlap=None):
