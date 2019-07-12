@@ -19,6 +19,7 @@ PR best practices
 - *Never merge your own PR, especially to master*, but in general to any branch.
 - Never commit any kinds of non-coding files without discussing first.
 - Run `nosetests` before requesting final reviews, and run `nosetests` whenever you review.
+- Use the labels and milestones that we've made to categorize your PRs (and issues).
 - Be nice and constructive with your feedback!
 - Always give a passing review before merging, even if it's just "LGTM"! 
 
