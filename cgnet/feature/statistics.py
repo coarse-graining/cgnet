@@ -357,6 +357,8 @@ def kl_divergence(dist1, dist2):
     the expectation is taken over the reference distribution.
 
     """
+    if len(dist1) != len(dist2):
+        raise ValueError('Distributions must be of equal length')
 
     dist1m = np.ma.masked_where(dist1 == 0, dist1)
     dist2m = np.ma.masked_where(dist2 == 0, dist2)
@@ -398,6 +400,9 @@ def js_divergence(dist1, dist2):
         https://dx.doi.org/10.1109/18.61115
 
     """
+    if len(dist1) != len(dist2):
+        raise ValueError('Distributions must be of equal length')
+
     dist1m = np.ma.masked_where(dist1 == 0, dist1)
     dist2m = np.ma.masked_where(dist2 == 0, dist2)
     elementwise_mean = 0.5 * (dist1m + dist2m)
