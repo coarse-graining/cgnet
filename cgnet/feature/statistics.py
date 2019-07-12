@@ -330,29 +330,32 @@ class ProteinBackboneStatistics():
         self.descriptions['Dihedral_cosines'] = descriptions
         self.descriptions['Dihedral_sines'] = descriptions
 
-def compute_intersection(dist1, dist2, bins):
+
+def histogram_intersection(dist1, dist2, bins):
     """Compute the intersection between two histograms
 
     Parameters
     ----------
     dist1 : numpy.array
-        first distribution
+        first distribution of shape [n,] for n points
     dist2 : numpy.array
-        second distribution
+        second distribution of shape [n,] for n points
     bins : numpy.array
-        bins for both dist1 and dist2
+        bins for both dist1 and dist2; must be identical for both
+        distributions of shape [k,] for k bins
 
     Returns
     -------
     intersect : float
-        the intersection of the two histograms
+        The intersection of the two histograms; i.e., the percentage of bins
+        in which both distributions are populated
     """
-    intersect = 0.00
+    intersection = 0.
     intervals = np.diff(bins)
     for i in range(len(intervals)):
-        intersect += min(intervals[i] * dist1[i],
-                         intervals[i] * dist2[i])
-    return intersect
+        intersection += min(intervals[i] * dist1[i],
+                            intervals[i] * dist2[i])
+    return intersection
 
 
 def kl_divergence(dist1, dist2):

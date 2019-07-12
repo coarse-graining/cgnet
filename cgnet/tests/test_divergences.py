@@ -2,26 +2,33 @@
 
 import numpy as np
 
-from cgnet.feature import kl_divergence
-from cgnet.feature import js_divergence
-from cgnet.feature import compute_intersection
+from cgnet.feature import kl_divergence, js_divergence, histogram_intersection
 
 
 def _get_random_distr():
-    length = np.random.randint(5, 50)
-    n_zeros = np.random.randint(1, 10)
+    length = np.random.randint(0, 50)
+    n_zeros = np.random.randint(0, 10)
     zeros = np.zeros(n_zeros)
     dist1 = np.abs(np.concatenate([np.random.randn(length), zeros]))
     dist2 = np.abs(np.concatenate([np.random.randn(length), zeros]))
     np.random.shuffle(dist1)
     np.random.shuffle(dist2)
-    dist1 /= np.sum(dist1)
-    dist2 /= np.sum(dist2)
-
     return dist1, dist2
 
 
+def _get_uniform_histograms():
+	nbins = np.random.randint(0, high=50)
+	bins_ = np.linspace(0, 1, nbins)
+	hist1, bins1 = np.histogram(np.random.uniform(size=nbins), bins=bins_,
+	                           density=True)
+	hist2, bins2 = np.histogram(np.random.uniform(size=nbins), bins=bins_,
+	                           density=True)
+	np.testing.assert_array_equal(bins1, bins2)
+	return hist1, hist2, bins_, bins1
+
+
 dist1, dist2 = _get_random_distr()
+hist1, hist2, bins_, bins = _get_uniform_histograms()
 
 
 def test_zero_kl_divergence():
@@ -84,22 +91,21 @@ def test_js_divergence_2():
 	np.testing.assert_allclose(manual_div, cgnet_div)
 
 
-# def test_compute_intersection():
-#     # Tests the calculation of intersection for histograms drawn from
-#     # uniform distributions
-#     nbins = np.random.randint(0, high=50)
-#     bins = np.linspace(0, 1, nbins)
-#     hist1, bins = np.histogram(np.random.uniform(size=nbins), bins=bins,
-#                                density=True)
-#     hist2, bins = np.histogram(np.random.uniform(size=nbins), bins=bins,
-#                                density=True)
+def test_full_histogram_intersection():
+    # Tests the intersection of a uniform histogram with itself
+	cgnet_intersection = histogram_intersection(hist1, hist1, bins)
+	np.testing.assert_allclose(cgnet_intersection, 1.)
+	assert cgnet_intersection == 1.
 
-#     inter = compute_intersection(hist1, hist1, bins)
-#     np.testing.assert_allclose(1, inter)
 
-#     inter_0 = 0.00
-#     intervals = np.diff(bins)
-#     for i in range(len(intervals)):
-#         inter_0 += min(intervals[i] * hist1[i], intervals[i] * hist2[i])
-#     inter = compute_intersection(hist1, hist2, bins)
-#     assert inter_0 == inter
+def test_histogram_intersection():
+    # Tests the calculation of intersection for histograms drawn from
+    # uniform distributions
+	manual_intersection = 0.
+	intervals = np.diff(bins_)
+	for i in range(len(intervals)):
+	    manual_intersection += min(intervals[i] * hist1[i],
+	                               intervals[i] * hist2[i])
+
+	cgnet_intersection = histogram_intersection(hist1, hist2, bins_)
+	assert manual_intersection == cgnet_intersection
