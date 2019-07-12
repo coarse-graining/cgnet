@@ -108,7 +108,7 @@ def test_histogram_intersection():
 	                               intervals[i] * hist2[i])
 
 	cgnet_intersection = histogram_intersection(hist1, hist2, bins_)
-	assert manual_intersection == cgnet_intersection
+	np.testing.assert_allclose(manual_intersection, cgnet_intersection)
 
 
 def test_histogram_intersection_no_bins():
