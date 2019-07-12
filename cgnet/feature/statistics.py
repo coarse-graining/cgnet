@@ -358,9 +358,9 @@ def kl_divergence(dist1, dist2):
 
     """
 
-    dist1 = np.ma.masked_where(dist1 == 0, dist1)
-    dist2 = np.ma.masked_where(dist2 == 0, dist2)
-    summand = dist1 * np.ma.log(dist1/dist2)
+    dist1m = np.ma.masked_where(dist1 == 0, dist1)
+    dist2m = np.ma.masked_where(dist2 == 0, dist2)
+    summand = dist1m * np.ma.log(dist1m / dist2m)
     divergence = np.ma.sum(summand)
     return divergence
 
@@ -398,11 +398,11 @@ def js_divergence(dist1, dist2):
         https://dx.doi.org/10.1109/18.61115
 
     """
-    dist1 = np.ma.masked_where(dist1 == 0, dist1)
-    dist2 = np.ma.masked_where(dist2 == 0, dist2)
-    elementwise_mean = 0.5 * (dist1 + dist2)
-    divergence = (0.5*kl_divergence(dist1, elementwise_mean) +
-                  0.5*kl_divergence(dist2, elementwise_mean))
+    dist1m = np.ma.masked_where(dist1 == 0, dist1)
+    dist2m = np.ma.masked_where(dist2 == 0, dist2)
+    elementwise_mean = 0.5 * (dist1m + dist2m)
+    divergence = (0.5*kl_divergence(dist1m, elementwise_mean) +
+                  0.5*kl_divergence(dist2m, elementwise_mean))
     return divergence
 
 
@@ -423,22 +423,23 @@ def histogram_intersection(dist1, dist2, bins=None):
     Returns
     -------
     intersect : float
-        The intersection of the two histograms; i.e., the percentage of bins
-        in which both distributions are populated
+        The intersection of the two histograms; i.e., the overlapping density
     """
     if len(dist1) != len(dist2):
         raise ValueError('Distributions must be of equal length')
     if bins is not None and len(dist1) + 1 != len(bins):
         raise ValueError('Bins length must be 1 more than distribution length')
 
-    intersection = 0.
     if bins is None:
         intervals = np.repeat(1/len(dist1), len(dist1))
     else:
         intervals = np.diff(bins)
-    for i in range(len(intervals)):
-        intersection += min(intervals[i] * dist1[i],
-                            intervals[i] * dist2[i])
+
+    dist1m = np.ma.masked_where(dist1*dist2 == 0, dist1)
+    dist2m = np.ma.masked_where(dist1*dist2 == 0, dist2)
+
+    intersection = np.ma.multiply(np.ma.min([dist1m, dist2m], axis=0),
+                                  intervals).sum()
     return intersection
 
 
