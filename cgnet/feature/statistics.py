@@ -5,7 +5,6 @@
 import numpy as np
 import torch
 import scipy.spatial
-import matplotlib.pyplot as plt
 
 KBOLTZMANN = 1.38064852e-23
 AVOGADRO = 6.022140857e23
