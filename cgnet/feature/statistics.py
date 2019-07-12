@@ -331,33 +331,6 @@ class ProteinBackboneStatistics():
         self.descriptions['Dihedral_sines'] = descriptions
 
 
-def histogram_intersection(dist1, dist2, bins):
-    """Compute the intersection between two histograms
-
-    Parameters
-    ----------
-    dist1 : numpy.array
-        first distribution of shape [n,] for n points
-    dist2 : numpy.array
-        second distribution of shape [n,] for n points
-    bins : numpy.array
-        bins for both dist1 and dist2; must be identical for both
-        distributions of shape [k,] for k bins
-
-    Returns
-    -------
-    intersect : float
-        The intersection of the two histograms; i.e., the percentage of bins
-        in which both distributions are populated
-    """
-    intersection = 0.
-    intervals = np.diff(bins)
-    for i in range(len(intervals)):
-        intersection += min(intervals[i] * dist1[i],
-                            intervals[i] * dist2[i])
-    return intersection
-
-
 def kl_divergence(dist1, dist2):
     r"""Compute the Kullback-Leibler (KL) divergence between two histograms
     according to:
@@ -431,6 +404,42 @@ def js_divergence(dist1, dist2):
     divergence = (0.5*kl_divergence(dist1, elementwise_mean) +
                   0.5*kl_divergence(dist2, elementwise_mean))
     return divergence
+
+
+def histogram_intersection(dist1, dist2, bins=None):
+    """Compute the intersection between two histograms
+
+    Parameters
+    ----------
+    dist1 : numpy.array
+        first distribution of shape [n,] for n points
+    dist2 : numpy.array
+        second distribution of shape [n,] for n points
+    bins : None or numpy.array (defualt=None)
+        bins for both dist1 and dist2; must be identical for both
+        distributions of shape [k,] for k bins. If None,
+        uniform bins are assumed
+
+    Returns
+    -------
+    intersect : float
+        The intersection of the two histograms; i.e., the percentage of bins
+        in which both distributions are populated
+    """
+    if len(dist1) != len(dist2):
+        raise ValueError('Distributions must be of equal length')
+    if bins is not None and len(dist1) + 1 != len(bins):
+        raise ValueError('Bins length must be 1 more than distribution length')
+
+    intersection = 0.
+    if bins is None:
+        intervals = np.repeat(1/len(dist1), len(dist1))
+    else:
+        intervals = np.diff(bins)
+    for i in range(len(intervals)):
+        intersection += min(intervals[i] * dist1[i],
+                            intervals[i] * dist2[i])
+    return intersection
 
 
 def compare_distributions(traj1, traj2, nbins=60, compute_overlap=None):

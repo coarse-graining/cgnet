@@ -95,7 +95,7 @@ def test_full_histogram_intersection():
     # Tests the intersection of a uniform histogram with itself
 	cgnet_intersection = histogram_intersection(hist1, hist1, bins)
 	np.testing.assert_allclose(cgnet_intersection, 1.)
-	assert cgnet_intersection == 1.
+	np.testing.assert_allclose(cgnet_intersection, 1.)
 
 
 def test_histogram_intersection():
