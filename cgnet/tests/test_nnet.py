@@ -6,9 +6,10 @@ import torch
 import torch.nn as nn
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
-from cgnet.network import (CGnet, LinearLayer, ForceLoss, RepulsionLayer,
+from cgnet.network import (CGnet, ForceLoss, RepulsionLayer,
                            HarmonicLayer, ZscoreLayer, Simulation)
-from cgnet.feature import ProteinBackboneStatistics, ProteinBackboneFeature
+from cgnet.feature import (ProteinBackboneStatistics, ProteinBackboneFeature,
+                           LinearLayer)
 
 # Random test data
 x0 = torch.rand((50, 1), requires_grad=True)

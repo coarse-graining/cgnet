@@ -5,8 +5,8 @@ import torch
 import numpy as np
 from torch.utils.data import SubsetRandomSampler, DataLoader
 from cgnet.network import lipschitz_projection, dataset_loss, Simulation
-from cgnet.network import CGnet, ForceLoss, LinearLayer
-from cgnet.feature import MoleculeDataset
+from cgnet.network import CGnet, ForceLoss
+from cgnet.feature import MoleculeDataset, LinearLayer
 
 frames = np.random.randint(1, 3)
 beads = np.random.randint(4, 10)
