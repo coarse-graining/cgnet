@@ -330,9 +330,33 @@ class ProteinBackboneStatistics():
         self.descriptions['Dihedral_cosines'] = descriptions
         self.descriptions['Dihedral_sines'] = descriptions
 
+def compute_intersection(dist1, dist2, bins):
+    """Compute the intersection between two histograms
+
+    Parameters
+    ----------
+    dist1 : numpy.array
+        first distribution
+    dist2 : numpy.array
+        second distribution
+    bins : numpy.array
+        bins for both dist1 and dist2
+
+    Returns
+    -------
+    intersect : float
+        the intersection of the two histograms
+    """
+    intersect = 0.00
+    intervals = np.diff(bins)
+    for i in range(len(intervals)):
+        intersect += min(intervals[i] * dist1[i],
+                         intervals[i] * dist2[i])
+    return intersect
+
 
 def compute_KLdivergence(dist1, dist2):
-    """Compute the intersection between two histograms
+    """Compute the Kullback-Leibler divergence between two histograms
 
     Parameters
     ----------
@@ -346,6 +370,11 @@ def compute_KLdivergence(dist1, dist2):
     div : float
         the Kullback-Leibler divergence of the two histograms
 
+    Notes
+    -----
+    The KL divergence is not symmetric under distribution exchange.
+    The expectation is taken over the first ditribution.
+
     """
 
     dist1 = np.ma.masked_where(dist1 == 0, dist1)
@@ -354,11 +383,38 @@ def compute_KLdivergence(dist1, dist2):
     div = np.ma.sum(summand)
     return div
 
+def compute_JSdivergence(dist1, dist2):
+    """Compute the Jenson-Shannon divergence between two histograms
 
-def compare_distributions(traj1, traj2, nbins=60,
-                          labels=['Distribution 1', 'Distribution 2'],
-                          xaxis=None, yaxis=None,
-                          return_hist=False, kl_div=False):
+    Parameters
+    ----------
+    dist1 : numpy.array
+        first distribution
+    dist2 : numpy.array
+        second distribution
+
+    Returns
+    -------
+    div : float
+        the Jenson-Shannon divergence of the two histograms
+
+    Notes
+    -----
+    The JS divergence is the symmetrized extension of the KL divergence.
+    It is also referred to as the information radius.
+
+    """
+
+    dist1 = np.ma.masked_where(dist1 == 0, dist1)
+    dist2 = np.ma.masked_where(dist2 == 0, dist2)
+    mix = 0.5 * (dist1 + dist2)
+    summand = 0.5 * (dist1 * np.ma.log(dist1/mix))
+    summand += 0.5 * (dist2 * np.ma.log(dist2/mix))
+    div = np.ma.sum(summand)
+    return div
+
+
+def compare_distributions(traj1, traj2, nbins=60, overlap=False):
     """Produces overlaid histogram plots, and optionally computes KL divergence
 
     Parameters
@@ -369,30 +425,21 @@ def compare_distributions(traj1, traj2, nbins=60,
     traj2 : numpy.array
         series of values for second feature with which to compute the second
         distribution
-    labels : list of strings (default=['Distribution 1', 'Distribution 2'])
-        Optional specification of the labels for the distributions in the
-        plot legend
-    xaxis : string (default=None)
-        optional string for the x-axis of the histogram plot
-    yaxis : string (default=None)
-        optional string for the y-axis of the histogram plot
-    return_hist : bool (default=False)
-        if True, the histograms of each distribution are returned
-    kl_div : bool (default=False)
-        if True, the Kullback-Leibler divergence is calculated for the two
-        distributions
+    nbins : int (default=60)
+        number of bins with which histgrams are produced. For the purpose of
+        calculating deiscrete distribution overlaps
+    compute overlap : None, or str in {'kl_div', 'js_div', 'intersect'}
+        if not None, the string-specified method of discrete distribution overlap
+        is returned
 
     Returns
     -------
-    if kl_div and not return_hist :
-        div : float
-            The KL divergence of the two historgrams
-    if return_hist and not kl_div :
-        hist1, hist2, bins : tuple(np.array):
+    if compute_overlap :
+        hist1, hist2, bins, overlap : tuple(np.array, np.array, np.array, float) :
+            The normalized histograms, bins, and overlap
+    if not compute_overlap :
+        hist1, hist2, bins : tuple(np.array, np.array, np.array):
             The normalized histograms and bins
-    if return_hist and kl_div :
-         hist1, hist2, bins, div : tuple(np.array) :
-            The normalized histograms, bins, and KL divergence
 
     """
     l_edge1 = np.min(traj1)
@@ -407,22 +454,15 @@ def compare_distributions(traj1, traj2, nbins=60,
     hist1 = hist1/np.sum(hist1)
     hist2 = hist2/np.sum(hist2)
 
-    if labels:
-        plt.hist(traj1, bins=bins, alpha=0.5, label=labels[0], density=True)
-        plt.hist(traj2, bins=bins, alpha=0.5, label=labels[1], density=True)
-        plt.legend(loc='best')
+    if compute_overlap is not None:
+        if compute_overlap not in ['kl_div', 'js_div', 'intersect']:
+            raise RuntimeError("\'"+overlap+"\' not valid overlap method")
+        if compute_overlap == 'kl_div':
+            overlap = compute_KLdivergence(hist1, hist2)
+        if compute_overlap == 'JS_div':
+            overlap = compute_JSdivergence(hist1, hist2)
+        if compute_overlap == 'intersection':
+            overlap = copmute_intersection(hist1, hist2, bins)
+        return hist1, hist2, bins, overlap
     else:
-        plt.hist(traj1, bins=bins, alpha=0.5, density=True)
-        plt.hist(traj2, bins=bins, alpha=0.5, density=True)
-    if xaxis:
-        plt.xlabel(xaxis)
-    if yaxis:
-        plt.ylabel(yaxis)
-    if kl_div:
-        div = compute_KLdivergence(hist1, hist2)
-    if return_hist and not kl_div:
         return hist1, hist2, bins
-    if kl_div and not return_hist:
-        return div
-    if return_hist and kl_div:
-        return hist1, hist2, bins, div
