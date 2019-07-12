@@ -82,7 +82,7 @@ def LinearLayer(
             if weight_init_args is None:
                 weight_init_args = []
             if weight_init_kwargs is None:
-                weight_inti_kwargs = []
+                weight_init_kwargs = []
             weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
         else:
             raise RuntimeError(
