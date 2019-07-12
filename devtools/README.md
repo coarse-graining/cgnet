@@ -52,3 +52,7 @@ Example notebook best practices
 --
 - Example notebooks should be limited in scope and cover just one topic in a tutorial way. If the notebook becomes long-winded, break it into multiple notebooks.
 - Never commit a notebook without the output cleared (if you do this by accident, [squash the commits](https://github.com/wprig/wprig/wiki/How-to-squash-commits)).
+
+Other
+--
+- Keep in mind that this repository will eventually become public - please consider whether this is appropriate for your comments and contributions with respect to ongoing research.
