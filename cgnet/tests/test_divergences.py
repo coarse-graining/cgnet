@@ -6,7 +6,7 @@ from cgnet.feature import kl_divergence, js_divergence, histogram_intersection
 
 
 def _get_random_distr():
-    length = np.random.randint(0, 50)
+    length = np.random.randint(1, 50)
     n_zeros = np.random.randint(0, 10)
     zeros = np.zeros(n_zeros)
     dist1 = np.abs(np.concatenate([np.random.randn(length), zeros]))
