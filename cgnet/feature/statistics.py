@@ -366,6 +366,7 @@ def kl_divergence(dist_1, dist_2):
     divergence = np.ma.sum(summand)
     return divergence
 
+
 def js_divergence(dist_1, dist_2):
     r"""Compute the Jenson-Shannon (JS) divergence between two discrete
     distributions according to:
@@ -420,7 +421,7 @@ def histogram_intersection(dist_1, dist_2, bins=None):
         first distribution of shape [n,] for n points
     dist_2 : numpy.array
         second distribution of shape [n,] for n points
-    bins : None or numpy.array (defualt=None)
+    bins : None or numpy.array (default=None)
         bins for both dist1 and dist2; must be identical for both
         distributions of shape [k,] for k bins. If None,
         uniform bins are assumed
