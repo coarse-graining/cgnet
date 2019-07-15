@@ -331,7 +331,7 @@ class ProteinBackboneStatistics():
         self.descriptions['Dihedral_sines'] = descriptions
 
 
-def kl_divergence(dist1, dist2):
+def kl_divergence(dist_1, dist_2):
     r"""Compute the Kullback-Leibler (KL) divergence between two discrete
     distributions according to:
 
@@ -341,9 +341,9 @@ def kl_divergence(dist1, dist2):
 
     Parameters
     ----------
-    dist1 : numpy.array
+    dist_1 : numpy.array
         reference distribution of shape [n,] for n points
-    dist2 : numpy.array
+    dist_2 : numpy.array
         test distribution of shape [n,] for n points
 
     Returns
@@ -357,16 +357,16 @@ def kl_divergence(dist1, dist2):
     the expectation is taken over the reference distribution.
 
     """
-    if len(dist1) != len(dist2):
+    if len(dist_1) != len(dist_2):
         raise ValueError('Distributions must be of equal length')
 
-    dist1m = np.ma.masked_where(dist1 == 0, dist1)
-    dist2m = np.ma.masked_where(dist2 == 0, dist2)
-    summand = dist1m * np.ma.log(dist1m / dist2m)
+    dist_1m = np.ma.masked_where(dist_1 == 0, dist_1)
+    dist_2m = np.ma.masked_where(dist_2 == 0, dist_2)
+    summand = dist_1m * np.ma.log(dist_1m / dist_2m)
     divergence = np.ma.sum(summand)
     return divergence
 
-def js_divergence(dist1, dist2):
+def js_divergence(dist_1, dist_2):
     r"""Compute the Jenson-Shannon (JS) divergence between two discrete
     distributions according to:
 
@@ -378,9 +378,9 @@ def js_divergence(dist1, dist2):
 
     Parameters
     ----------
-    dist1 : numpy.array
+    dist_1 : numpy.array
         first distribution of shape [n,] for n points
-    dist2 : numpy.array
+    dist_2 : numpy.array
         second distribution of shape [n,] for n points
 
     Returns
@@ -400,25 +400,25 @@ def js_divergence(dist1, dist2):
         https://dx.doi.org/10.1109/18.61115
 
     """
-    if len(dist1) != len(dist2):
+    if len(dist_1) != len(dist_2):
         raise ValueError('Distributions must be of equal length')
 
-    dist1m = np.ma.masked_where(dist1 == 0, dist1)
-    dist2m = np.ma.masked_where(dist2 == 0, dist2)
-    elementwise_mean = 0.5 * (dist1m + dist2m)
-    divergence = (0.5*kl_divergence(dist1m, elementwise_mean) +
-                  0.5*kl_divergence(dist2m, elementwise_mean))
+    dist_1m = np.ma.masked_where(dist_1 == 0, dist_1)
+    dist_2m = np.ma.masked_where(dist_2 == 0, dist_2)
+    elementwise_mean = 0.5 * (dist_1m + dist_2m)
+    divergence = (0.5*kl_divergence(dist_1m, elementwise_mean) +
+                  0.5*kl_divergence(dist_2m, elementwise_mean))
     return divergence
 
 
-def histogram_intersection(dist1, dist2, bins=None):
+def histogram_intersection(dist_1, dist_2, bins=None):
     """Compute the intersection between two histograms
 
     Parameters
     ----------
-    dist1 : numpy.array
+    dist_1 : numpy.array
         first distribution of shape [n,] for n points
-    dist2 : numpy.array
+    dist_2 : numpy.array
         second distribution of shape [n,] for n points
     bins : None or numpy.array (defualt=None)
         bins for both dist1 and dist2; must be identical for both
@@ -430,19 +430,19 @@ def histogram_intersection(dist1, dist2, bins=None):
     intersect : float
         The intersection of the two histograms; i.e., the overlapping density
     """
-    if len(dist1) != len(dist2):
+    if len(dist_1) != len(dist_2):
         raise ValueError('Distributions must be of equal length')
-    if bins is not None and len(dist1) + 1 != len(bins):
+    if bins is not None and len(dist_1) + 1 != len(bins):
         raise ValueError('Bins length must be 1 more than distribution length')
 
     if bins is None:
-        intervals = np.repeat(1/len(dist1), len(dist1))
+        intervals = np.repeat(1/len(dist_1), len(dist_1))
     else:
         intervals = np.diff(bins)
 
-    dist1m = np.ma.masked_where(dist1*dist2 == 0, dist1)
-    dist2m = np.ma.masked_where(dist1*dist2 == 0, dist2)
+    dist_1m = np.ma.masked_where(dist_1*dist_2 == 0, dist_1)
+    dist_2m = np.ma.masked_where(dist_1*dist_2 == 0, dist_2)
 
-    intersection = np.ma.multiply(np.ma.min([dist1m, dist2m], axis=0),
+    intersection = np.ma.multiply(np.ma.min([dist_1m, dist_2m], axis=0),
                                   intervals).sum()
     return intersection
