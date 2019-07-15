@@ -1,4 +1,4 @@
-# Author: B Husic
+# Authors: Brooke Husic, Nick Charron
 # Contributors: Jiang Wang
 
 
@@ -96,7 +96,7 @@ class ProteinBackboneStatistics():
 
     def _flip_dict(self, mydict):
         all_inds = np.unique(np.concatenate([list(mydict[stat].keys())
-                                     for stat in mydict.keys()]))
+                                             for stat in mydict.keys()]))
 
         newdict = {}
         for i in all_inds:
@@ -206,8 +206,8 @@ class ProteinBackboneStatistics():
 
         if self.distances is None or self.angles is None:
             raise RuntimeError(
-            'Must compute distances and angles in order to get bond constants'
-                )
+                'Must compute distances and angles in order to get bond constants'
+            )
 
         self.beta = JPERKCAL/KBOLTZMANN/AVOGADRO/self.temperature
 
@@ -329,3 +329,121 @@ class ProteinBackboneStatistics():
                              for i in range(self.n_beads-3)])
         self.descriptions['Dihedral_cosines'] = descriptions
         self.descriptions['Dihedral_sines'] = descriptions
+
+
+def kl_divergence(dist_1, dist_2):
+    r"""Compute the Kullback-Leibler (KL) divergence between two discrete
+    distributions according to:
+
+    \sum_i P_i \log(P_i / Q_i)
+
+    where P_i is the reference distribution and Q_i is the test distribution
+
+    Parameters
+    ----------
+    dist_1 : numpy.array
+        reference distribution of shape [n,] for n points
+    dist_2 : numpy.array
+        test distribution of shape [n,] for n points
+
+    Returns
+    -------
+    divergence : float
+        the Kullback-Leibler divergence of the two distributions
+
+    Notes
+    -----
+    The KL divergence is not symmetric under distribution exchange;
+    the expectation is taken over the reference distribution.
+
+    """
+    if len(dist_1) != len(dist_2):
+        raise ValueError('Distributions must be of equal length')
+
+    dist_1m = np.ma.masked_where(dist_1 == 0, dist_1)
+    dist_2m = np.ma.masked_where(dist_2 == 0, dist_2)
+    summand = dist_1m * np.ma.log(dist_1m / dist_2m)
+    divergence = np.ma.sum(summand)
+    return divergence
+
+
+def js_divergence(dist_1, dist_2):
+    r"""Compute the Jenson-Shannon (JS) divergence between two discrete
+    distributions according to:
+
+    0.5 * \sum_i P_i \log(P_i / M_i) + 0.5 * \sum_i Q_i \log(Q_i / M_i),
+
+    where M_i is the elementwise mean of P_i and Q_i. This is equivalent to,
+
+    0.5 * kl_divergence(P, Q) + 0.5 * kl_divergence(Q, P).
+
+    Parameters
+    ----------
+    dist_1 : numpy.array
+        first distribution of shape [n,] for n points
+    dist_2 : numpy.array
+        second distribution of shape [n,] for n points
+
+    Returns
+    -------
+    divergence : float
+        the Jenson-Shannon divergence of the two distributions
+
+    Notes
+    -----
+    The JS divergence is the symmetrized extension of the KL divergence.
+    It is also referred to as the information radius.
+
+    References
+    ----------
+    Lin, J. (1991). Divergence measures based on the Shannon entropy.
+        IEEE Transactions on Information Theory.
+        https://dx.doi.org/10.1109/18.61115
+
+    """
+    if len(dist_1) != len(dist_2):
+        raise ValueError('Distributions must be of equal length')
+
+    dist_1m = np.ma.masked_where(dist_1 == 0, dist_1)
+    dist_2m = np.ma.masked_where(dist_2 == 0, dist_2)
+    elementwise_mean = 0.5 * (dist_1m + dist_2m)
+    divergence = (0.5*kl_divergence(dist_1m, elementwise_mean) +
+                  0.5*kl_divergence(dist_2m, elementwise_mean))
+    return divergence
+
+
+def histogram_intersection(dist_1, dist_2, bins=None):
+    """Compute the intersection between two histograms
+
+    Parameters
+    ----------
+    dist_1 : numpy.array
+        first distribution of shape [n,] for n points
+    dist_2 : numpy.array
+        second distribution of shape [n,] for n points
+    bins : None or numpy.array (default=None)
+        bins for both dist1 and dist2; must be identical for both
+        distributions of shape [k,] for k bins. If None,
+        uniform bins are assumed
+
+    Returns
+    -------
+    intersect : float
+        The intersection of the two histograms; i.e., the overlapping density
+    """
+    if len(dist_1) != len(dist_2):
+        raise ValueError('Distributions must be of equal length')
+    if bins is not None and len(dist_1) + 1 != len(bins):
+        raise ValueError('Bins length must be 1 more than distribution length')
+
+    if bins is None:
+        intervals = np.repeat(1/len(dist_1), len(dist_1))
+    else:
+        intervals = np.diff(bins)
+
+    dist_1m = np.ma.masked_where(dist_1*dist_2 == 0, dist_1)
+    dist_2m = np.ma.masked_where(dist_1*dist_2 == 0, dist_2)
+
+    intersection = np.ma.multiply(np.ma.min([dist_1m, dist_2m], axis=0),
+                                  intervals).sum()
+    return intersection
