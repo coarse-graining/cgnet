@@ -129,12 +129,14 @@ class ProteinBackboneFeature(nn.Module):
 
 
 class ContinuousFilterConvolution(nn.Module):
-    """
+    r"""
     Continuous-filter convolution block as described by Schütt et al. (2018).
 
     Unlike convential convolutional layers that utilize discrete filter tensors,
     a continuous-filter convolutional layer evaluates the convolution at discrete
     locations in space using continuous radial filters (Schütt et al. 2018).
+
+        x_i^{l+i} = (X^i * W^l)_i = \sum_{j=0}^{n_{atoms}} x_j^l \circ W^l (r_j -r_i)
 
     A continuous-filter convolution block consists of a filter generating network
     as follows:
@@ -146,17 +148,18 @@ class ContinuousFilterConvolution(nn.Module):
         2. Atom-wise/Linear layer with shifted-softplus activation function
         3. Atom-wise/Linear layer with shifted-softplus activation function
 
-    The filter is then multiplied element-wise with the feature input to form
-    a residual connection.
+    The filter generator output is then multiplied element-wise with the
+    continuous convolution filter as part of the interaction block.
 
     Parameters
     ----------
     num_gaussians: int
         Number of Gaussians that has been used in the radial basis function.
-        Needed in to determine the input feature size of the first dense layer.
+        Needed to determine the input feature size of the first dense layer.
     num_filters: int
         Number of filters that will be created. Also determines the output size.
-        Needs to be the same size as the features of the residual connection.
+        Needs to be the same size as the features of the residual connection in
+        the interaction block.
 
     References
     ----------
@@ -236,12 +239,16 @@ class InteractionBlock(nn.Module):
     """
     SchNet interaction block as described by Schütt et al. (2018).
 
-    A interaction block consists of:
+    An interaction block consists of:
         1. Atom-wise/Linear layer without activation function
         2. Continuous filter convolution, which is a filter-generator multiplied
            element-wise with the output of the previous layer
         3. Atom-wise/Linear layer with activation
         4. Atom-wise/Linear layer without activation
+
+    The output of an interaction block will then be used to form an additive
+    residual connection with the original input features, (x'_1, ... , x'_n),
+    see Notes.
 
     Parameters
     ----------
@@ -256,6 +263,12 @@ class InteractionBlock(nn.Module):
         Number of filters that will be created in the continuous filter convolution.
         The same feature size will be used for the output linear layers of the
         interaction block.
+
+    Notes
+    -----
+    The additive residual connection between interaction blocks is not
+    included in the output of this forward pass. The residual connection
+    will be computed separately outside of this class.
 
     References
     ----------
