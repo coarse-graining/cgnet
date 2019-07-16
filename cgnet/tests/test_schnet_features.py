@@ -29,6 +29,8 @@ test_nbh = torch.from_numpy(test_nbh[:, inverse_identity].reshape(num_examples,
 
 
 def test_continuous_convolution():
+    # Comparison of the ContinuousFilterConvolution with a manual numpy calculation
+
     # Calculate continuous convolution output with the created layer
     cfconv = ContinuousFilterConvolution(num_gaussians=num_gaussians,
                                          num_filters=num_filters)
@@ -57,6 +59,7 @@ def test_continuous_convolution():
 
 
 def test_interaction_block():
+    # Tests the correct output shape of an interaction block
     interaction_b = InteractionBlock(num_inputs=num_feats,
                                      num_gaussians=num_gaussians,
                                      num_filters=num_filters)
