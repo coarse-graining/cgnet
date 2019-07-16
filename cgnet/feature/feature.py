@@ -137,6 +137,9 @@ class ContinuousFilterConvolution(nn.Module):
     locations in space using continuous radial filters (Schütt et al. 2018).
 
         x_i^{l+i} = (X^i * W^l)_i = \sum_{j=0}^{n_{atoms}} x_j^l \circ W^l (r_j -r_i)
+        
+    with feature representation X^l=(x^l_1, ..., x^l_n), filter-generating 
+    network W^l, positions R=(r_1, ..., r_n) and the current layer l.
 
     A continuous-filter convolution block consists of a filter generating network
     as follows:
