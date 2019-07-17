@@ -326,24 +326,57 @@ class InteractionBlock(nn.Module):
 
 class SchnetBlock(nn.Module):
     """Wrapper class for RBF layer, continuous filter convolution, and
-       interaction block
+    interaction block
     """
 
     def __init__(self, interaction_block, rbf_layer, residual_connect=True):
+        """Initialization
+
+        Parameters
+        ----------
+        interaction_block : InteractionBlock
+            single schnet InteractionBlock, containing a
+            ContinuousFilterConvolution and surrounding LinearLayers
+        rbf_layer : RadialBasisFunction
+            radial basis function layer that provides feature expansion into
+            gaussian basis prior to elementwise multiplication with a
+            ContinuousFilterConvolution
+        residual_connect : bool (default=True)
+            specifies whether or not to additively combine the input and output
+            features of the interaction block through a residual connection
+
+        """
         super(SchnetBlock, self).__init__()
         self.interaction_block = interaction_block
         self.rbf_layer = rbf_layer
         self.residual_connect = residual_connect
 
     def forward(self, features, rbf_expansion, neighbor_list)
+        """Forward method through single Schnet block
+
+        Parameters
+        ----------
+        features : torch.Tensor
+            input feature into the schnet block. Size
+            [n_examples, n_beads, n_features]
+        rbf_expansion : torch.Tensor
+            output from radial basis function layer. Size
+            [n_examples, n_beads, n_neighbors, n_gaussians]
+        neighbor_list : torch.Tensor
+            Indices of all neighbors of each bead.
+            Size [n_examples, n_beads, n_neighbors]
+
+        Returns
+        -------
+        output_features: torch.Tensor
+            output of interaction block. If residual_connect = True, then
+            this output is additively combined with interaction block input
+            to produce: output_feature = (output_feature + features).
+            Size [n_examples, n_beads, n_filters]
+
+        """
         output_features = self.interaction_block(features, rbf_expansion,
                                                  neighbor_list)
         if self.residual_connect:
             output_features = output_features + features
         return output_features
-
-
-
-
-
-
