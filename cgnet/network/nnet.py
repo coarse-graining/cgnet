@@ -104,19 +104,15 @@ class CGnet(nn.Module):
 
     """
 
-    def __init__(self, criterion, cg_arch=None,
-                 schnet_arch=None, feature=None, priors=None):
+    def __init__(self, criterion, cg_arch=None, feature=None, priors=None):
         super(CGnet, self).__init__()
-        if cg_arch:
-            zscore_idx = 1
-            for layer in arch:
-                if isinstance(layer, ZscoreLayer):
-                    self.register_buffer('zscores_{}'.format(zscore_idx),
-                                     layer.zscores)
-                    zscore_idx += 1
-            self.cg_arch = nn.Sequential(*cg_arch)
-        if schnet_arch:
-            self.schnet_arch = schnet_arch 
+        zscore_idx = 1
+        for layer in arch:
+            if isinstance(layer, ZscoreLayer):
+                self.register_buffer('zscores_{}'.format(zscore_idx),
+                                 layer.zscores)
+                zscore_idx += 1
+        self.cg_arch = nn.Sequential(*cg_arch)
         if priors:
             self.priors = nn.Sequential(*priors)
             harm_idx = 1
@@ -135,17 +131,8 @@ class CGnet(nn.Module):
         self.criterion = criterion
         self.feature = feature
 
-    def schnet_arch_forward(self, features, neighbor_list):
-        """Forward pass through the entire schnet architecture"""
-        representation = features
-        for block in self.schnet_arch:
-            rbf_expansion = block.rbf_layer(features[:,
-                                            block.rbf_layer.feat_idx])
-            representation = block(representation, rbf_expansion,
-                                   neighbor_list)
-        return representation
 
-    def forward(self, coord, neighbor_list=None):
+    def forward(self, coord):
         """Forward pass through the network ending with autograd layer.
 
         Parameters
@@ -160,22 +147,15 @@ class CGnet(nn.Module):
             supplied to the CGnet, then this energy is the sum of network
             and prior energies.
         force  : torch.Tensor
-            vector forces of size [n_examples, n_degrees_of_freedom].
+            vector forces of size
+            [n_examples, n_beads, n_cartesian_dims].
+
         """
         feat = coord
         if self.feature:
             feat = self.feature(feat)
-        if self.cg_arch and self.schnet_arch:
-            # additively combine cgnet and schnet energy predictions
-            energy = self.arch(feat)
-            energy += self.schnet_forward(feat, neighbor_list)
-        else:
-            if self.cg_arch:
-                # forward pass through the hidden architecture of the CGnet
-                energy = self.arch(feat)
-            if self.schnet_arch:
-                # forward pass through schnet architecture
-                energy = self.schnet_forward(feat, neighbor_list)
+        # forward pass through the hidden architecture of the CGnet
+        energy = self.arch(feat)
         # addition of external priors to form total energy
         if self.priors:
             for prior in self.priors:
@@ -205,6 +185,88 @@ class CGnet(nn.Module):
 
         """
 
+        self.eval()  # set model to eval mode
+        energy, force = self.forward(coord)
+        loss = self.criterion.forward(force, force_labels)
+        self.train()  # set model to train mode
+        return loss.data
+
+
+class CGschnet(CGnet):
+    """CG Schnet neural network class"""
+
+    def __init__(self, _args, _kwargs):
+        """Initialization
+
+        Parameters
+        ----------
+        see CGnet.__init__()
+        """
+
+        super(CGschnet, self).__init__(*_args, **_kwargs)
+
+    def forward(self, coord, neighbor_list):
+        """Forward pass through the network ending with autograd layer.
+
+        Parameters
+        ----------
+        coord : torch.Tensor (grad enabled)
+            input trajectory/data of size [n_examples, n_degrees_of_freedom].
+        neighbor_list : torch.Tensor
+            Indices of all neighbors of each bead.
+            Size [n_examples, n_beads, n_neighbors]
+
+        Returns
+        -------
+        energy : torch.Tensor
+            scalar potential energy of size [n_examples, 1]. If priors are
+            supplied to the CGnet, then this energy is the sum of network
+            and prior energies.
+        force  : torch.Tensor
+            vector forces of size
+            [n_examples, n_beads, n_cartesian_dims].
+
+        """
+        feat = coord
+        if self.feature:
+            feat = self.feature(feat)
+        energy = feat
+        for block in self.arch:
+            rbf_expansion = block.rbf_layer(feat[:, block.rbf_layer.feat_idx])
+            energy += block(energy, rbf_expansion, neighbor_list)
+        # addition of external priors to form total energy
+        if self.priors:
+            for prior in self.priors:
+                energy += prior(feat[:, prior.feat_idx])
+
+        # Perform autograd to learn potential of conservative force field
+        force = torch.autograd.grad(-torch.sum(energy),
+                                    coord,
+                                    create_graph=True,
+                                    retain_graph=True)
+        return energy, force[0]
+
+    def predict(self, coord, force_labels, neighbor_list):
+        """Prediction over test/validation batch.
+
+        Parameters
+        ----------
+        coord: torch.Tensor (grad enabled)
+            input trajectory/data of size
+            [n_examples, n_beads, n_cartesian_dims]
+        force_labels: torch.Tensor
+            force labels of size
+            [n_examples, n_beads, n_cartesian_dims]
+        neighbor_list : torch.Tensor
+            Indices of all neighbors of each bead.
+            Size [n_examples, n_beads, n_neighbors]
+
+        Returns
+        -------
+        loss.data : torch.Tensor
+            scalar loss over prediction inputs.
+
+        """
         self.eval()  # set model to eval mode
         energy, force = self.forward(coord)
         loss = self.criterion.forward(force, force_labels)
