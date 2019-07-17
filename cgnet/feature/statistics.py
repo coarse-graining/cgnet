@@ -330,6 +330,41 @@ class ProteinBackboneStatistics():
         self.descriptions['Dihedral_cosines'] = descriptions
         self.descriptions['Dihedral_sines'] = descriptions
 
+    def return_indices(self, feature_type):
+        """Return all indices for specified feature type. Useful for
+        constructing priors or other layers that make callbacks to
+        a subset of features output from a ProteinBackboneFeature()
+        layer
+
+        Parameters
+        ----------
+        feature_type : str in {'Distances', 'Bonds', 'Angles',
+                               'Dihedral_sines', 'Dihedral_cosines'}
+            specifies for which feature type the indices should be returned
+
+        Returns
+        -------
+        indices : list(int)
+            list of integers corresponding the indices of specified features
+            output from a ProteinBackboneFeature() layer.
+
+        """
+        if feature_type not in self.descriptions.keys() and feature_type != 'Bonds':
+            raise RuntimeError("Error: \'{}\' is not a valid backbone feature.".format(feature_type))
+        nums = [len(self.descriptions[i]) for i in self.descriptions.keys()]
+        start_idx = 0
+        for num, desc in zip(nums, self.descriptions.keys()):
+            if feature_type == desc or (feature_type == 'Bonds' and desc == 'Distances'):
+                break
+            else:
+                start_idx += num
+        if feature_type == 'Bonds':
+            indices = [self.descriptions['Distances'].index(pair)
+                       for pair in self._adj_pairs]
+        if feature_type != 'Bonds':
+            indices = range(0, len(self.descriptions[feature_type]))
+        indices = [idx + start_idx for idx in indices]
+        return indices
 
 def kl_divergence(dist_1, dist_2):
     r"""Compute the Kullback-Leibler (KL) divergence between two discrete

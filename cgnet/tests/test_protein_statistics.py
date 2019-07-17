@@ -111,3 +111,69 @@ def test_bondconst_dict_2():
             assert len(bondconst_dict[k]) == n_keys_bondconst
         else:
             assert len(bondconst_dict[k]) == n_keys
+
+def test_idx_functions():
+    # Test proper retrieval of feature indices
+    nums = [len(stats.descriptions[i]) for i in stats.descriptions.keys()]
+    dist_idx = stats.return_indices('Distances')
+    start_idx = 0
+    for num, desc in zip(nums, stats.descriptions.keys()):
+        if 'Distances' == desc:
+            break
+        else:
+            start_idx += num
+    indices = range(0, len(stats.descriptions['Distances']))
+    indices = [idx + start_idx for idx in indices]
+    assert len(dist_idx) == (beads) * (beads - 1) / 2
+    assert dist_idx == indices
+
+    ang_idx = stats.return_indices('Angles')
+    start_idx = 0
+    for num, desc in zip(nums, stats.descriptions.keys()):
+        if 'Angles' == desc:
+            break
+        else:
+            start_idx += num
+    indices = range(0, len(stats.descriptions['Angles']))
+    indices = [idx + start_idx for idx in indices]
+    assert len(ang_idx) == beads - 2
+    assert ang_idx == indices
+
+    dihedral_sin_idx = stats.return_indices('Dihedral_sines')
+    start_idx = 0
+    for num, desc in zip(nums, stats.descriptions.keys()):
+        if 'Dihedral_sines' == desc:
+            break
+        else:
+            start_idx += num
+    indices = range(0, len(stats.descriptions['Dihedral_sines']))
+    indices = [idx + start_idx for idx in indices]
+    assert len(dihedral_sin_idx) == beads - 3
+    assert dihedral_sin_idx == indices
+
+    dihedral_cos_idx = stats.return_indices('Dihedral_cosines')
+    start_idx = 0
+    for num, desc in zip(nums, stats.descriptions.keys()):
+        if 'Dihedral_cosines' == desc:
+            break
+        else:
+            start_idx += num
+    indices = range(0, len(stats.descriptions['Dihedral_cosines']))
+    indices = [idx + start_idx for idx in indices]
+    assert len(dihedral_cos_idx) == beads - 3
+    assert dihedral_cos_idx == indices
+
+    bond_idx = stats.return_indices('Bonds')
+    start_idx = 0
+    for num, desc in zip(nums, stats.descriptions.keys()):
+        if 'Distances' == desc:
+            break
+        else:
+            start_idx += num
+    indices = [stats.descriptions['Distances'].index(pair)
+                       for pair in stats._adj_pairs]
+    indices = [idx + start_idx for idx in indices]
+
+    assert len(bond_idx) == beads - 1
+    #assert bond_idx == indices
+
