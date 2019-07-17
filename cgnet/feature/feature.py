@@ -322,3 +322,28 @@ class InteractionBlock(nn.Module):
                                   neighbor_list)
         output_features = self.output_dense(conv_output)
         return output_features
+
+
+class SchnetBlock(nn.Module):
+    """Wrapper class for RBF layer, continuous filter convolution, and
+       interaction block
+    """
+
+    def __init__(self, interaction_block, rbf_layer, residual_connect=True):
+        super(SchnetBlock, self).__init__()
+        self.interaction_block = interaction_block
+        self.rbf_layer = rbf_layer
+        self.residual_connect = residual_connect
+
+    def forward(self, features, rbf_expansion, neighbor_list)
+        output_features = self.interaction_block(features, rbf_expansion,
+                                                 neighbor_list)
+        if self.residual_connect:
+            output_features = output_features + features
+        return output_features
+
+
+
+
+
+

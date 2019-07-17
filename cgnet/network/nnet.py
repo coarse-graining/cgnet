@@ -104,15 +104,19 @@ class CGnet(nn.Module):
 
     """
 
-    def __init__(self, arch, criterion, feature=None, priors=None):
+    def __init__(self, criterion, cg_arch=None,
+                 schnet_arch=None, feature=None, priors=None):
         super(CGnet, self).__init__()
-        zscore_idx = 1
-        for layer in arch:
-            if isinstance(layer, ZscoreLayer):
-                self.register_buffer('zscores_{}'.format(zscore_idx),
+        if cg_arch:
+            zscore_idx = 1
+            for layer in arch:
+                if isinstance(layer, ZscoreLayer):
+                    self.register_buffer('zscores_{}'.format(zscore_idx),
                                      layer.zscores)
-                zscore_idx += 1
-        self.arch = nn.Sequential(*arch)
+                    zscore_idx += 1
+            self.cg_arch = nn.Sequential(*cg_arch)
+        if schnet_arch:
+            self.schnet_arch = schnet_arch 
         if priors:
             self.priors = nn.Sequential(*priors)
             harm_idx = 1
@@ -131,7 +135,17 @@ class CGnet(nn.Module):
         self.criterion = criterion
         self.feature = feature
 
-    def forward(self, coord):
+    def schnet_arch_forward(self, features, neighbor_list):
+        """Forward pass through the entire schnet architecture"""
+        representation = features
+        for block in self.schnet_arch:
+            rbf_expansion = block.rbf_layer(features[:,
+                                            block.rbf_layer.feat_idx])
+            representation = block(representation, rbf_expansion,
+                                   neighbor_list)
+        return representation
+
+    def forward(self, coord, neighbor_list=None):
         """Forward pass through the network ending with autograd layer.
 
         Parameters
@@ -151,9 +165,17 @@ class CGnet(nn.Module):
         feat = coord
         if self.feature:
             feat = self.feature(feat)
-
-        # forward pass through the hidden architecture of the CGnet
-        energy = self.arch(feat)
+        if self.cg_arch and self.schnet_arch:
+            # additively combine cgnet and schnet energy predictions
+            energy = self.arch(feat)
+            energy += self.schnet_forward(feat, neighbor_list)
+        else:
+            if self.cg_arch:
+                # forward pass through the hidden architecture of the CGnet
+                energy = self.arch(feat)
+            if self.schnet_arch:
+                # forward pass through schnet architecture
+                energy = self.schnet_forward(feat, neighbor_list)
         # addition of external priors to form total energy
         if self.priors:
             for prior in self.priors:

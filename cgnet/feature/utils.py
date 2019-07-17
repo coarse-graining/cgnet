@@ -67,6 +67,11 @@ class RadialBasisFunction(nn.Module):
 
     Parameters
     ----------
+    feat_idx : list(int)
+        List of feature idices that serve as a callback to a previous
+        featurization layer. For example, these indices could by the
+        indices corresponding to all pairwise distances output from a
+        ProteinBackboneFeature() layer
     cutoff : float (default=5.0)
         Distance cutoff for the Gaussian function. The cutoff represents the
         center of the last gaussian function in basis.
@@ -79,10 +84,11 @@ class RadialBasisFunction(nn.Module):
         The variance (standard deviation squared) of the Gaussian functions.
     """
 
-    def __init__(self, cutoff=5.0, num_gaussians=50, variance=1.0):
+    def __init__(self, indices, cutoff=5.0, num_gaussians=50, variance=1.0):
         super(RadialBasisFunction, self).__init__()
         self.centers = torch.linspace(0.0, cutoff, num_gaussians)
         self.variance = variance
+        self.feat_idx = indices
 
     def forward(self, distances):
         """Calculate Gaussian expansion
