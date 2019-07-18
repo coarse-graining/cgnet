@@ -350,11 +350,13 @@ class ProteinBackboneStatistics():
 
         """
         if feature_type not in self.descriptions.keys() and feature_type != 'Bonds':
-            raise RuntimeError("Error: \'{}\' is not a valid backbone feature.".format(feature_type))
+            raise RuntimeError(
+                "Error: \'{}\' is not a valid backbone feature.".format(feature_type))
         nums = [len(self.descriptions[i]) for i in self.descriptions.keys()]
         start_idx = 0
         for num, desc in zip(nums, self.descriptions.keys()):
-            if feature_type == desc or (feature_type == 'Bonds' and desc == 'Distances'):
+            if feature_type == desc or (feature_type == 'Bonds'
+                                        and desc == 'Distances'):
                 break
             else:
                 start_idx += num
@@ -365,6 +367,7 @@ class ProteinBackboneStatistics():
             indices = range(0, len(self.descriptions[feature_type]))
         indices = [idx + start_idx for idx in indices]
         return indices
+
 
 def kl_divergence(dist_1, dist_2):
     r"""Compute the Kullback-Leibler (KL) divergence between two discrete

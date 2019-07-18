@@ -1,4 +1,5 @@
 # Author: Brooke Husic
+# Contributors : Nick Charron
 
 import numpy as np
 import scipy.spatial
@@ -112,6 +113,7 @@ def test_bondconst_dict_2():
         else:
             assert len(bondconst_dict[k]) == n_keys
 
+
 def test_idx_functions():
     # Test proper retrieval of feature indices
     nums = [len(stats.descriptions[i]) for i in stats.descriptions.keys()]
@@ -171,9 +173,8 @@ def test_idx_functions():
         else:
             start_idx += num
     indices = [stats.descriptions['Distances'].index(pair)
-                       for pair in stats._adj_pairs]
+               for pair in stats._adj_pairs]
     indices = [idx + start_idx for idx in indices]
 
     assert len(bond_idx) == beads - 1
-    #assert bond_idx == indices
-
+    assert bond_idx == indices
