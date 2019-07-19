@@ -330,6 +330,33 @@ class ProteinBackboneStatistics():
         self.descriptions['Dihedral_cosines'] = descriptions
         self.descriptions['Dihedral_sines'] = descriptions
 
+    def form_redundant_distances(self):
+        """reformulates pairwise distances from shape [n_examples, n_dist]
+        to shape [n_examples, n_beads, n_neighbors]
+
+        This is done by finding the index mapping between non-redundant and
+        redundant representations of the pairwise distances. This mapping can
+        then be supplied to other schnet-related features, such as a
+        RadialBasisFunction() layer, which use redundant pairwise distance
+        representations.
+
+        """
+        mapping = np.zeros((self.n_beads, self.n_beads - 1), dtype='uint8')
+        for bead in range(self.n_beads):
+            def seq1 (bead, n_beads):
+                n = bead
+                j = n_beads - 1
+                while(True):
+                    yield n + j
+                    n = n + j
+                    j -= 1
+            max_calls = self.n_beads - bead - 1
+            gen = seq1(bead,self.n_beads)
+            idx = np.array([bead] + [next(gen) for _ in range(max_calls-1)])
+            mapping[bead, (bead):] = idx
+            if bead < self.n_beads - 1:
+                mapping[(bead+1):, bead] = idx
+        self.redundant_distance_mapping = mapping
 
 def kl_divergence(dist_1, dist_2):
     r"""Compute the Kullback-Leibler (KL) divergence between two discrete

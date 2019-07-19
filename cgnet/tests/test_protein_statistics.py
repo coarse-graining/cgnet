@@ -111,3 +111,14 @@ def test_bondconst_dict_2():
             assert len(bondconst_dict[k]) == n_keys_bondconst
         else:
             assert len(bondconst_dict[k]) == n_keys
+
+
+def test_form_redundant_distances():
+    # Test to se if the redundant distance idex matrix is formed properly
+    stats.form_redundant_distances()
+    index_mapping = stats.redundant_distance_mapping
+    assert index_mapping.shape == (beads, beads - 1)
+    # mock distance data
+    dist = np.random.randn(frames, int((beads - 1) * (beads) / 2))
+    redundant_dist =  dist[:, index_mapping]
+    assert redundant_dist.shape == (frames, beads, beads - 1)
