@@ -343,7 +343,7 @@ class ProteinBackboneStatistics():
         """
         mapping = np.zeros((self.n_beads, self.n_beads - 1), dtype='uint8')
         for bead in range(self.n_beads):
-            def seq1 (bead, n_beads):
+            def seq1(bead, n_beads):
                 n = bead
                 j = n_beads - 1
                 while(True):
@@ -351,12 +351,13 @@ class ProteinBackboneStatistics():
                     n = n + j
                     j -= 1
             max_calls = self.n_beads - bead - 1
-            gen = seq1(bead,self.n_beads)
+            gen = seq1(bead, self.n_beads)
             idx = np.array([bead] + [next(gen) for _ in range(max_calls-1)])
             mapping[bead, (bead):] = idx
             if bead < self.n_beads - 1:
                 mapping[(bead+1):, bead] = idx
         self.redundant_distance_mapping = mapping
+
 
 def kl_divergence(dist_1, dist_2):
     r"""Compute the Kullback-Leibler (KL) divergence between two discrete

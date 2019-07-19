@@ -120,5 +120,5 @@ def test_form_redundant_distances():
     assert index_mapping.shape == (beads, beads - 1)
     # mock distance data
     dist = np.random.randn(frames, int((beads - 1) * (beads) / 2))
-    redundant_dist =  dist[:, index_mapping]
+    redundant_dist = dist[:, index_mapping]
     assert redundant_dist.shape == (frames, beads, beads - 1)
