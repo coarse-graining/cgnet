@@ -114,74 +114,8 @@ def test_bondconst_dict_2():
             assert len(bondconst_dict[k]) == n_keys
 
 
-def test_idx_functions():
-    # Test proper retrieval of feature indices
-    nums = [len(stats.descriptions[feat_name]) for feat_name in stats.order]
-    dist_idx = stats.return_indices('Distances')
-    start_idx = 0
-    for num, desc in zip(nums, stats.order):
-        if 'Distances' == desc:
-            break
-        else:
-            start_idx += num
-    indices = range(0, len(stats.descriptions['Distances']))
-    indices = [idx + start_idx for idx in indices]
-    assert len(dist_idx) == (beads) * (beads - 1) / 2
-    assert dist_idx == indices
-
-    ang_idx = stats.return_indices('Angles')
-    start_idx = 0
-    for num, desc in zip(nums, stats.order):
-        if 'Angles' == desc:
-            break
-        else:
-            start_idx += num
-    indices = range(0, len(stats.descriptions['Angles']))
-    indices = [idx + start_idx for idx in indices]
-    assert len(ang_idx) == beads - 2
-    assert ang_idx == indices
-
-    dihedral_sin_idx = stats.return_indices('Dihedral_sines')
-    start_idx = 0
-    for num, desc in zip(nums, stats.order):
-        if 'Dihedral_sines' == desc:
-            break
-        else:
-            start_idx += num
-    indices = range(0, len(stats.descriptions['Dihedral_sines']))
-    indices = [idx + start_idx for idx in indices]
-    assert len(dihedral_sin_idx) == beads - 3
-    assert dihedral_sin_idx == indices
-
-    dihedral_cos_idx = stats.return_indices('Dihedral_cosines')
-    start_idx = 0
-    for num, desc in zip(nums, stats.order):
-        if 'Dihedral_cosines' == desc:
-            break
-        else:
-            start_idx += num
-    indices = range(0, len(stats.descriptions['Dihedral_cosines']))
-    indices = [idx + start_idx for idx in indices]
-    assert len(dihedral_cos_idx) == beads - 3
-    assert dihedral_cos_idx == indices
-
-    bond_idx = stats.return_indices('Bonds')
-    start_idx = 0
-    for num, desc in zip(nums, stats.order):
-        if 'Distances' == desc:
-            break
-        else:
-            start_idx += num
-    indices = [stats.descriptions['Distances'].index(pair)
-               for pair in stats._adj_pairs]
-    indices = [idx + start_idx for idx in indices]
-
-    assert len(bond_idx) == beads - 1
-    assert bond_idx == indices
-
-
-def test_idx_functions_2():
-    # Test proper retrieval of feature indices
+def test_idx_functions_1():
+    # Test proper retrieval of feature indices for sizes
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
@@ -207,3 +141,45 @@ def test_idx_functions_2():
                        bool_list[2] * (beads - 3) * 2
                        )
     assert sum_feats == check_sum_feats
+
+
+def test_idx_functions_2():
+    # Test proper retrieval of feature indices for specific indices
+    bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
+    np.random.shuffle(bool_list)
+
+    stats = ProteinBackboneStatistics(xt,
+                                      get_distances=bool_list[0],
+                                      get_angles=bool_list[1],
+                                      get_dihedrals=bool_list[2])
+
+    num_dists = bool_list[0] * (beads) * (beads - 1) / 2
+    num_angles = beads - 2
+    num_diheds = beads - 3
+
+    if bool_list[0]:
+        np.testing.assert_array_equal(np.arange(0, num_dists),
+                                      stats.return_indices('Distances'))
+
+        bond_ind_list = [ind for ind, pair in enumerate(
+            stats.descriptions['Distances'])
+            if pair[1] - pair[0] == 1]
+        np.testing.assert_array_equal(bond_ind_list,
+                                      stats.return_indices('Bonds'))
+
+    if bool_list[1]:
+        angle_start = bool_list[0]*num_dists
+        np.testing.assert_array_equal(np.arange(angle_start,
+                                                num_angles + angle_start),
+                                      stats.return_indices('Angles'))
+
+    if bool_list[2]:
+        dihedral_cos_start = bool_list[0]*num_dists + bool_list[1]*num_angles
+        np.testing.assert_array_equal(np.arange(dihedral_cos_start,
+                                                num_diheds + dihedral_cos_start),
+                                      stats.return_indices('Dihedral_cosines'))
+
+        dihedral_sin_start = dihedral_cos_start + num_diheds
+        np.testing.assert_array_equal(np.arange(dihedral_sin_start,
+                                                num_diheds + dihedral_sin_start),
+                                      stats.return_indices('Dihedral_sines'))
