@@ -199,18 +199,19 @@ def test_redundant_distance_mapping_vals():
     # Test to see if the redundant distance index matrix has correct values
     mapping = np.zeros((stats.n_beads, stats.n_beads - 1), dtype='uint8')
     for bead in range(stats.n_beads):
-        def seq1(bead, n_beads):
+        def neighbor_sequence(bead, n_beads):
             n = bead
             j = n_beads - 1
             while(True):
                 yield n + j
                 n = n + j
                 j -= 1
-        max_calls = stats.n_beads - bead - 1
-        gen = seq1(bead, stats.n_beads)
-        idx = np.array([bead] + [next(gen) for _ in range(max_calls-1)])
-        mapping[bead, (bead):] = idx
+        max_calls_to_generator = stats.n_beads - bead - 1
+        generator = neighbor_sequence(bead, stats.n_beads)
+        index = np.array([bead] + [next(generator)
+                       for _ in range(max_calls_to_generator-1)])
+        mapping[bead, (bead):] = index
         if bead < stats.n_beads - 1:
-            mapping[(bead+1):, bead] = idx
+            mapping[(bead+1):, bead] = index
     np.testing.assert_array_equal(stats.redundant_distance_mapping,
                                   mapping)
