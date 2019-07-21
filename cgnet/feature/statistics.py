@@ -249,14 +249,14 @@ class ProteinBackboneStatistics():
     def _get_distance_indices(self):
         """Determines indices of pairwise distance features
         """
-        order = []
+        pair_order = []
         adj_pairs = []
         for increment in range(1, self.data.shape[1]):
             for i in range(self.data.shape[1] - increment):
-                order.append((i, i+increment))
+                pair_order.append((i, i+increment))
                 if increment == 1:
                     adj_pairs.append((i, i+increment))
-        self._order = order
+        self._pair_order = pair_order
         self._adj_pairs = adj_pairs
 
     def _get_stats(self, X, key):
@@ -274,15 +274,15 @@ class ProteinBackboneStatistics():
            shape=(n_frames, n_beads-1)
         """
         dlist = np.empty([self.n_frames,
-                          len(self._order)])
+                          len(self._pair_order)])
         for frame in range(self.n_frames):
             dmat = scipy.spatial.distance.squareform(
                 scipy.spatial.distance.pdist(self.data[frame]))
-            frame_dists = [dmat[self._order[i]]
-                           for i in range(len(self._order))]
+            frame_dists = [dmat[self._pair_order[i]]
+                           for i in range(len(self._pair_order))]
             dlist[frame, :] = frame_dists
         self.distances = dlist
-        self.descriptions['Distances'] = self._order
+        self.descriptions['Distances'] = self._pair_order
 
     def _get_adjacent_distances(self):
         """Obtain adjacent distances; shape=(n_frames, n_beads-1, 3)
