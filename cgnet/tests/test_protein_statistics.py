@@ -116,10 +116,10 @@ def test_bondconst_dict_2():
 
 def test_idx_functions():
     # Test proper retrieval of feature indices
-    nums = [len(stats.descriptions[i]) for i in stats.descriptions.keys()]
+    nums = [len(stats.descriptions[feat_name]) for feat_name in stats.order]
     dist_idx = stats.return_indices('Distances')
     start_idx = 0
-    for num, desc in zip(nums, stats.descriptions.keys()):
+    for num, desc in zip(nums, stats.order):
         if 'Distances' == desc:
             break
         else:
@@ -131,7 +131,7 @@ def test_idx_functions():
 
     ang_idx = stats.return_indices('Angles')
     start_idx = 0
-    for num, desc in zip(nums, stats.descriptions.keys()):
+    for num, desc in zip(nums, stats.order):
         if 'Angles' == desc:
             break
         else:
@@ -143,7 +143,7 @@ def test_idx_functions():
 
     dihedral_sin_idx = stats.return_indices('Dihedral_sines')
     start_idx = 0
-    for num, desc in zip(nums, stats.descriptions.keys()):
+    for num, desc in zip(nums, stats.order):
         if 'Dihedral_sines' == desc:
             break
         else:
@@ -155,7 +155,7 @@ def test_idx_functions():
 
     dihedral_cos_idx = stats.return_indices('Dihedral_cosines')
     start_idx = 0
-    for num, desc in zip(nums, stats.descriptions.keys()):
+    for num, desc in zip(nums, stats.order):
         if 'Dihedral_cosines' == desc:
             break
         else:
@@ -167,7 +167,7 @@ def test_idx_functions():
 
     bond_idx = stats.return_indices('Bonds')
     start_idx = 0
-    for num, desc in zip(nums, stats.descriptions.keys()):
+    for num, desc in zip(nums, stats.order):
         if 'Distances' == desc:
             break
         else:

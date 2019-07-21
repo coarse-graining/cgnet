@@ -362,9 +362,9 @@ class ProteinBackboneStatistics():
         if feature_type not in self.descriptions.keys() and feature_type != 'Bonds':
             raise RuntimeError(
                 "Error: \'{}\' is not a valid backbone feature.".format(feature_type))
-        nums = [len(self.descriptions[i]) for i in self.descriptions.keys()]
+        nums = [len(self.descriptions[i]) for i in self.order]
         start_idx = 0
-        for num, desc in zip(nums, self.descriptions.keys()):
+        for num, desc in zip(nums, self.order):
             if feature_type == desc or (feature_type == 'Bonds'
                                         and desc == 'Distances'):
                 break
