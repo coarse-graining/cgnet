@@ -69,15 +69,19 @@ class ProteinBackboneStatistics():
         }
         self.descriptions = {}
 
+        self.order = []
+
         if get_distances:
             self._get_pairwise_distances()
             self._name_dict['Distances'] = self.distances
             self._get_stats(self.distances, 'Distances')
+            self.order += ['Distances']
 
         if get_angles:
             self._get_angles()
             self._name_dict['Angles'] = self.angles
             self._get_stats(self.angles, 'Angles')
+            self.order += ['Angles']
 
         if get_dihedrals:
             self._get_dihedrals()
@@ -85,6 +89,8 @@ class ProteinBackboneStatistics():
             self._name_dict['Dihedral_sines'] = self.dihedral_sines
             self._get_stats(self.dihedral_cosines, 'Dihedral_cosines')
             self._get_stats(self.dihedral_sines, 'Dihedral_sines')
+            self.order += ['Dihedral_cosines']
+            self.order += ['Dihedral_sines']
 
     def _get_key(self, key, name):
         if name == 'Dihedral_cosines':
@@ -107,8 +113,7 @@ class ProteinBackboneStatistics():
         return newdict
 
     def get_zscores(self, tensor=True, as_dict=True, flip_dict=True,
-                    order=["Distances", "Angles",
-                           "Dihedral_cosines", "Dihedral_sines"]):
+                    order=None):
         """Obtain zscores (mean and standard deviation) for features
 
         Parameters
@@ -122,8 +127,7 @@ class ProteinBackboneStatistics():
         flip_dict : Boolean (default=True)
             Returns a dictionary with outer keys as indices if True and
             outer keys as statistic string names if False
-        order : List, default=['Distances', 'Angles', 'Dihedral_cosines',
-                               'Dihedral_sines']
+        order : List, default=self.order
             Order of statistics in output
 
         Returns
@@ -140,6 +144,9 @@ class ProteinBackboneStatistics():
             standard deviations in the second row, where n is
             the number of features
         """
+        if order is None:
+            order = self.order
+
         for key in order:
             if self._name_dict[key] is None:
                 raise ValueError("{} have not been calculated".format(key))
@@ -164,9 +171,7 @@ class ProteinBackboneStatistics():
             return zscore_array
 
     def get_bond_constants(self, tensor=True, as_dict=True, zscores=True,
-                           flip_dict=True,
-                           order=["Distances", "Angles",
-                                  "Dihedral_cosines", "Dihedral_sines"]):
+                           flip_dict=True, order=None):
         """Obtain bond constants (K values and means) for adjacent distance
            and angle features. K values depend on the temperature.
 
@@ -184,6 +189,8 @@ class ProteinBackboneStatistics():
         flip_dict : Boolean (default=True)
             Returns a dictionary with outer keys as indices if True and
             outer keys as statistic string names if False
+        order : List, default=self.order
+            Order of statistics in output
 
         Returns
         -------
@@ -201,6 +208,9 @@ class ProteinBackboneStatistics():
             means in the second row, where n is the number of adjacent
             pairwise distances plus the number of angles
         """
+        if order is None:
+            order = self.order
+
         if zscores and not as_dict:
             raise RuntimeError('zscores can only be True if as_dict is True')
 
