@@ -178,3 +178,32 @@ def test_idx_functions():
 
     assert len(bond_idx) == beads - 1
     assert bond_idx == indices
+
+
+def test_idx_functions_2():
+    # Test proper retrieval of feature indices
+    bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
+    np.random.shuffle(bool_list)
+
+    stats = ProteinBackboneStatistics(xt,
+                                      get_distances=bool_list[0],
+                                      get_angles=bool_list[1],
+                                      get_dihedrals=bool_list[2])
+
+    if bool_list[0]:
+        assert len(stats.return_indices('Distances')) == (
+            beads) * (beads - 1) / 2
+        assert len(stats.return_indices('Bonds')) == beads - 1
+    if bool_list[1]:
+        assert len(stats.return_indices('Angles')) == beads - 2
+    if bool_list[2]:
+        assert len(stats.return_indices('Dihedral_cosines')) == beads - 3
+        assert len(stats.return_indices('Dihedral_sines')) == beads - 3
+
+    sum_feats = np.sum([len(stats.descriptions[feat_name])
+                        for feat_name in stats.order])
+    check_sum_feats = (bool_list[0] * (beads) * (beads - 1) / 2 +
+                       bool_list[1] * (beads - 2) +
+                       bool_list[2] * (beads - 3) * 2
+                       )
+    assert sum_feats == check_sum_feats
