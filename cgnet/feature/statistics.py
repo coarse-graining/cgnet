@@ -112,8 +112,7 @@ class ProteinBackboneStatistics():
                     newdict[i][stat] = mydict[stat][i]
         return newdict
 
-    def get_zscores(self, tensor=True, as_dict=True, flip_dict=True,
-                    order=None):
+    def get_zscores(self, tensor=True, as_dict=True, flip_dict=True):
         """Obtain zscores (mean and standard deviation) for features
 
         Parameters
@@ -127,8 +126,6 @@ class ProteinBackboneStatistics():
         flip_dict : Boolean (default=True)
             Returns a dictionary with outer keys as indices if True and
             outer keys as statistic string names if False
-        order : List, default=self.order
-            Order of statistics in output
 
         Returns
         -------
@@ -144,19 +141,16 @@ class ProteinBackboneStatistics():
             standard deviations in the second row, where n is
             the number of features
         """
-        if order is None:
-            order = self.order
-
-        for key in order:
+        for key in self.order:
             if self._name_dict[key] is None:
                 raise ValueError("{} have not been calculated".format(key))
 
         zscore_keys = np.sum([[self._get_key(key, name)
                                for key in self.descriptions[name]]
-                              for name in order])
+                              for name in self.order])
         zscore_array = np.vstack([
             np.concatenate([self.stats_dict[key][stat]
-                            for key in order]) for stat in ['mean', 'std']])
+                            for key in self.order]) for stat in ['mean', 'std']])
         if tensor:
             zscore_array = torch.from_numpy(zscore_array).float()
 
@@ -171,7 +165,7 @@ class ProteinBackboneStatistics():
             return zscore_array
 
     def get_bond_constants(self, tensor=True, as_dict=True, zscores=True,
-                           flip_dict=True, order=None):
+                           flip_dict=True):
         """Obtain bond constants (K values and means) for adjacent distance
            and angle features. K values depend on the temperature.
 
@@ -189,8 +183,6 @@ class ProteinBackboneStatistics():
         flip_dict : Boolean (default=True)
             Returns a dictionary with outer keys as indices if True and
             outer keys as statistic string names if False
-        order : List, default=self.order
-            Order of statistics in output
 
         Returns
         -------
@@ -208,9 +200,6 @@ class ProteinBackboneStatistics():
             means in the second row, where n is the number of adjacent
             pairwise distances plus the number of angles
         """
-        if order is None:
-            order = self.order
-
         if zscores and not as_dict:
             raise RuntimeError('zscores can only be True if as_dict is True')
 
@@ -242,7 +231,7 @@ class ProteinBackboneStatistics():
         if as_dict:
             if zscores:
                 bondconst_dict = self.get_zscores(tensor=tensor, as_dict=True,
-                                                  order=order, flip_dict=False)
+                                                  flip_dict=False)
                 bondconst_dict['k'] = dict(zip(bondconst_keys,
                                                bondconst_array[0, :]))
             else:
