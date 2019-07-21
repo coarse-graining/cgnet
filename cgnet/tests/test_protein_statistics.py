@@ -183,3 +183,34 @@ def test_idx_functions_2():
         np.testing.assert_array_equal(np.arange(dihedral_sin_start,
                                                 num_diheds + dihedral_sin_start),
                                       stats.return_indices('Dihedral_sines'))
+
+
+def test_redundant_distance_mapping_shape():
+    # Test to see if the redundant distance index matrix is formed properly
+    index_mapping = stats.redundant_distance_mapping
+    assert index_mapping.shape == (beads, beads - 1)
+    # mock distance data
+    dist = np.random.randn(frames, int((beads - 1) * (beads) / 2))
+    redundant_dist = dist[:, index_mapping]
+    assert redundant_dist.shape == (frames, beads, beads - 1)
+
+
+def test_redundant_distance_mapping_vals():
+    # Test to see if the redundant distance index matrix has correct values
+    mapping = np.zeros((stats.n_beads, stats.n_beads - 1), dtype='uint8')
+    for bead in range(stats.n_beads):
+        def seq1(bead, n_beads):
+            n = bead
+            j = n_beads - 1
+            while(True):
+                yield n + j
+                n = n + j
+                j -= 1
+        max_calls = stats.n_beads - bead - 1
+        gen = seq1(bead, stats.n_beads)
+        idx = np.array([bead] + [next(gen) for _ in range(max_calls-1)])
+        mapping[bead, (bead):] = idx
+        if bead < stats.n_beads - 1:
+            mapping[(bead+1):, bead] = idx
+    np.testing.assert_array_equal(stats.redundant_distance_mapping,
+                                  mapping)

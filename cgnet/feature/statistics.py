@@ -82,7 +82,7 @@ class ProteinBackboneStatistics():
             self._get_stats(self.distances, 'Distances')
             self.order += ['Distances']
             if get_redundant_distance_mapping:
-                self._form_redundant_distances()
+                self._get_redundant_distance_mapping()
 
         if get_angles:
             self._get_angles()
@@ -374,7 +374,7 @@ class ProteinBackboneStatistics():
         indices = [idx + start_idx for idx in indices]
         return indices
 
-    def _form_redundant_distances(self):
+    def _get_redundant_distance_mapping(self):
         """Reformulates pairwise distances from shape [n_examples, n_dist]
         to shape [n_examples, n_beads, n_neighbors]
 
