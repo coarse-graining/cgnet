@@ -24,10 +24,12 @@ class ProteinBackboneStatistics():
         Whether to calculate distances
     get_angles : Boolean (default=True)
         Whether to calculate angles
-    get_dihedrals : Boolean, (default=True)
+    get_dihedrals : Boolean (default=True)
         Whether to calculate dihedral cosines and sines
     temperature : float (default=300.0)
         Temperature of system
+    get_redundant_distance_mapping : Boolean (default=True)
+        If true, creates a redundant_distance_mapping attribute
 
     Attributes
     ----------
@@ -35,6 +37,8 @@ class ProteinBackboneStatistics():
         Stores 'mean' and 'std' for caluclated features
     descriptions : dictionary
         List of indices (value) for each feature type (key)
+    redundant_distance_mapping
+        Redundant square distance matrix
 
     Example
     -------
@@ -44,7 +48,8 @@ class ProteinBackboneStatistics():
 
     def __init__(self, data,
                  get_distances=True, get_angles=True,
-                 get_dihedrals=True, temperature=300.0):
+                 get_dihedrals=True, temperature=300.0,
+                 get_redundant_distance_mapping=True):
         if torch.is_tensor(data):
             self.data = data.detach().numpy()
         else:
@@ -76,6 +81,8 @@ class ProteinBackboneStatistics():
             self._name_dict['Distances'] = self.distances
             self._get_stats(self.distances, 'Distances')
             self.order += ['Distances']
+            if get_redundant_distance_mapping:
+                self._form_redundant_distances()
 
         if get_angles:
             self._get_angles()
@@ -366,6 +373,28 @@ class ProteinBackboneStatistics():
             indices = range(0, len(self.descriptions[feature_type]))
         indices = [idx + start_idx for idx in indices]
         return indices
+
+    def _form_redundant_distances(self):
+        """Reformulates pairwise distances from shape [n_examples, n_dist]
+        to shape [n_examples, n_beads, n_neighbors]
+
+        This is done by finding the index mapping between non-redundant and
+        redundant representations of the pairwise distances. This mapping can
+        then be supplied to Schnet-related features, such as a
+        RadialBasisFunction() layer, which use redundant pairwise distance
+        representations.
+
+        """
+        pairwise_dist_inds = [zipped_pair[1] for zipped_pair in sorted(
+                                [z for z in zip(self._pair_order,
+                                                np.arange(len(self._pair_order)))
+                                 ])
+                            ]
+        map_matrix = scipy.spatial.distance.squareform(pairwise_dist_inds)
+        map_matrix = map_matrix[~np.eye(map_matrix.shape[0],
+                                        dtype=bool)].reshape(
+                                            map_matrix.shape[0], -1)
+        self.redundant_distance_mapping = map_matrix
 
 
 def kl_divergence(dist_1, dist_2):
