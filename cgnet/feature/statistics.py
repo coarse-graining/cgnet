@@ -180,7 +180,7 @@ class ProteinBackboneStatistics():
             documentation)
         zscores : Boolean (default=True)
             Includes results from the get_zscores() method if True;
-            only alowed if as_dict is also True
+            only allowed if as_dict is also True
         flip_dict : Boolean (default=True)
             Returns a dictionary with outer keys as indices if True and
             outer keys as statistic string names if False
