@@ -5,6 +5,7 @@
 import numpy as np
 import torch
 import scipy.spatial
+import warnings
 
 
 KBOLTZMANN = 1.38064852e-23
@@ -42,16 +43,38 @@ class ProteinBackboneStatistics():
     print(ds.stats_dict['Distances']['mean'])
     """
 
-    def __init__(self, data,
+    def __init__(self, data, backbone_inds='all',
                  get_distances=True, get_angles=True,
                  get_dihedrals=True, temperature=300.0):
         if torch.is_tensor(data):
             self.data = data.detach().numpy()
         else:
             self.data = data
+
         self.n_frames = self.data.shape[0]
         self.n_beads = self.data.shape[1]
         self.temperature = temperature
+
+        if type(backbone_inds) is str:
+            if backbone_inds == 'all':
+                self.backbone_inds = np.arange(self.n_beads)
+        elif type(backbone_inds) in [list, np.ndarray]:
+            if len(np.unique(backbone_inds)) != len(backbone_inds):
+                raise ValueError('Backbone is not allowed to have repeat entries')
+            self.backbone_inds = np.array(backbone_inds)
+
+            if not np.all(np.sort(self.backbone_inds) == self.backbone_inds):
+                warnings.warn(
+    "Your backbone indices aren't sorted: Make sure your backbone indices are in consecutive order"
+                               )
+
+            self._backbone_map = self._get_backbone_map()
+        elif backbone_inds is None:
+            self.backbone_inds = np.array([])
+        else:
+            raise RuntimeError(
+                "backbone_inds must be list or np.ndarray of indices, 'all', or None"
+            )
 
         self._get_distance_indices()
         self.stats_dict = {}
@@ -69,10 +92,10 @@ class ProteinBackboneStatistics():
         }
         self.descriptions = {}
 
-        if get_distances:
-            self._get_pairwise_distances()
-            self._name_dict['Distances'] = self.distances
-            self._get_stats(self.distances, 'Distances')
+        # if get_distances:
+        #     self._get_pairwise_distances()
+        #     self._name_dict['Distances'] = self.distances
+        #     self._get_stats(self.distances, 'Distances')
 
         if get_angles:
             self._get_angles()
@@ -85,6 +108,13 @@ class ProteinBackboneStatistics():
             self._name_dict['Dihedral_sines'] = self.dihedral_sines
             self._get_stats(self.dihedral_cosines, 'Dihedral_cosines')
             self._get_stats(self.dihedral_sines, 'Dihedral_sines')
+
+    def _get_backbone_map(self):
+        backbone_map = {mol_ind: bb_ind for bb_ind, mol_ind
+                        in enumerate(self.backbone_inds)}
+        pad_map = {mol_ind: np.nan for mol_ind
+                   in range(self.n_beads) if mol_ind not in self.backbone_inds}
+        return {**backbone_map, **pad_map}
 
     def _get_key(self, key, name):
         if name == 'Dihedral_cosines':
@@ -250,14 +280,16 @@ class ProteinBackboneStatistics():
         """Determines indices of pairwise distance features
         """
         order = []
-        adj_pairs = []
+        adj_backbone_pairs = []
         for increment in range(1, self.data.shape[1]):
             for i in range(self.data.shape[1] - increment):
                 order.append((i, i+increment))
-                if increment == 1:
-                    adj_pairs.append((i, i+increment))
+                if self.backbone_inds is not None:
+                    if (self._backbone_map[i+increment]
+                        - self._backbone_map[i] == 1):
+                        adj_backbone_pairs.append((i, i+increment))
         self._order = order
-        self._adj_pairs = adj_pairs
+        self._adj_backbone_pairs = adj_backbone_pairs
 
     def _get_stats(self, X, key):
         """Populates stats dictionary with mean and std of feature
