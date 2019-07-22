@@ -58,7 +58,15 @@ class ProteinBackboneStatistics():
         self.n_beads = self.data.shape[1]
         self.temperature = temperature
 
-
+        if custom_features is not None:
+            if (np.min([len(feat) for feat in custom_features]) < 2 or
+                np.max([len(feat) for feat in custmo_features]) > 4):
+                raise ValueError(
+                "Custom features must be tuples of length 2, 3, or 4."
+                    )
+            self._custom_distances = [feat for feat in custom_features if len(feat) == 2]
+            self._custom_angles = [feat for feat in custom_features if len(feat) == 3]
+            self._custom_dihedrals = [feat for feat in custom_features if len(feat) == 4]
 
         if type(backbone_inds) is str:
             if backbone_inds == 'all':
