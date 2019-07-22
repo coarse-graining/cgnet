@@ -44,8 +44,8 @@ class ProteinBackboneStatistics():
     """
 
     def __init__(self, data, backbone_inds='all',
-                 get_distances=True, get_angles=True,
-                 get_dihedrals=True, temperature=300.0):
+                 get_distances=True, get_backbone_angles=True,
+                 get_backbone_dihedrals=True, temperature=300.0):
         if torch.is_tensor(data):
             self.data = data.detach().numpy()
         else:
@@ -75,14 +75,16 @@ class ProteinBackboneStatistics():
             raise RuntimeError(
                 "backbone_inds must be list or np.ndarray of indices, 'all', or None"
             )
+        self.n_backbone_beads = len(self.backbone_inds)
 
         self._get_distance_indices()
         self.stats_dict = {}
 
-        self.distances = None
-        self.angles = None
-        self.dihedral_cosines = None
-        self.dihedral_sines = None
+        self.distances = []
+        self._adj_backbone_dists = []
+        self.angles = []
+        self.dihedral_cosines = []
+        self.dihedral_sines = []
 
         self._name_dict = {
             'Distances': self.distances,
@@ -90,24 +92,29 @@ class ProteinBackboneStatistics():
             'Dihedral_cosines': self.dihedral_cosines,
             'Dihedral_sines': self.dihedral_sines
         }
-        self.descriptions = {}
+        self.descriptions = {
+            'Distances': [],
+            'Angles': [],
+            'Dihedral_cosines': [],
+            'Dihedral_sines': []
+        }
 
         # if get_distances:
         #     self._get_pairwise_distances()
         #     self._name_dict['Distances'] = self.distances
         #     self._get_stats(self.distances, 'Distances')
 
-        if get_angles:
-            self._get_angles()
-            self._name_dict['Angles'] = self.angles
-            self._get_stats(self.angles, 'Angles')
+        if get_backbone_angles:
+            self._get_backbone_angles()
+            self._name_dict['Angles'].append(self.backbone_angles)
+            #self._get_stats(self.angles, 'Angles')
 
-        if get_dihedrals:
-            self._get_dihedrals()
-            self._name_dict['Dihedral_cosines'] = self.dihedral_cosines
-            self._name_dict['Dihedral_sines'] = self.dihedral_sines
-            self._get_stats(self.dihedral_cosines, 'Dihedral_cosines')
-            self._get_stats(self.dihedral_sines, 'Dihedral_sines')
+        if get_backbone_dihedrals:
+            self._get_backbone_dihedrals()
+            self._name_dict['Dihedral_cosines'].append(self.backbone_dihedral_cosines)
+            self._name_dict['Dihedral_sines'].append(self.backbone_dihedral_sines)
+            #self._get_stats(self.dihedral_cosines, 'Dihedral_cosines')
+            #self._get_stats(self.dihedral_sines, 'Dihedral_sines')
 
     def _get_backbone_map(self):
         backbone_map = {mol_ind: bb_ind for bb_ind, mol_ind
@@ -316,51 +323,60 @@ class ProteinBackboneStatistics():
         self.distances = dlist
         self.descriptions['Distances'] = self._order
 
-    def _get_adjacent_distances(self):
-        """Obtain adjacent distances; shape=(n_frames, n_beads-1, 3)
+    def _get_adjacent_backbone_distances(self):
+        """Obtain adjacent backbone distances; 
+        shape=(n_frames, n_backbone_beads-1, 3)
         """
-        self.adj_dists = self.data[:][:, 1:] - \
-            self.data[:][:, :(self.n_beads-1)]
+        # self.adj_dists = self.data[:][:, 1:] - \
+        #     self.data[:][:, :(self.n_beads-1)]
+        self._adj_backbone_dists = (self.data[:, self.backbone_inds[1:]] -
+                                   self.data[:, self.backbone_inds[:-1]])
 
-    def _get_angles(self):
-        """Obtain angles of all adjacent triplets; shape=(n_frames, n_beads-2)
+    def _get_backbone_angles(self):
+        """Obtain angles of all adjacent triplets;
+        shape=(n_frames, n_backbone_beads-2)
         """
-        self._get_adjacent_distances()
-        base = self.adj_dists[:, 0:(self.n_beads-2), :]
-        offset = self.adj_dists[:, 1:(self.n_beads-1), :]
+        if len(self._adj_backbone_dists) == 0:
+            self._get_adjacent_backbone_distances()
+
+        base = self._adj_backbone_dists[:, 0:(self.n_backbone_beads-2), :]
+        offset = self._adj_backbone_dists[:, 1:(self.n_backbone_beads-1), :]
 
         descriptions = []
-        self.angles = np.arccos(np.sum(base*offset, axis=2)/np.linalg.norm(
+        self.backbone_angles = np.arccos(np.sum(base*offset, axis=2)/np.linalg.norm(
             base, axis=2)/np.linalg.norm(offset, axis=2))
-        descriptions.extend([(i, i+1, i+2) for i in range(self.n_beads-2)])
-        self.descriptions['Angles'] = descriptions
+        descriptions.extend([(i, i+1, i+2)
+                             for i in range(self.n_backbone_beads-2)])
+        self.descriptions['Angles'].append(descriptions)
 
-    def _get_dihedrals(self):
-        """Obtain angles of all adjacent quartets; shape=(n_frames, n_beads-3)
+    def _get_backbone_dihedrals(self):
+        """Obtain angles of all adjacent quartets;
+        shape=(n_frames, n_backbone_beads-3)
         """
-        self._get_adjacent_distances()
+        if len(self._adj_backbone_dists) == 0:
+            self._get_adjacent_backbone_distances()
 
-        base = self.adj_dists[:, 0:(self.n_beads-2), :]
-        offset = self.adj_dists[:, 1:(self.n_beads-1), :]
-        offset_2 = self.adj_dists[:, 1:(self.n_beads-2), :]
+        base = self._adj_backbone_dists[:, 0:(self.n_backbone_beads-2), :]
+        offset = self._adj_backbone_dists[:, 1:(self.n_backbone_beads-1), :]
+        offset_2 = self._adj_backbone_dists[:, 1:(self.n_backbone_beads-2), :]
 
         cross_product_adj = np.cross(base, offset, axis=2)
-        cp_base = cross_product_adj[:, 0:(self.n_beads-3), :]
-        cp_offset = cross_product_adj[:, 1:(self.n_beads-2), :]
+        cp_base = cross_product_adj[:, 0:(self.n_backbone_beads-3), :]
+        cp_offset = cross_product_adj[:, 1:(self.n_backbone_beads-2), :]
 
         plane_vector = np.cross(cp_offset, offset_2, axis=2)
-        pv_base = plane_vector[:, 0:(self.n_beads-3), :]
+        pv_base = plane_vector[:, 0:(self.n_backbone_beads-3), :]
 
         descriptions = []
-        self.dihedral_cosines = np.sum(cp_base*cp_offset, axis=2)/np.linalg.norm(
+        self.backbone_dihedral_cosines = np.sum(cp_base*cp_offset, axis=2)/np.linalg.norm(
             cp_base, axis=2)/np.linalg.norm(cp_offset, axis=2)
 
-        self.dihedral_sines = np.sum(cp_base*pv_base, axis=2)/np.linalg.norm(
+        self.backbone_dihedral_sines = np.sum(cp_base*pv_base, axis=2)/np.linalg.norm(
             cp_base, axis=2)/np.linalg.norm(pv_base, axis=2)
         descriptions.extend([(i, i+1, i+2, i+3)
                              for i in range(self.n_beads-3)])
-        self.descriptions['Dihedral_cosines'] = descriptions
-        self.descriptions['Dihedral_sines'] = descriptions
+        self.descriptions['Dihedral_cosines'].append(descriptions)
+        self.descriptions['Dihedral_sines'].append(descriptions)
 
 
 def kl_divergence(dist_1, dist_2):
