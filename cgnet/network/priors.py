@@ -23,6 +23,10 @@ class _PriorLayer(nn.Module):
         feature keys are those implemented in ProteinBackBoneStatistics():
         \"Distances\", \"Angles\", \"Dihedral_cosines\", and/or
         \"Dihedral_sines\"
+    order : list of str
+        list of feature types that determines the order of features output
+        from a ProteinBackboneFeature() layer or ProteinBacboneStatitistics
+        instance.
     feature_type: str
         features type from which to select coordinates.
 
@@ -38,7 +42,7 @@ class _PriorLayer(nn.Module):
 
     """
 
-    def __init__(self, feat_data, descriptions, feature_type):
+    def __init__(self, feat_data, descriptions, order, feature_type):
         super(_PriorLayer, self).__init__()
         if feature_type not in descriptions.keys():
             raise ValueError('Feature type not found in descriptions')
@@ -47,14 +51,9 @@ class _PriorLayer(nn.Module):
         self.features = [feat for feat in feat_data.keys()]
         self.feat_idx = []
         # get number of each feature to determine starting idx
-        nums = [len(descriptions['Distances']),
-                len(descriptions['Angles']),
-                len(descriptions['Dihedral_cosines']),
-                len(descriptions['Dihedral_sines'])]
-        descs = ['Distances', 'Angles',
-                 'Dihedral_cosines', 'Dihedral_sines']
+        nums = [len(descriptions[desc]) for desc in order]
         self.start_idx = 0
-        for num, desc in zip(nums, descs):
+        for num, desc in zip(nums, order):
             if self.feature_type == desc:
                 break
             else:
@@ -62,7 +61,7 @@ class _PriorLayer(nn.Module):
         for key, par in feat_data.items():
             self.features.append(key)
             self.feat_idx.append(self.start_idx +
-                            descriptions[self.feature_type].index(key))
+                                 descriptions[self.feature_type].index(key))
             self.params.append(par)
 
     def forward(self, in_feat):
@@ -103,6 +102,10 @@ class RepulsionLayer(_PriorLayer):
         feature keys are those implemented in ProteinBackBoneStatistics():
         \"Distacnces\", \"Angles\", \"Dihedral_cosines\", and/or
         \"Dihedral_sines\"
+    order : list of str
+        list of feature types that determines the order of features output
+        from a ProteinBackboneFeature() layer or ProteinBacboneStatitistics
+        instance.
     feature_type: str
         features type from which to select coordinates.
 
@@ -117,10 +120,9 @@ class RepulsionLayer(_PriorLayer):
 
     """
 
-    def __init__(self, feat_data, descriptions=None, feature_type=None):
-        super(RepulsionLayer, self).__init__(feat_data,
-                                             descriptions=descriptions,
-                                             feature_type=feature_type)
+    def __init__(self, feat_data, descriptions, order, feature_type):
+        super(RepulsionLayer, self).__init__(feat_data, descriptions, order,
+                                             feature_type)
         for param_dict in self.params:
             if (key in param_dict for key in ('ex_vol', 'exp')):
                 pass
@@ -180,6 +182,10 @@ class HarmonicLayer(_PriorLayer):
         feature keys are those implemented in ProteinBackBoneStatistics():
         \"Distacnces\", \"Angles\", \"Dihedral_cosines\", and/or
         \"Dihedral_sines\"
+    order : list of str
+        list of feature types that determines the order of features output
+        from a ProteinBackboneFeature() layer or ProteinBacboneStatitistics
+        instance.
     feature_type: str
         features type from which to select coordinates.
 
@@ -195,10 +201,9 @@ class HarmonicLayer(_PriorLayer):
 
     """
 
-    def __init__(self, feat_data, descriptions=None, feature_type=None):
-        super(HarmonicLayer, self).__init__(feat_data,
-                                            descriptions=descriptions,
-                                            feature_type=feature_type)
+    def __init__(self, feat_data, descriptions, order, feature_type):
+        super(HarmonicLayer, self).__init__(feat_data, descriptions, order,
+                                            feature_type)
         for param_dict in self.params:
             if (key in param_dict for key in ('k', 'mean')):
                 pass
@@ -207,8 +212,8 @@ class HarmonicLayer(_PriorLayer):
         self.harmonic_parameters = torch.tensor([])
         for param_dict in self.params:
             self.harmonic_parameters = torch.cat((self.harmonic_parameters,
-                                            torch.tensor([[param_dict['k']],
-                                            [param_dict['mean']]])), dim=1)
+                                                  torch.tensor([[param_dict['k']],
+                                                  [param_dict['mean']]])), dim=1)
 
     def forward(self, in_feat):
         """Calculates harmonic contribution of bond/angle interactions to energy
