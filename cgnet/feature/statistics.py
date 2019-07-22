@@ -58,6 +58,7 @@ class ProteinBackboneStatistics():
         if type(backbone_inds) is str:
             if backbone_inds == 'all':
                 self.backbone_inds = np.arange(self.n_beads)
+                self._backbone_map = {ind : ind for ind in range(self.n_beads)}
         elif type(backbone_inds) in [list, np.ndarray]:
             if len(np.unique(backbone_inds)) != len(backbone_inds):
                 raise ValueError('Backbone is not allowed to have repeat entries')

@@ -8,7 +8,7 @@ from cgnet.feature import ProteinBackboneFeature
 from cgnet.feature import ProteinBackboneStatistics
 
 frames = np.random.randint(1, 10)
-beads = np.random.randint(4, 10)
+beads = np.random.randint(8, 20)
 dims = 3
 
 x = np.random.randn(frames, beads, dims)
@@ -18,8 +18,26 @@ f = ProteinBackboneFeature()
 out = f.forward(xt)
 stats = ProteinBackboneStatistics(xt)
 
+backbone_inds = [i for i in range(beads) if i % 2 == 0]
+xt_bb_only = xt[:,backbone_inds]
 
-def test_distance_statistics():
+
+def test_manual_backbone_calculations():
+    # Make sure angle statistics work for manually specified backbone
+    stats_bb_inds = ProteinBackboneStatistics(xt, backbone_inds)
+    stats_bb_only = ProteinBackboneStatistics(xt_bb_only)
+
+    np.testing.assert_allclose(stats_bb_inds.backbone_angles,
+                               stats_bb_only.backbone_angles)
+
+    np.testing.assert_allclose(stats_bb_inds.backbone_dihedral_cosines,
+                               stats_bb_only.backbone_dihedral_cosines)
+
+    np.testing.assert_allclose(stats_bb_inds.backbone_dihedral_sines,
+                               stats_bb_only.backbone_dihedral_sines)
+
+
+def test_backbone_distance_statistics():
     # Make sure distance statistics are consistent with numpy
 
     feature_dist_mean = np.mean(f.distances.numpy(), axis=0)
@@ -33,7 +51,7 @@ def test_distance_statistics():
                                rtol=1e-4)
 
 
-def test_angle_statistics():
+def test_backbone_angle_statistics():
     # Make sure angle statistics are consistent with numpy
 
     feature_angle_mean = np.mean(f.angles.numpy(), axis=0)
@@ -45,7 +63,7 @@ def test_angle_statistics():
                                stats.stats_dict['Angles']['std'], rtol=1e-5)
 
 
-def test_dihedral_statistics():
+def test_backbone_dihedral_statistics():
     # Make sure dihedral statistics are consistent with numpy
 
     feature_dihed_cos_mean = np.mean(f.dihedral_cosines.numpy(), axis=0)

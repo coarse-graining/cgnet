@@ -1,4 +1,4 @@
-# Author: B Husic
+# Author: Brooke Husic
 # Contributors: Jiang Wang
 
 
