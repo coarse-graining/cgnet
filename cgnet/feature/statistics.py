@@ -346,9 +346,10 @@ class ProteinBackboneStatistics():
         descriptions = []
         self.backbone_angles = np.arccos(np.sum(base*offset, axis=2)/np.linalg.norm(
             base, axis=2)/np.linalg.norm(offset, axis=2))
-        descriptions.extend([(i, i+1, i+2)
-                             for i in range(self.n_backbone_beads-2)])
-        self.descriptions['Angles'].append(descriptions)
+        descriptions.extend([(self.backbone_inds[i], self.backbone_inds[i+1],
+                              self.backbone_inds[i+2])
+                              for i in range(self.n_backbone_beads-2)])
+        self.descriptions['Angles'].extend(descriptions)
 
     def _get_backbone_dihedrals(self):
         """Obtain angles of all adjacent quartets;
@@ -374,10 +375,11 @@ class ProteinBackboneStatistics():
 
         self.backbone_dihedral_sines = np.sum(cp_base*pv_base, axis=2)/np.linalg.norm(
             cp_base, axis=2)/np.linalg.norm(pv_base, axis=2)
-        descriptions.extend([(i, i+1, i+2, i+3)
-                             for i in range(self.n_beads-3)])
-        self.descriptions['Dihedral_cosines'].append(descriptions)
-        self.descriptions['Dihedral_sines'].append(descriptions)
+        descriptions.extend([(self.backbone_inds[i], self.backbone_inds[i+1],
+                              self.backbone_inds[i+2], self.backbone_inds[i+3])
+                              for i in range(self.n_backbone_beads-3)])
+        self.descriptions['Dihedral_cosines'].extend(descriptions)
+        self.descriptions['Dihedral_sines'].extend(descriptions)
 
 
 def kl_divergence(dist_1, dist_2):

@@ -36,6 +36,35 @@ def test_manual_backbone_calculations():
     np.testing.assert_allclose(stats_bb_inds.backbone_dihedral_sines,
                                stats_bb_only.backbone_dihedral_sines)
 
+def test_manual_backbone_descriptions():
+    # Make sure angle statistics work for manually specified backbone
+    stats_bb_inds = ProteinBackboneStatistics(xt, backbone_inds)
+    stats_bb_only = ProteinBackboneStatistics(xt_bb_only)
+
+    bb_ind_angle_descs = [(backbone_inds[i], backbone_inds[i+1], backbone_inds[i+2])
+                          for i in range(len(backbone_inds)-2)]
+    bb_only_angle_descs = [(i, i+1, i+2) for i in range(len(backbone_inds)-2)]
+
+    bb_ind_dihed_descs = [(backbone_inds[i], backbone_inds[i+1],
+                           backbone_inds[i+2], backbone_inds[i+3])
+                           for i in range(len(backbone_inds)-3)]
+    bb_only_dihed_descs = [(i, i+1, i+2, i+3) for i in range(len(backbone_inds)-3)]
+
+    np.testing.assert_array_equal(stats_bb_inds.descriptions['Angles'],
+                                  bb_ind_angle_descs)
+    np.testing.assert_array_equal(stats_bb_only.descriptions['Angles'],
+                                  bb_only_angle_descs)
+
+    np.testing.assert_array_equal(stats_bb_inds.descriptions['Dihedral_cosines'],
+                                  bb_ind_dihed_descs)
+    np.testing.assert_array_equal(stats_bb_only.descriptions['Dihedral_cosines'],
+                                  bb_only_dihed_descs)
+
+    np.testing.assert_array_equal(stats_bb_inds.descriptions['Dihedral_sines'],
+                                  bb_ind_dihed_descs)
+    np.testing.assert_array_equal(stats_bb_only.descriptions['Dihedral_sines'],
+                                  bb_only_dihed_descs)
+
 
 def test_backbone_distance_statistics():
     # Make sure distance statistics are consistent with numpy
