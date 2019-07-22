@@ -24,7 +24,7 @@ xt_bb_only = xt[:,backbone_inds]
 
 def test_manual_backbone_calculations():
     # Make sure angle statistics work for manually specified backbone
-    stats_bb_inds = ProteinBackboneStatistics(xt, backbone_inds)
+    stats_bb_inds = ProteinBackboneStatistics(xt, backbone_inds=backbone_inds)
     stats_bb_only = ProteinBackboneStatistics(xt_bb_only)
 
     np.testing.assert_allclose(stats_bb_inds.backbone_angles,
@@ -38,7 +38,7 @@ def test_manual_backbone_calculations():
 
 def test_manual_backbone_descriptions():
     # Make sure angle statistics work for manually specified backbone
-    stats_bb_inds = ProteinBackboneStatistics(xt, backbone_inds)
+    stats_bb_inds = ProteinBackboneStatistics(xt, backbone_inds=backbone_inds)
     stats_bb_only = ProteinBackboneStatistics(xt_bb_only)
 
     bb_ind_angle_descs = [(backbone_inds[i], backbone_inds[i+1], backbone_inds[i+2])

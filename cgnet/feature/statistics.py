@@ -21,12 +21,15 @@ class ProteinBackboneStatistics():
     ----------
     data : torch.Tensor or np.array
         Coordinate data of dimension [n_frames, n_beads, n_dimensions]
-    get_distances : Boolean (default=True)
-        Whether to calculate distances
-    get_angles : Boolean (default=True)
-        Whether to calculate angles
-    get_dihedrals : Boolean, (default=True)
-        Whether to calculate dihedral cosines and sines
+    custom_features : list of tuples or None (default=None)
+    backbone_inds : 'all', list or np.ndarray, or None (default='all')
+        Which bead indices correspond to consecutive beads along the backbone
+    get_all_distances : Boolean (default=True)
+        Whether to calculate all pairwise distances
+    get_backbone_angles : Boolean (default=True)
+        Whether to calculate angles along the backbone
+    get_backbone_dihedrals : Boolean, (default=True)
+        Whether to calculate dihedral cosines and sines along the backbone
     temperature : float (default=300.0)
         Temperature of system
 
@@ -43,8 +46,8 @@ class ProteinBackboneStatistics():
     print(ds.stats_dict['Distances']['mean'])
     """
 
-    def __init__(self, data, backbone_inds='all',
-                 get_distances=True, get_backbone_angles=True,
+    def __init__(self, data, custom_features=None, backbone_inds='all',
+                 get_all_distances=True, get_backbone_angles=True,
                  get_backbone_dihedrals=True, temperature=300.0):
         if torch.is_tensor(data):
             self.data = data.detach().numpy()
@@ -54,6 +57,8 @@ class ProteinBackboneStatistics():
         self.n_frames = self.data.shape[0]
         self.n_beads = self.data.shape[1]
         self.temperature = temperature
+
+
 
         if type(backbone_inds) is str:
             if backbone_inds == 'all':
@@ -100,10 +105,10 @@ class ProteinBackboneStatistics():
             'Dihedral_sines': []
         }
 
-        # if get_distances:
-        #     self._get_pairwise_distances()
-        #     self._name_dict['Distances'] = self.distances
-        #     self._get_stats(self.distances, 'Distances')
+        if get_all_distances:
+            self._get_all_pairwise_distances()
+            self._name_dict['Distances'] = self.distances
+            #self._get_stats(self.distances, 'Distances')
 
         if get_backbone_angles:
             self._get_backbone_angles()
@@ -309,7 +314,7 @@ class ProteinBackboneStatistics():
         self.stats_dict[key]['mean'] = mean
         self.stats_dict[key]['std'] = std
 
-    def _get_pairwise_distances(self):
+    def _get_all_pairwise_distances(self):
         """Obtain pairwise distances for all pairs of beads;
            shape=(n_frames, n_beads-1)
         """
