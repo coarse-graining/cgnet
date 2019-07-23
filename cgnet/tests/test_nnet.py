@@ -38,10 +38,8 @@ repul_dict = dict((index, {'ex_vol': ex_vol, 'exp': exp})
                   in zip(repul_distances, ex_vols, exps))
 
 descriptions = stats.descriptions
-nums = [len(descriptions['Distances']), len(descriptions['Angles']),
-        len(descriptions['Dihedral_cosines']),
-        len(descriptions['Dihedral_sines'])]
-descs = [key for key in descriptions.keys()]
+order = stats.order
+nums = [len(descriptions[desc]) for desc in order]
 zscores = stats.get_zscores(tensor=True, as_dict=False).float()
 
 
@@ -97,8 +95,7 @@ def test_zscore_layer():
 def test_repulsion_layer():
     # Tests RepulsionLayer class for calculation and output size
 
-    repulsion_potential = RepulsionLayer(repul_dict,
-                                         descriptions=descriptions,
+    repulsion_potential = RepulsionLayer(repul_dict, descriptions, order,
                                          feature_type='Distances')
     feat_layer = ProteinBackboneFeature()
     feat = feat_layer(coords)
@@ -107,7 +104,7 @@ def test_repulsion_layer():
     np.testing.assert_equal(energy.size(), (frames, 1))
     start_idx = 0
     feat_idx = []
-    for num, desc in zip(nums, descs):
+    for num, desc in zip(nums, order):
         if 'Distances' == desc:
             break
         else:
@@ -126,7 +123,7 @@ def test_repulsion_layer():
 def test_harmonic_layer():
     # Tests HarmonicLayer class for calculation and output size
 
-    harmonic_potential = HarmonicLayer(bonds, descriptions=descriptions,
+    harmonic_potential = HarmonicLayer(bonds, descriptions, order,
                                        feature_type='Distances')
     feat_layer = ProteinBackboneFeature()
     feat = feat_layer(coords)
@@ -137,7 +134,7 @@ def test_harmonic_layer():
     feat_idx = []
     features = []
     harmonic_parameters = torch.tensor([])
-    for num, desc in zip(nums, descs):
+    for num, desc in zip(nums, order):
         if 'Distances' == desc:
             break
         else:
@@ -151,7 +148,7 @@ def test_harmonic_layer():
             torch.tensor([[params['k']],
                           [params['mean']]])), dim=1)
     energy_check = torch.sum(harmonic_parameters[0, :] * (feat[:, feat_idx] -
-                                                          harmonic_parameters[1, :]) ** 2,
+                             harmonic_parameters[1, :]) ** 2,
                              1).reshape(len(feat), 1) / 2
 
     np.testing.assert_array_equal(energy.detach().numpy(),
@@ -162,7 +159,7 @@ def test_cgnet():
     # Tests CGnet class criterion attribute, architecture size, and network
     # output size. Also tests prior embedding.
 
-    harmonic_potential = HarmonicLayer(bonds, descriptions=stats.descriptions,
+    harmonic_potential = HarmonicLayer(bonds, descriptions, order,
                                        feature_type='Distances')
     feature_layer = ProteinBackboneFeature()
     num_feats = feature_layer(coords).size()[1]
@@ -191,7 +188,7 @@ def test_cgnet_simulation():
     # Tests a simulation from a CGnet built with the ProteinBackboneFeature
     # for the shapes of its coordinate, force, and potential outputs
 
-    harmonic_potential = HarmonicLayer(bonds, descriptions=stats.descriptions,
+    harmonic_potential = HarmonicLayer(bonds, descriptions, order,
                                        feature_type='Distances')
     feature_layer = ProteinBackboneFeature()
     num_feats = feature_layer(coords).size()[1]

@@ -1,4 +1,5 @@
 # Author: Brooke Husic
+# Contributors : Nick Charron
 
 import numpy as np
 import scipy.spatial
@@ -111,3 +112,106 @@ def test_bondconst_dict_2():
             assert len(bondconst_dict[k]) == n_keys_bondconst
         else:
             assert len(bondconst_dict[k]) == n_keys
+
+
+def test_idx_functions_1():
+    # Test proper retrieval of feature indices for sizes
+    bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
+    np.random.shuffle(bool_list)
+
+    stats = ProteinBackboneStatistics(xt,
+                                      get_distances=bool_list[0],
+                                      get_angles=bool_list[1],
+                                      get_dihedrals=bool_list[2])
+
+    if bool_list[0]:
+        assert len(stats.return_indices('Distances')) == (
+            beads) * (beads - 1) / 2
+        assert len(stats.return_indices('Bonds')) == beads - 1
+    if bool_list[1]:
+        assert len(stats.return_indices('Angles')) == beads - 2
+    if bool_list[2]:
+        assert len(stats.return_indices('Dihedral_cosines')) == beads - 3
+        assert len(stats.return_indices('Dihedral_sines')) == beads - 3
+
+    sum_feats = np.sum([len(stats.descriptions[feat_name])
+                        for feat_name in stats.order])
+    check_sum_feats = (bool_list[0] * (beads) * (beads - 1) / 2 +
+                       bool_list[1] * (beads - 2) +
+                       bool_list[2] * (beads - 3) * 2
+                       )
+    assert sum_feats == check_sum_feats
+
+
+def test_idx_functions_2():
+    # Test proper retrieval of feature indices for specific indices
+    bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
+    np.random.shuffle(bool_list)
+
+    stats = ProteinBackboneStatistics(xt,
+                                      get_distances=bool_list[0],
+                                      get_angles=bool_list[1],
+                                      get_dihedrals=bool_list[2])
+
+    num_dists = bool_list[0] * (beads) * (beads - 1) / 2
+    num_angles = beads - 2
+    num_diheds = beads - 3
+
+    if bool_list[0]:
+        np.testing.assert_array_equal(np.arange(0, num_dists),
+                                      stats.return_indices('Distances'))
+
+        bond_ind_list = [ind for ind, pair in enumerate(
+            stats.descriptions['Distances'])
+            if pair[1] - pair[0] == 1]
+        np.testing.assert_array_equal(bond_ind_list,
+                                      stats.return_indices('Bonds'))
+
+    if bool_list[1]:
+        angle_start = bool_list[0]*num_dists
+        np.testing.assert_array_equal(np.arange(angle_start,
+                                                num_angles + angle_start),
+                                      stats.return_indices('Angles'))
+
+    if bool_list[2]:
+        dihedral_cos_start = bool_list[0]*num_dists + bool_list[1]*num_angles
+        np.testing.assert_array_equal(np.arange(dihedral_cos_start,
+                                                num_diheds + dihedral_cos_start),
+                                      stats.return_indices('Dihedral_cosines'))
+
+        dihedral_sin_start = dihedral_cos_start + num_diheds
+        np.testing.assert_array_equal(np.arange(dihedral_sin_start,
+                                                num_diheds + dihedral_sin_start),
+                                      stats.return_indices('Dihedral_sines'))
+
+
+def test_redundant_distance_mapping_shape():
+    # Test to see if the redundant distance index matrix is formed properly
+    index_mapping = stats.redundant_distance_mapping
+    assert index_mapping.shape == (beads, beads - 1)
+    # mock distance data
+    dist = np.random.randn(frames, int((beads - 1) * (beads) / 2))
+    redundant_dist = dist[:, index_mapping]
+    assert redundant_dist.shape == (frames, beads, beads - 1)
+
+
+def test_redundant_distance_mapping_vals():
+    # Test to see if the redundant distance index matrix has correct values
+    mapping = np.zeros((stats.n_beads, stats.n_beads - 1), dtype='uint8')
+    for bead in range(stats.n_beads):
+        def neighbor_sequence(bead, n_beads):
+            n = bead
+            j = n_beads - 1
+            while(True):
+                yield n + j
+                n = n + j
+                j -= 1
+        max_calls_to_generator = stats.n_beads - bead - 1
+        generator = neighbor_sequence(bead, stats.n_beads)
+        index = np.array([bead] + [next(generator)
+                       for _ in range(max_calls_to_generator-1)])
+        mapping[bead, (bead):] = index
+        if bead < stats.n_beads - 1:
+            mapping[(bead+1):, bead] = index
+    np.testing.assert_array_equal(stats.redundant_distance_mapping,
+                                  mapping)
