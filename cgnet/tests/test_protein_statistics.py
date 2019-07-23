@@ -167,9 +167,9 @@ def test_idx_functions_1():
     np.random.shuffle(bool_list)
 
     stats = ProteinBackboneStatistics(xt,
-                                      get_distances=bool_list[0],
-                                      get_angles=bool_list[1],
-                                      get_dihedrals=bool_list[2])
+                                      get_all_distances=bool_list[0],
+                                      get_backbone_angles=bool_list[1],
+                                      get_backbone_dihedrals=bool_list[2])
 
     if bool_list[0]:
         assert len(stats.return_indices('Distances')) == (
@@ -196,9 +196,9 @@ def test_idx_functions_2():
     np.random.shuffle(bool_list)
 
     stats = ProteinBackboneStatistics(xt,
-                                      get_distances=bool_list[0],
-                                      get_angles=bool_list[1],
-                                      get_dihedrals=bool_list[2])
+                                      get_all_distances=bool_list[0],
+                                      get_backbone_angles=bool_list[1],
+                                      get_backbone_dihedrals=bool_list[2])
 
     num_dists = bool_list[0] * (beads) * (beads - 1) / 2
     num_angles = beads - 2

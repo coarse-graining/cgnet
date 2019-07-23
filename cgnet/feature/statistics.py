@@ -125,6 +125,8 @@ class ProteinBackboneStatistics():
             self._name_dict['Distances'] = self.distances
             #self._get_stats(self.distances, 'Distances')
             self.order += ['Distances']
+            if get_redundant_distance_mapping:
+                self._get_redundant_distance_mapping()
 
         if get_backbone_angles:
             self._get_backbone_angles()
@@ -428,9 +430,9 @@ class ProteinBackboneStatistics():
                 break
             else:
                 start_idx += num
-        if feature_type == 'Bonds':
+        if feature_type == 'Bonds': # TODO
             indices = [self.descriptions['Distances'].index(pair)
-                       for pair in self._adj_pairs]
+                       for pair in self._adj_backbone_pairs]
         if feature_type != 'Bonds':
             indices = range(0, len(self.descriptions[feature_type]))
         indices = [idx + start_idx for idx in indices]
