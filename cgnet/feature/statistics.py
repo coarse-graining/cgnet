@@ -65,13 +65,17 @@ class ProteinBackboneStatistics():
 
         if custom_features is not None:
             if (np.min([len(feat) for feat in custom_features]) < 2 or
-                np.max([len(feat) for feat in custmo_features]) > 4):
+                np.max([len(feat) for feat in custom_features]) > 4):
                 raise ValueError(
                 "Custom features must be tuples of length 2, 3, or 4."
                     )
             self._custom_distances = [feat for feat in custom_features if len(feat) == 2]
             self._custom_angles = [feat for feat in custom_features if len(feat) == 3]
             self._custom_dihedrals = [feat for feat in custom_features if len(feat) == 4]
+        else:
+            self._custom_distances = []
+            self._custom_angles = []
+            self._custom_dihedrals = []
 
         if type(backbone_inds) is str:
             if backbone_inds == 'all':
@@ -84,7 +88,7 @@ class ProteinBackboneStatistics():
 
             if not np.all(np.sort(self.backbone_inds) == self.backbone_inds):
                 warnings.warn(
-    "Your backbone indices aren't sorted: Make sure your backbone indices are in consecutive order"
+    "Your backbone indices aren't sorted. Make sure your backbone indices are in consecutive order."
                                )
 
             self._backbone_map = self._get_backbone_map()
@@ -128,11 +132,22 @@ class ProteinBackboneStatistics():
             if get_redundant_distance_mapping:
                 self._get_redundant_distance_mapping()
 
+            if len(self._custom_distances) > 0:
+                warnings.warn(
+                "All distances are already being calculated, so custom distances are meaningless."
+                    )
+
         if get_backbone_angles:
             self._get_backbone_angles()
             self._name_dict['Angles'].append(self.backbone_angles)
             #self._get_stats(self.angles, 'Angles')
             self.order += ['Angles']
+
+            if np.any([angle in self.descriptions['Angles']
+                       for angle in self._custom_angles]):
+                warnings.warn(
+                "Some custom angles were on the backbone and will not be re-calculated."
+                    )
 
         if get_backbone_dihedrals:
             self._get_backbone_dihedrals()
@@ -142,6 +157,12 @@ class ProteinBackboneStatistics():
             #self._get_stats(self.dihedral_sines, 'Dihedral_sines')
             self.order += ['Dihedral_cosines']
             self.order += ['Dihedral_sines']
+
+            if np.any([dihed in self.descriptions['Dihedral_cosines']
+                       for dihed in self._custom_dihedrals]):
+                warnings.warn(
+                "Some custom dihedrals were on the backbone and will not be re-calculated."
+                    )
 
     def _get_backbone_map(self):
         backbone_map = {mol_ind: bb_ind for bb_ind, mol_ind
