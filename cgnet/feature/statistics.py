@@ -146,13 +146,19 @@ class ProteinBackboneStatistics():
             if np.any([angle in self.descriptions['Angles']
                        for angle in self._custom_angles]):
                 warnings.warn(
-                "Some custom angles were on the backbone and will not be re-calculated."
+        "Some custom angles were on the backbone and will not be re-calculated."
                     )
+                self._custom_angles = [angle for angle
+                                       in self._custom_angles
+                                       if angle not in
+                                       self.descriptions['Angles']]
 
         if get_backbone_dihedrals:
             self._get_backbone_dihedrals()
-            self._name_dict['Dihedral_cosines'].append(self.backbone_dihedral_cosines)
-            self._name_dict['Dihedral_sines'].append(self.backbone_dihedral_sines)
+            self._name_dict['Dihedral_cosines'].append(
+                                self.backbone_dihedral_cosines)
+            self._name_dict['Dihedral_sines'].append(
+                                self.backbone_dihedral_sines)
             #self._get_stats(self.dihedral_cosines, 'Dihedral_cosines')
             #self._get_stats(self.dihedral_sines, 'Dihedral_sines')
             self.order += ['Dihedral_cosines']
@@ -161,8 +167,12 @@ class ProteinBackboneStatistics():
             if np.any([dihed in self.descriptions['Dihedral_cosines']
                        for dihed in self._custom_dihedrals]):
                 warnings.warn(
-                "Some custom dihedrals were on the backbone and will not be re-calculated."
+        "Some custom dihedrals were on the backbone and will not be re-calculated."
                     )
+                self._custom_dihedrals = [dihed for dihed
+                                          in self._custom_dihedrals
+                                          if dihed not in
+                                          self.descriptions['Dihedral_cosines']]
 
     def _get_backbone_map(self):
         backbone_map = {mol_ind: bb_ind for bb_ind, mol_ind
