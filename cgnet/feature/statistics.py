@@ -32,6 +32,8 @@ class ProteinBackboneStatistics():
         Whether to calculate dihedral cosines and sines along the backbone
     temperature : float (default=300.0)
         Temperature of system
+    get_redundant_distance_mapping : Boolean (default=True)
+        If true, creates a redundant_distance_mapping attribute
 
     Attributes
     ----------
@@ -39,6 +41,8 @@ class ProteinBackboneStatistics():
         Stores 'mean' and 'std' for caluclated features
     descriptions : dictionary
         List of indices (value) for each feature type (key)
+    redundant_distance_mapping
+        Redundant square distance matrix
 
     Example
     -------
@@ -48,7 +52,8 @@ class ProteinBackboneStatistics():
 
     def __init__(self, data, custom_features=None, backbone_inds='all',
                  get_all_distances=True, get_backbone_angles=True,
-                 get_backbone_dihedrals=True, temperature=300.0):
+                 get_backbone_dihedrals=True, temperature=300.0,
+                 get_redundant_distance_mapping=True):
         if torch.is_tensor(data):
             self.data = data.detach().numpy()
         else:
@@ -113,15 +118,19 @@ class ProteinBackboneStatistics():
             'Dihedral_sines': []
         }
 
+        self.order = []
+
         if get_all_distances:
             self._get_all_pairwise_distances()
             self._name_dict['Distances'] = self.distances
             #self._get_stats(self.distances, 'Distances')
+            self.order += ['Distances']
 
         if get_backbone_angles:
             self._get_backbone_angles()
             self._name_dict['Angles'].append(self.backbone_angles)
             #self._get_stats(self.angles, 'Angles')
+            self.order += ['Angles']
 
         if get_backbone_dihedrals:
             self._get_backbone_dihedrals()
@@ -129,6 +138,8 @@ class ProteinBackboneStatistics():
             self._name_dict['Dihedral_sines'].append(self.backbone_dihedral_sines)
             #self._get_stats(self.dihedral_cosines, 'Dihedral_cosines')
             #self._get_stats(self.dihedral_sines, 'Dihedral_sines')
+            self.order += ['Dihedral_cosines']
+            self.order += ['Dihedral_sines']
 
     def _get_backbone_map(self):
         backbone_map = {mol_ind: bb_ind for bb_ind, mol_ind
@@ -157,9 +168,7 @@ class ProteinBackboneStatistics():
                     newdict[i][stat] = mydict[stat][i]
         return newdict
 
-    def get_zscores(self, tensor=True, as_dict=True, flip_dict=True,
-                    order=["Distances", "Angles",
-                           "Dihedral_cosines", "Dihedral_sines"]):
+    def get_zscores(self, tensor=True, as_dict=True, flip_dict=True):
         """Obtain zscores (mean and standard deviation) for features
 
         Parameters
@@ -173,9 +182,6 @@ class ProteinBackboneStatistics():
         flip_dict : Boolean (default=True)
             Returns a dictionary with outer keys as indices if True and
             outer keys as statistic string names if False
-        order : List, default=['Distances', 'Angles', 'Dihedral_cosines',
-                               'Dihedral_sines']
-            Order of statistics in output
 
         Returns
         -------
@@ -191,16 +197,16 @@ class ProteinBackboneStatistics():
             standard deviations in the second row, where n is
             the number of features
         """
-        for key in order:
+        for key in self.order:
             if self._name_dict[key] is None:
                 raise ValueError("{} have not been calculated".format(key))
 
         zscore_keys = np.sum([[self._get_key(key, name)
                                for key in self.descriptions[name]]
-                              for name in order])
+                              for name in self.order])
         zscore_array = np.vstack([
             np.concatenate([self.stats_dict[key][stat]
-                            for key in order]) for stat in ['mean', 'std']])
+                            for key in self.order]) for stat in ['mean', 'std']])
         if tensor:
             zscore_array = torch.from_numpy(zscore_array).float()
 
@@ -215,9 +221,7 @@ class ProteinBackboneStatistics():
             return zscore_array
 
     def get_bond_constants(self, tensor=True, as_dict=True, zscores=True,
-                           flip_dict=True,
-                           order=["Distances", "Angles",
-                                  "Dihedral_cosines", "Dihedral_sines"]):
+                           flip_dict=True):
         """Obtain bond constants (K values and means) for adjacent distance
            and angle features. K values depend on the temperature.
 
@@ -231,7 +235,7 @@ class ProteinBackboneStatistics():
             documentation)
         zscores : Boolean (default=True)
             Includes results from the get_zscores() method if True;
-            only alowed if as_dict is also True
+            only allowed if as_dict is also True
         flip_dict : Boolean (default=True)
             Returns a dictionary with outer keys as indices if True and
             outer keys as statistic string names if False
@@ -283,7 +287,7 @@ class ProteinBackboneStatistics():
         if as_dict:
             if zscores:
                 bondconst_dict = self.get_zscores(tensor=tensor, as_dict=True,
-                                                  order=order, flip_dict=False)
+                                                  flip_dict=False)
                 bondconst_dict['k'] = dict(zip(bondconst_keys,
                                                bondconst_array[0, :]))
             else:
@@ -300,16 +304,16 @@ class ProteinBackboneStatistics():
     def _get_distance_indices(self):
         """Determines indices of pairwise distance features
         """
-        order = []
+        pair_order = []
         adj_backbone_pairs = []
         for increment in range(1, self.data.shape[1]):
             for i in range(self.data.shape[1] - increment):
-                order.append((i, i+increment))
+                pair_order.append((i, i+increment))
                 if self.backbone_inds is not None:
                     if (self._backbone_map[i+increment]
                         - self._backbone_map[i] == 1):
                         adj_backbone_pairs.append((i, i+increment))
-        self._order = order
+        self._pair_order = pair_order
         self._adj_backbone_pairs = adj_backbone_pairs
 
     def _get_stats(self, X, key):
@@ -327,15 +331,15 @@ class ProteinBackboneStatistics():
            shape=(n_frames, n_beads-1)
         """
         dlist = np.empty([self.n_frames,
-                          len(self._order)])
+                          len(self._pair_order)])
         for frame in range(self.n_frames):
             dmat = scipy.spatial.distance.squareform(
                 scipy.spatial.distance.pdist(self.data[frame]))
-            frame_dists = [dmat[self._order[i]]
-                           for i in range(len(self._order))]
+            frame_dists = [dmat[self._pair_order[i]]
+                           for i in range(len(self._pair_order))]
             dlist[frame, :] = frame_dists
         self.distances = dlist
-        self.descriptions['Distances'] = self._order
+        self.descriptions['Distances'] = self._pair_order
 
     def _get_adjacent_backbone_distances(self):
         """Obtain adjacent backbone distances; 
@@ -393,6 +397,66 @@ class ProteinBackboneStatistics():
                               for i in range(self.n_backbone_beads-3)])
         self.descriptions['Dihedral_cosines'].extend(descriptions)
         self.descriptions['Dihedral_sines'].extend(descriptions)
+
+    def return_indices(self, feature_type):
+        """Return all indices for specified feature type. Useful for
+        constructing priors or other layers that make callbacks to
+        a subset of features output from a ProteinBackboneFeature()
+        layer
+
+        Parameters
+        ----------
+        feature_type : str in {'Distances', 'Bonds', 'Angles',
+                               'Dihedral_sines', 'Dihedral_cosines'}
+            specifies for which feature type the indices should be returned
+
+        Returns
+        -------
+        indices : list(int)
+            list of integers corresponding the indices of specified features
+            output from a ProteinBackboneFeature() layer.
+
+        """
+        if feature_type not in self.descriptions.keys() and feature_type != 'Bonds':
+            raise RuntimeError(
+                "Error: \'{}\' is not a valid backbone feature.".format(feature_type))
+        nums = [len(self.descriptions[i]) for i in self.order]
+        start_idx = 0
+        for num, desc in zip(nums, self.order):
+            if feature_type == desc or (feature_type == 'Bonds'
+                                        and desc == 'Distances'):
+                break
+            else:
+                start_idx += num
+        if feature_type == 'Bonds':
+            indices = [self.descriptions['Distances'].index(pair)
+                       for pair in self._adj_pairs]
+        if feature_type != 'Bonds':
+            indices = range(0, len(self.descriptions[feature_type]))
+        indices = [idx + start_idx for idx in indices]
+        return indices
+
+    def _get_redundant_distance_mapping(self):
+        """Reformulates pairwise distances from shape [n_examples, n_dist]
+        to shape [n_examples, n_beads, n_neighbors]
+
+        This is done by finding the index mapping between non-redundant and
+        redundant representations of the pairwise distances. This mapping can
+        then be supplied to Schnet-related features, such as a
+        RadialBasisFunction() layer, which use redundant pairwise distance
+        representations.
+
+        """
+        pairwise_dist_inds = [zipped_pair[1] for zipped_pair in sorted(
+                                [z for z in zip(self._pair_order,
+                                                np.arange(len(self._pair_order)))
+                                 ])
+                            ]
+        map_matrix = scipy.spatial.distance.squareform(pairwise_dist_inds)
+        map_matrix = map_matrix[~np.eye(map_matrix.shape[0],
+                                        dtype=bool)].reshape(
+                                            map_matrix.shape[0], -1)
+        self.redundant_distance_mapping = map_matrix
 
 
 def kl_divergence(dist_1, dist_2):
