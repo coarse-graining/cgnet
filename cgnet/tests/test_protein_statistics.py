@@ -28,14 +28,14 @@ def test_manual_backbone_calculations():
     stats_bb_inds = ProteinBackboneStatistics(xt, backbone_inds=backbone_inds)
     stats_bb_only = ProteinBackboneStatistics(xt_bb_only)
 
-    np.testing.assert_allclose(stats_bb_inds.backbone_angles,
-                               stats_bb_only.backbone_angles)
+    np.testing.assert_allclose(stats_bb_inds.angles,
+                               stats_bb_only.angles)
 
-    np.testing.assert_allclose(stats_bb_inds.backbone_dihedral_cosines,
-                               stats_bb_only.backbone_dihedral_cosines)
+    np.testing.assert_allclose(stats_bb_inds.dihedral_cosines,
+                               stats_bb_only.dihedral_cosines)
 
-    np.testing.assert_allclose(stats_bb_inds.backbone_dihedral_sines,
-                               stats_bb_only.backbone_dihedral_sines)
+    np.testing.assert_allclose(stats_bb_inds.dihedral_sines,
+                               stats_bb_only.dihedral_sines)
 
 def test_manual_backbone_descriptions():
     # Make sure angle statistics work for manually specified backbone

@@ -125,16 +125,18 @@ class ProteinBackboneStatistics():
             'Dihedral_sines': []
         }
 
+        self.stats_dict = {}
+
         if get_all_distances or len(self._custom_distances) > 0:
             self._get_distance_indices()
 
         if get_all_distances:
             self._get_all_pairwise_distances()
             self._name_dict['Distances'] = self.distances
-            #self._get_stats(self.distances, 'Distances') # TODO
+            self._get_stats(self.distances, 'Distances') # TODO
             self.order += ['Distances']
-            # if get_redundant_distance_mapping:            # TODO
-            #     self._get_redundant_distance_mapping()
+            if get_redundant_distance_mapping:            # TODO
+                self._get_redundant_distance_mapping()
 
             if len(self._custom_distances) > 0:
                 warnings.warn(
@@ -158,6 +160,9 @@ class ProteinBackboneStatistics():
         angles.extend(self._custom_angles)
         if len(angles) > 0:
             self._get_angles(angles)
+            self._name_dict['Angles'] = self.angles
+            self._get_stats(self.angles, 'Angles') # TODO
+            self.order += ['Angles']
 
         if get_backbone_dihedrals:
             dihedrals = [(self.backbone_inds[i], self.backbone_inds[i+1],
@@ -175,6 +180,12 @@ class ProteinBackboneStatistics():
         dihedrals.extend(self._custom_dihedrals)
         if len(dihedrals) > 0:
             self._get_dihedrals(dihedrals)
+            self._name_dict['Dihedral_cosines'] = self.dihedral_cosines
+            self._name_dict['Dihedral_sines'] = self.dihedral_sines
+            self._get_stats(self.dihedral_cosines, 'Dihedral_cosines') # TODO
+            self._get_stats(self.dihedral_cosines, 'Dihedral_sines') # TODO
+            self.order += ['Dihedral_cosines']
+            self.order += ['Dihedral_sines']
 
     def _get_backbone_map(self):
         backbone_map = {mol_ind: bb_ind for bb_ind, mol_ind
@@ -217,9 +228,8 @@ class ProteinBackboneStatistics():
     def _get_angle_inputs(self, angle_inds):
         """TODO
         """
-        ind_list = [[feat[i] for feat in feature_inds]
+        ind_list = [[feat[i] for feat in angle_inds]
                     for i in range(3)]
-        print(ind_list)
 
         dist_list = [self.data[:, ind_list[i+1], :]
                      - self.data[:, ind_list[i], :]
@@ -262,6 +272,16 @@ class ProteinBackboneStatistics():
 
         self.descriptions['Dihedral_cosines'].extend(dihedrals)
         self.descriptions['Dihedral_sines'].extend(dihedrals)
+
+    def _get_stats(self, X, key):   
+            """Populates stats dictionary with mean and std of feature  
+            """ 
+            mean = np.mean(X, axis=0)   
+            std = np.std(X, axis=0) 
+            var = np.var(X, axis=0) 
+            self.stats_dict[key] = {}   
+            self.stats_dict[key]['mean'] = mean 
+            self.stats_dict[key]['std'] = std
 
     def _get_key(self, key, name):
         if name == 'Dihedral_cosines':
@@ -316,14 +336,20 @@ class ProteinBackboneStatistics():
             if self._name_dict[key] is None:
                 raise ValueError("{} have not been calculated".format(key))
 
-        zscore_keys = np.sum([[self._get_key(key, name)
+        zscore_keys = [[self._get_key(key, name)
                                for key in self.descriptions[name]]
-                              for name in self.order])
+                              for name in self.order]
+        if len(zscore_keys) > 1:
+            zscore_keys = np.sum(zscore_keys)
+        else:
+            zscore_keys = zscore_keys[0]
+        self._zscore_keys = zscore_keys
         zscore_array = np.vstack([
             np.concatenate([self.stats_dict[key][stat]
                             for key in self.order]) for stat in ['mean', 'std']])
         if tensor:
             zscore_array = torch.from_numpy(zscore_array).float()
+        self._zscore_array = zscore_array
 
         if as_dict:
             zscore_dict = {}
