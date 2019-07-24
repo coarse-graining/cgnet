@@ -7,6 +7,8 @@ import torch
 import scipy.spatial
 import warnings
 
+from .geometry import Geometry
+g = Geometry(method='numpy')
 
 KBOLTZMANN = 1.38064852e-23
 AVOGADRO = 6.022140857e23
@@ -225,22 +227,22 @@ class ProteinBackboneStatistics():
         self.distances = dlist
         self.descriptions['Distances'] = self._pair_order
 
-    def _get_angle_inputs(self, angle_inds):
-        """TODO
-        """
-        ind_list = [[feat[i] for feat in angle_inds]
-                    for i in range(3)]
+    # def _get_angle_inputs(self, angle_inds):
+    #     """TODO
+    #     """
+    #     ind_list = [[feat[i] for feat in angle_inds]
+    #                 for i in range(3)]
 
-        dist_list = [self.data[:, ind_list[i+1], :]
-                     - self.data[:, ind_list[i], :]
-                     for i in range(2)]
+    #     dist_list = [self.data[:, ind_list[i+1], :]
+    #                  - self.data[:, ind_list[i], :]
+    #                  for i in range(2)]
 
-        return dist_list
+    #     return dist_list
 
     def _get_angles(self, angle_inds):
         """TODO
         """
-        base, offset = self._get_angle_inputs(angle_inds)
+        base, offset = g.get_angle_inputs(angle_inds, self.data)
 
         self.angles = np.arccos(np.sum(base*offset, axis=2)/np.linalg.norm(
                                 base, axis=2)/np.linalg.norm(offset, axis=2))
@@ -250,9 +252,9 @@ class ProteinBackboneStatistics():
         """TODO
         This is really hacky and bad
         """
-        angles = np.concatenate([[(f[i], f[i+1], f[i+2])
+        angle_inds = np.concatenate([[(f[i], f[i+1], f[i+2])
                                  for i in range(2)] for f in dihed_inds])
-        base, offset = self._get_angle_inputs(angles)
+        base, offset = g.get_angle_inputs(angle_inds, self.data)
         offset_2 = base[:,1:]
 
         cross_product_adj = np.cross(base, offset, axis=2)
