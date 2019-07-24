@@ -183,7 +183,7 @@ class ProteinBackboneStatistics():
             self._name_dict['Dihedral_cosines'] = self.dihedral_cosines
             self._name_dict['Dihedral_sines'] = self.dihedral_sines
             self._get_stats(self.dihedral_cosines, 'Dihedral_cosines') # TODO
-            self._get_stats(self.dihedral_cosines, 'Dihedral_sines') # TODO
+            self._get_stats(self.dihedral_sines, 'Dihedral_sines') # TODO
             self.order += ['Dihedral_cosines']
             self.order += ['Dihedral_sines']
 
