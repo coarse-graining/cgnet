@@ -242,10 +242,12 @@ class ProteinBackboneStatistics():
     def _get_angles(self, angle_inds):
         """TODO
         """
-        base, offset = g.get_angle_inputs(angle_inds, self.data)
+        # base, offset = g.get_angle_inputs(angle_inds, self.data)
 
-        self.angles = np.arccos(np.sum(base*offset, axis=2)/np.linalg.norm(
-                                base, axis=2)/np.linalg.norm(offset, axis=2))
+        # self.angles = np.arccos(np.sum(base*offset, axis=2)/np.linalg.norm(
+        #                         base, axis=2)/np.linalg.norm(offset, axis=2))
+        self.angles = g.get_angles(angle_inds, self.data)
+
         self.descriptions['Angles'].extend(angle_inds)
 
     def _get_dihedrals(self, dihed_inds):
