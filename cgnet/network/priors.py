@@ -39,6 +39,7 @@ class _PriorLayer(nn.Module):
         self.params = []
         self.features = []
         self.feat_idx = feat_indices
+        for key, par in feat_data.items():
             self.features.append(key)
             self.params.append(par)
 
