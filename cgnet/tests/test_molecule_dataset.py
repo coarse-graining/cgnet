@@ -4,6 +4,7 @@ import numpy as np
 import torch
 
 from cgnet.feature import MoleculeDataset
+from nose.exc import SkipTest
 
 beads = np.random.randint(1, 10)
 dims = np.random.randint(1, 5)
@@ -48,3 +49,24 @@ def test_indexing():
 
     assert xt_from_ds.requires_grad
     np.testing.assert_array_equal(xt_from_numpy, xt_from_ds.detach().numpy())
+
+
+def test_cpu_mount():
+    # Make sure tensors are being mapped to cpu
+
+    selection = np.random.randint(20)
+    ds = MoleculeDataset(x, y)
+
+    np.testing.assert_equal(ds[selection][0].device.type, 'cpu')
+    np.testing.assert_equal(ds[selection][1].device.type, 'cpu')
+
+
+def test_gpu_mount():
+    # Make sure tensors are being mapped to gpu
+    if not torch.cuda.is_available():
+        raise SkipTest('GPU not available for testing.')
+    else:
+        selection = np.random.randint(20)
+        ds = MoleculeDataset(x, y, device=torch.device('cuda'))
+        np.testing.assert_equal(ds[selection][0].device.type, 'cuda')
+        np.testing.assert_equal(ds[selection][1].device.type, 'cuda')

@@ -4,6 +4,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+from .layers import ZscoreLayer, HarmonicLayer, RepulsionLayer
 
 
 class ForceLoss(torch.nn.Module):
@@ -105,10 +106,26 @@ class CGnet(nn.Module):
 
     def __init__(self, arch, criterion, feature=None, priors=None):
         super(CGnet, self).__init__()
-
+        zscore_idx = 1
+        for layer in arch:
+            if isinstance(layer, ZscoreLayer):
+                self.register_buffer('zscores_{}'.format(zscore_idx),
+                                     layer.zscores)
+                zscore_idx += 1
         self.arch = nn.Sequential(*arch)
         if priors:
             self.priors = nn.Sequential(*priors)
+            harm_idx = 1
+            repul_idx = 1
+            for layer in self.priors:
+                if isinstance(layer, HarmonicLayer):
+                    self.register_buffer('harmonic_params_{}'.format(harm_idx),
+                                         layer.harmonic_parameters)
+                    harm_idx += 1
+                if isinstance(layer, RepulsionLayer):
+                    self.register_buffer('repulsion_params_{}'.format(repul_idx),
+                                         layer.repulsion_parameters)
+                    repul_idx += 1
         else:
             self.priors = None
         self.criterion = criterion

@@ -38,7 +38,6 @@ class _PriorLayer(nn.Module):
     bond_layer = HarmonicLayer(bonds, stats.descriptions, "Distances")
 
     """
-
     def __init__(self, feat_data, descriptions, feature_type):
         super(_PriorLayer, self).__init__()
         if feature_type not in descriptions.keys():
@@ -63,7 +62,7 @@ class _PriorLayer(nn.Module):
         for key, par in feat_data.items():
             self.features.append(key)
             self.feat_idx.append(self.start_idx +
-                            descriptions[self.feature_type].index(key))
+                                 descriptions[self.feature_type].index(key))
             self.params.append(par)
 
     def forward(self, in_feat):
@@ -129,12 +128,13 @@ class RepulsionLayer(_PriorLayer):
                 raise KeyError(
                     'Missing or incorrect key for repulsion parameters'
                 )
-        self.repulsion_parameters = torch.tensor([])
+        repulsion_parameters = torch.tensor([])
         for param_dict in self.params:
-            self.repulsion_parameters = torch.cat((
-                self.repulsion_parameters,
+            repulsion_parameters = torch.cat((
+                repulsion_parameters,
                 torch.tensor([[param_dict['ex_vol']],
                               [param_dict['exp']]])), dim=1)
+        self.register_buffer('repulsion_parameters', repulsion_parameters)
 
     def forward(self, in_feat):
         """Calculates repulsion interaction contributions to energy
@@ -205,11 +205,12 @@ class HarmonicLayer(_PriorLayer):
                 pass
             else:
                 KeyError('Missing or incorrect key for harmonic parameters')
-        self.harmonic_parameters = torch.tensor([])
+        harmonic_parameters = torch.tensor([])
         for param_dict in self.params:
-            self.harmonic_parameters = torch.cat((self.harmonic_parameters,
-                                            torch.tensor([[param_dict['k']],
-                                            [param_dict['mean']]])), dim=1)
+            harmonic_parameters = torch.cat((harmonic_parameters,
+                                             torch.tensor([[param_dict['k']],
+                                             [param_dict['mean']]])), dim=1)
+        self.register_buffer('harmonic_parameters', harmonic_parameters)
 
     def forward(self, in_feat):
         """Calculates harmonic contribution of bond/angle interactions to energy
@@ -258,7 +259,7 @@ class ZscoreLayer(nn.Module):
 
     def __init__(self, zscores):
         super(ZscoreLayer, self).__init__()
-        self.zscores = zscores
+        self.register_buffer('zscores', zscores)
 
     def forward(self, in_feat):
         """Normalizes each feature by subtracting its mean and dividing by
@@ -287,7 +288,8 @@ def LinearLayer(
         dropout=0,
         weight_init='xavier',
         weight_init_args=None,
-        weight_init_kwargs=None):
+        weight_init_kwargs=None,
+        device=torch.device('cpu')):
     """Linear layer function
 
     Parameters
@@ -329,8 +331,8 @@ def LinearLayer(
 
     Produces a linear layer with input dimension 5, output dimension 10, bias
     inclusive, followed by a beta=2 softplus activation, with the layer weights
-    intialized according to kaiming uniform procedure with preservation of weight
-    variance magnitudes during backpropagation.
+    intialized according to kaiming uniform procedure with preservation of
+    weight variance magnitudes during backpropagation.
 
     """
 

@@ -23,18 +23,24 @@ class MoleculeDataset(Dataset):
         If None, all are used.
     stride : int (default=1)
         Subsample the data by 1 / stride.
+    device : torch.device (default=torch.device('cpu'))
+        CUDA device/GPU on which to mount tensors drawn from __getitem__().
+        Default device is the local CPU.
     """
 
-    def __init__(self, coordinates, forces, selection=None, stride=1):
+    def __init__(self, coordinates, forces, selection=None, stride=1,
+                 device=torch.device('cpu')):
         self.stride = stride
         self.coordinates, self.forces = self._make_arrays(coordinates,
                                                            forces, selection)
 
         self.len = len(self.coordinates)
+        self.device = device
 
     def __getitem__(self, index):
-        return (torch.tensor(self.coordinates[index], requires_grad=True),
-                torch.tensor(self.forces[index]))
+        return (torch.tensor(self.coordinates[index], requires_grad=True,
+                device=self.device), torch.tensor(self.forces[index],
+                device=self.device))
 
     def __len__(self):
         return self.len
