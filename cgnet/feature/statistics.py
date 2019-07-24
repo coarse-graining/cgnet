@@ -422,7 +422,7 @@ class ProteinBackboneStatistics():
         else:
             return bondconst_array
 
-    def return_indices(self, feature_type):
+    def return_indices(self, features):
         """Return all indices for specified feature type. Useful for
         constructing priors or other layers that make callbacks to
         a subset of features output from a ProteinBackboneFeature()
@@ -430,9 +430,12 @@ class ProteinBackboneStatistics():
 
         Parameters
         ----------
-        feature_type : str in {'Distances', 'Bonds', 'Angles',
+        features : str in {'Distances', 'Bonds', 'Angles',
                                'Dihedral_sines', 'Dihedral_cosines'}
-            specifies for which feature type the indices should be returned
+                   or list of tuples of integers
+            specifies for which feature type the indices should be returned.
+            If tuple input, the indices corresponding to those bead groups
+            will be returned instead.
 
         Returns
         -------
@@ -441,24 +444,42 @@ class ProteinBackboneStatistics():
             output from a ProteinBackboneFeature() layer.
 
         """
-        if feature_type not in self.descriptions.keys() and feature_type != 'Bonds':
-            raise RuntimeError(
-                "Error: \'{}\' is not a valid backbone feature.".format(feature_type))
-        nums = [len(self.descriptions[i]) for i in self.order]
-        start_idx = 0
-        for num, desc in zip(nums, self.order):
-            if feature_type == desc or (feature_type == 'Bonds'
-                                        and desc == 'Distances'):
-                break
-            else:
-                start_idx += num
-        if feature_type == 'Bonds':  # TODO
-            indices = [self.descriptions['Distances'].index(pair)
-                       for pair in self._adj_backbone_pairs]
-        if feature_type != 'Bonds':
-            indices = range(0, len(self.descriptions[feature_type]))
-        indices = [idx + start_idx for idx in indices]
-        return indices
+        if isinstance(features, str):
+            if features not in self.descriptions.keys() and features != 'Bonds':
+                raise RuntimeError(
+                    "Error: \'{}\' is not a valid backbone feature.".format(features))
+            nums = [len(self.descriptions[i]) for i in self.order]
+            start_idx = 0
+            for num, desc in zip(nums, self.order):
+                if features == desc or (features == 'Bonds'
+                                            and desc == 'Distances'):
+                    break
+                else:
+                    start_idx += num
+            if features == 'Bonds':  # TODO
+                indices = [self.descriptions['Distances'].index(pair)
+                           for pair in self._adj_backbone_pairs]
+            if features != 'Bonds':
+                indices = range(0, len(self.descriptions[features]))
+            indices = [idx + start_idx for idx in indices]
+            return indices
+        if isinstance(features, list) or isinstance(features, np.array):
+            indices = []
+            for feat in features:
+                feature_found = False
+                for desc, sequence in self.descriptions.items():
+                   if feat in sequence:
+                      feature_found = True
+                      desc_idx = stats.order.index(desc)
+                      start_idx = sum([len(stats.descriptions[k]
+                                       for k in stats.order[:desc_idx]])
+                      indices.append(start_idx + sequence.index(feat))
+                      break
+                if feature_found == False:
+                    raise RuntimeError("Feature {} not found in descriptions.".format(feat))
+           return indices
+        else:
+           raise ValueError("features must be description string or list of tuples.")
 
     def _get_redundant_distance_mapping(self):
         """Reformulates pairwise distances from shape [n_examples, n_dist]
