@@ -51,7 +51,7 @@ class ProteinBackboneStatistics():
     print(ds.stats_dict['Distances']['mean'])
     """
 
-    def __init__(self, data, custom_features=None, backbone_inds='all',
+    def __init__(self, data, custom_features=[], backbone_inds='all',
                  get_all_distances=True, get_backbone_angles=True,
                  get_backbone_dihedrals=True, temperature=300.0,
                  get_redundant_distance_mapping=True):
@@ -62,9 +62,10 @@ class ProteinBackboneStatistics():
 
         self.n_frames = self.data.shape[0]
         self.n_beads = self.data.shape[1]
+        assert self.data.shape[2] == 3 # dimensions
         self.temperature = temperature
 
-        if custom_features is not None:
+        if len(custom_features) > 0:
             if (np.min([len(feat) for feat in custom_features]) < 2 or
                 np.max([len(feat) for feat in custom_features]) > 4):
                 raise ValueError(
@@ -94,6 +95,8 @@ class ProteinBackboneStatistics():
 
             self._backbone_map = self._get_backbone_map()
         elif backbone_inds is None:
+            if len(custom_features) == 0:
+                raise RuntimeError("Must have either backbone or custom features.")
             self.backbone_inds = np.array([])
         else:
             raise RuntimeError(
@@ -101,8 +104,7 @@ class ProteinBackboneStatistics():
             )
         self.n_backbone_beads = len(self.backbone_inds)
 
-        self._get_distance_indices()
-        self.stats_dict = {}
+        self.order = []
 
         self.distances = []
         self._adj_backbone_dists = []
@@ -123,68 +125,56 @@ class ProteinBackboneStatistics():
             'Dihedral_sines': []
         }
 
-        self.order = []
+        if get_all_distances or len(self._custom_distances) > 0:
+            self._get_distance_indices()
 
         if get_all_distances:
             self._get_all_pairwise_distances()
             self._name_dict['Distances'] = self.distances
             #self._get_stats(self.distances, 'Distances') # TODO
             self.order += ['Distances']
-            if get_redundant_distance_mapping:
-                self._get_redundant_distance_mapping()
+            # if get_redundant_distance_mapping:            # TODO
+            #     self._get_redundant_distance_mapping()
 
             if len(self._custom_distances) > 0:
                 warnings.warn(
-                "All distances are already being calculated, so custom distances are meaningless."
+    "All distances are already being calculated, so custom distances are meaningless."
                     )
                 self._custom_distances = []
 
         if get_backbone_angles:
-            self._get_backbone_angles()
-            self._name_dict['Angles'].append(self.backbone_angles)
-            #self._get_stats(self.angles, 'Angles') # TODO
-            self.order += ['Angles']
-
-            if np.any([angle in self.descriptions['Angles']
-                       for angle in self._custom_angles]):
+            angles = [(self.backbone_inds[i], self.backbone_inds[i+1],
+                       self.backbone_inds[i+2])
+                       for i in range(len(self.backbone_inds) - 2)]
+            if np.any([cust_angle in angles for cust_angle in self._custom_angles]):
                 warnings.warn(
         "Some custom angles were on the backbone and will not be re-calculated."
                     )
-                self._custom_angles = [angle for angle
+                self._custom_angles = [cust_angle for cust_angle
                                        in self._custom_angles
-                                       if angle not in
-                                       self.descriptions['Angles']]
+                                       if cust_angle not in angles]
+        else:
+            angles = []
+        angles.extend(self._custom_angles)
+        if len(angles) > 0:
+            self._get_angles(angles)
 
         if get_backbone_dihedrals:
-            self._get_backbone_dihedrals()
-            self._name_dict['Dihedral_cosines'].append(
-                                self.backbone_dihedral_cosines)
-            self._name_dict['Dihedral_sines'].append(
-                                self.backbone_dihedral_sines)
-            #self._get_stats(self.dihedral_cosines, 'Dihedral_cosines') # TODO
-            #self._get_stats(self.dihedral_sines, 'Dihedral_sines') # TODO
-            self.order += ['Dihedral_cosines']
-            self.order += ['Dihedral_sines']
-
-            if np.any([dihed in self.descriptions['Dihedral_cosines']
-                       for dihed in self._custom_dihedrals]):
+            dihedrals = [(self.backbone_inds[i], self.backbone_inds[i+1],
+                          self.backbone_inds[i+2], self.backbone_inds[i+3])
+                       for i in range(len(self.backbone_inds) - 3)]
+            if np.any([cust_dih in dihedrals for cust_dih in self._custom_dihedrals]):
                 warnings.warn(
         "Some custom dihedrals were on the backbone and will not be re-calculated."
                     )
-                self._custom_dihedrals = [dihed for dihed
-                                          in self._custom_dihedrals
-                                          if dihed not in
-                                          self.descriptions['Dihedral_cosines']]
-
-        # if len(_custom_distances) > 0:
-        #     self._get_custom_distances()
-
-        # if len(_custom_angles) > 0:
-        #     self._get_custom_angles() 
-
-        # if len(_custom_dihedrals) > 0:
-        #     self._get_custom_dihedrals():
-
+                self._custom_dihedrals = [cust_dih for _custom_dihedrals
+                                       in self._custom_dihedrals
+                                       if cust_dih not in dihedrals]
+        else:
+            dihedrals = []
+        dihedrals.extend(self._custom_dihedrals)
+        if len(dihedrals) > 0:
+            self._get_dihedrals(dihedrals)
 
     def _get_backbone_map(self):
         backbone_map = {mol_ind: bb_ind for bb_ind, mol_ind
@@ -192,6 +182,86 @@ class ProteinBackboneStatistics():
         pad_map = {mol_ind: np.nan for mol_ind
                    in range(self.n_beads) if mol_ind not in self.backbone_inds}
         return {**backbone_map, **pad_map}
+
+    def _get_distance_indices(self):
+        """Determines indices of pairwise distance features
+        """
+        pair_order = []
+        adj_backbone_pairs = []
+        for increment in range(1, self.data.shape[1]):
+            for i in range(self.data.shape[1] - increment):
+                pair_order.append((i, i+increment))
+                if len(self.backbone_inds) > 0:
+                    if (self._backbone_map[i+increment]
+                        - self._backbone_map[i] == 1):
+                        adj_backbone_pairs.append((i, i+increment))
+        self._pair_order = pair_order
+        self._adj_backbone_pairs = adj_backbone_pairs
+
+    def _get_all_pairwise_distances(self):
+        """Obtain pairwise distances for all pairs of beads;
+           shape=(n_frames, n_beads-1)
+        """
+        dlist = np.empty([self.n_frames,
+                          len(self._pair_order)])
+        for frame in range(self.n_frames):
+            dmat = scipy.spatial.distance.squareform(
+                scipy.spatial.distance.pdist(self.data[frame]))
+            self._dmat = dmat
+            frame_dists = [dmat[self._pair_order[i]]
+                           for i in range(len(self._pair_order))]
+            dlist[frame, :] = frame_dists
+        self.distances = dlist
+        self.descriptions['Distances'] = self._pair_order
+
+    def _get_angle_inputs(self, angle_inds):
+        """TODO
+        """
+        ind_list = [[feat[i] for feat in feature_inds]
+                    for i in range(3)]
+        print(ind_list)
+
+        dist_list = [self.data[:, ind_list[i+1], :]
+                     - self.data[:, ind_list[i], :]
+                     for i in range(2)]
+
+        return dist_list
+
+    def _get_angles(self, angles):
+        """TODO
+        """
+        base, offset = self._get_angle_inputs(angles)
+
+        self.angles = np.arccos(np.sum(base*offset, axis=2)/np.linalg.norm(
+                                base, axis=2)/np.linalg.norm(offset, axis=2))
+        self.descriptions['Angles'].extend(angles)
+
+    def _get_dihedrals(self, dihedrals):
+        """TODO
+        This is really hacky and bad
+        """
+        angles = np.concatenate([[(f[i], f[i+1], f[i+2])
+                                 for i in range(2)] for f in dihedrals])
+        base, offset = self._get_angle_inputs(angles)
+        offset_2 = base[:,1:]
+
+        cross_product_adj = np.cross(base, offset, axis=2)
+        cp_base = cross_product_adj[:, :-1, :]
+        cp_offset = cross_product_adj[:, 1:, :]
+
+        plane_vector = np.cross(cp_offset, offset_2, axis=2)
+        pv_base = plane_vector #[:, 0:2, :]
+
+        self.dihedral_cosines = np.sum(cp_base[:,::2]*cp_offset[:,::2],
+                                  axis=2)/np.linalg.norm(
+            cp_base[:,::2], axis=2)/np.linalg.norm(cp_offset[:,::2], axis=2)
+
+        self.dihedral_sines = np.sum(cp_base[:,::2]*pv_base[:,::2],
+                                axis=2)/np.linalg.norm(
+            cp_base[:,::2], axis=2)/np.linalg.norm(pv_base[:,::2], axis=2)
+
+        self.descriptions['Dihedral_cosines'].extend(dihedrals)
+        self.descriptions['Dihedral_sines'].extend(dihedrals)
 
     def _get_key(self, key, name):
         if name == 'Dihedral_cosines':
@@ -345,119 +415,6 @@ class ProteinBackboneStatistics():
             return bondconst_dict
         else:
             return bondconst_array
-
-    def _get_distance_indices(self):
-        """Determines indices of pairwise distance features
-        """
-        pair_order = []
-        adj_backbone_pairs = []
-        for increment in range(1, self.data.shape[1]):
-            for i in range(self.data.shape[1] - increment):
-                pair_order.append((i, i+increment))
-                if self.backbone_inds is not None:
-                    if (self._backbone_map[i+increment]
-                        - self._backbone_map[i] == 1):
-                        adj_backbone_pairs.append((i, i+increment))
-        self._pair_order = pair_order
-        self._adj_backbone_pairs = adj_backbone_pairs
-
-    def _get_stats(self, X, key):
-        """Populates stats dictionary with mean and std of feature
-        """
-        mean = np.mean(X, axis=0)
-        std = np.std(X, axis=0)
-        var = np.var(X, axis=0)
-        self.stats_dict[key] = {}
-        self.stats_dict[key]['mean'] = mean
-        self.stats_dict[key]['std'] = std
-
-    def _get_all_pairwise_distances(self):
-        """Obtain pairwise distances for all pairs of beads;
-           shape=(n_frames, n_beads-1)
-        """
-        dlist = np.empty([self.n_frames,
-                          len(self._pair_order)])
-        for frame in range(self.n_frames):
-            dmat = scipy.spatial.distance.squareform(
-                scipy.spatial.distance.pdist(self.data[frame]))
-            frame_dists = [dmat[self._pair_order[i]]
-                           for i in range(len(self._pair_order))]
-            dlist[frame, :] = frame_dists
-        self.distances = dlist
-        self.descriptions['Distances'] = self._pair_order
-
-    def _get_adjacent_backbone_distances(self):
-        """Obtain adjacent backbone distances; 
-        shape=(n_frames, n_backbone_beads-1, 3)
-        """
-        # self.adj_dists = self.data[:][:, 1:] - \
-        #     self.data[:][:, :(self.n_beads-1)]
-        self._adj_backbone_dists = (self.data[:, self.backbone_inds[1:]] -
-                                   self.data[:, self.backbone_inds[:-1]])
-
-    def _get_backbone_angles(self):
-        """Obtain angles of all adjacent triplets;
-        shape=(n_frames, n_backbone_beads-2)
-        """
-        if len(self._adj_backbone_dists) == 0:
-            self._get_adjacent_backbone_distances()
-
-        base = self._adj_backbone_dists[:, 0:(self.n_backbone_beads-2), :]
-        offset = self._adj_backbone_dists[:, 1:(self.n_backbone_beads-1), :]
-
-        descriptions = []
-        self.backbone_angles = np.arccos(np.sum(base*offset, axis=2)/np.linalg.norm(
-            base, axis=2)/np.linalg.norm(offset, axis=2))
-        descriptions.extend([(self.backbone_inds[i], self.backbone_inds[i+1],
-                              self.backbone_inds[i+2])
-                              for i in range(self.n_backbone_beads-2)])
-        self.descriptions['Angles'].extend(descriptions)
-
-    def _get_backbone_dihedrals(self):
-        """Obtain angles of all adjacent quartets;
-        shape=(n_frames, n_backbone_beads-3)
-        """
-        if len(self._adj_backbone_dists) == 0:
-            self._get_adjacent_backbone_distances()
-
-        base = self._adj_backbone_dists[:, 0:(self.n_backbone_beads-2), :]
-        offset = self._adj_backbone_dists[:, 1:(self.n_backbone_beads-1), :]
-        offset_2 = self._adj_backbone_dists[:, 1:(self.n_backbone_beads-2), :]
-        print("base shape = {}".format(base.shape))
-        print("os shape = {}".format(offset.shape))
-        print("os2 shape = {}".format(offset_2.shape))
-
-
-        cross_product_adj = np.cross(base, offset, axis=2)
-        cp_base = cross_product_adj[:, 0:(self.n_backbone_beads-3), :]
-        cp_offset = cross_product_adj[:, 1:(self.n_backbone_beads-2), :]
-        print("cp adj shape = {}".format(cross_product_adj.shape))
-        print("cp base shape = {}".format(cp_base.shape))
-        print("cp os shape = {}".format(cp_offset.shape))
-
-        plane_vector = np.cross(cp_offset, offset_2, axis=2)
-        pv_base = plane_vector[:, 0:(self.n_backbone_beads-3), :]
-        print("plane_vector shape = {}".format(plane_vector.shape))
-        print("pv_base shape = {}".format(pv_base.shape))
-
-        descriptions = []
-        self.backbone_dihedral_cosines = np.sum(cp_base*cp_offset, axis=2)/np.linalg.norm(
-            cp_base, axis=2)/np.linalg.norm(cp_offset, axis=2)
-
-        self.backbone_dihedral_sines = np.sum(cp_base*pv_base, axis=2)/np.linalg.norm(
-            cp_base, axis=2)/np.linalg.norm(pv_base, axis=2)
-        descriptions.extend([(self.backbone_inds[i], self.backbone_inds[i+1],
-                              self.backbone_inds[i+2], self.backbone_inds[i+3])
-                              for i in range(self.n_backbone_beads-3)])
-        self.descriptions['Dihedral_cosines'].extend(descriptions)
-        self.descriptions['Dihedral_sines'].extend(descriptions)
-
-    # def _get_custom_distances(self):
-
-    # def _get_custom_angles(self):
-
-    # def _get_custom_dihedrals(self):
-
 
     def return_indices(self, feature_type):
         """Return all indices for specified feature type. Useful for
