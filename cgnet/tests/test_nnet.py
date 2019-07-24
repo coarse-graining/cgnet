@@ -28,9 +28,15 @@ stats = GeometryStatistics(coords.detach().numpy())
 # Prior variables
 bondsdict = stats.get_bond_constants(flip_dict=True, zscores=True)
 bonds = dict((k, bondsdict[k]) for k in [(i, i+1) for i in range(beads-1)])
+bond_idx = stats.return_indices('Bonds')
 
 repul_distances = [i for i in stats.descriptions['Distances']
                    if abs(i[0]-i[1]) > 2]
+dist_idx = stats.return_indices('Distances')
+repul_idx = [idx for idx in dist_idx
+            if stats.descriptions['Distances'][idx - min(dist_idx)]
+            in repul_distances]
+
 ex_vols = np.random.uniform(2, 8, len(repul_distances))
 exps = np.random.randint(1, 6, len(repul_distances))
 repul_dict = dict((index, {'ex_vol': ex_vol, 'exp': exp})
@@ -95,9 +101,8 @@ def test_zscore_layer():
 def test_repulsion_layer():
     # Tests RepulsionLayer class for calculation and output size
 
-    repulsion_potential = RepulsionLayer(repul_dict, descriptions, order,
-                                         feature_type='Distances')
-    feat_layer = GeometryFeature()
+    repulsion_potential = RepulsionLayer(repul_dict, repul_idx)
+    feat_layer = ProteinBackboneFeature()
     feat = feat_layer(coords)
     energy = repulsion_potential(feat[:, repulsion_potential.feat_idx])
 
@@ -123,9 +128,8 @@ def test_repulsion_layer():
 def test_harmonic_layer():
     # Tests HarmonicLayer class for calculation and output size
 
-    harmonic_potential = HarmonicLayer(bonds, descriptions, order,
-                                       feature_type='Distances')
-    feat_layer = GeometryFeature()
+    harmonic_potential = HarmonicLayer(bonds, bond_idx)
+    feat_layer = ProteinBackboneFeature()
     feat = feat_layer(coords)
     energy = harmonic_potential(feat[:, harmonic_potential.feat_idx])
 
@@ -155,10 +159,86 @@ def test_harmonic_layer():
                                   energy_check.detach().numpy())
 
 
+def test_prior_callback_order():
+    # Tests the order of prior callbacks with respect to feature layer output
+    stats = ProteinBackboneStatistics(coords)
+    np.shuffle(stats.order)
+    bondsdict = stats.get_bond_constants(flip_dict=True, zscores=True)
+    bonds = dict((k, bondsdict[k]) for k in [(i, i+1) for i in range(beads-1)])
+    bond_idx = stats.return_indices('Bonds')
+    feat_layer = ProteinBackboneFeature()
+
+    # TODO shuffle PBF output order here
+
+    feat = feat_layer(coords)
+    harmonic_potential = HarmonicLayer(bonds, bond_idx)
+    np.testing.assert_array_equal(bond_idx, harmonic_potential.feat_idx)
+    output = harmonic_potential(feat[:, bond_idx])
+
+
+def test_prior_with_stats_dropout():
+    # Test the order of prior callbacks when the statistices are missing one
+    # of the four default backbone features: 'Distances', 'Angles',
+    # 'Dihedral_cosines', and 'Dihedral_sines,'
+
+    # TODO instantiate PBS object with one or more missing default features
+    # determined by random.
+    feature_bools = [1] + [np.random.randint(0, high=1) for _ in range(2)]
+    np.shuffle(feature_bools)
+    stats = ProteinBackboneStatistics(coords,
+                                      compute_distances=feature_bools[0],
+                                      compute_angles=feature_bools[1],
+                                      compute_dihedrals=feature_bools[2])
+    feat_layer = ProteinBackboneFeature(coords,
+                                      compute_distances=feature_bools[0],
+                                      compute_angles=feature_bools[1],
+                                      compute_dihedrals=feature_bools[2])
+
+    # TODO Maybe add in some asserts to check the forward method agaisnt PBF
+    if 'Distances' in stats.descriptions:
+        # HarmonicLayer bonds test with random constants & means
+        bonds = dict((k, {'mean': np.random.randn(), 'std': np.random.randn()})
+                      for k in [(i, i+1) for i in range(beads-1)])
+        bond_idx = stats.return_indices('Bonds')
+        harmonic_potential = HarmonicLayer(bonds, bond_idx)
+        np.testing.assert_array_equal(bond_idx, harmonic_potential.feat_idx)
+
+        # RepulsionLayer test with random exculsion vols & exps
+        repul_distances = stats.descriptions['Distances']
+        dist_idx = stats.return_indices('Distances')
+        ex_vols = np.random.uniform(2, 8, len(repul_distances))
+        exps = np.random.randint(1, 6, len(repul_distances))
+        repul_dict = dict((index, {'ex_vol': ex_vol, 'exp': exp})
+                          for index, ex_vol, exp
+                          in zip(repul_distances, ex_vols, exps))
+        repulsion_potential = RepulsionLayer(repul_dict, dist_idx)
+        np.testing.assert_array_equal(dist_idx, repulsion_layer.feat_idx)
+    if 'Angles' in stats.descriptions:
+        # HarmonicLayer angles test with random constants & means
+        angles = dict((k, {'mean': np.random.randn(), 'std': np.random.randn()})
+                      for k in [(i, i+1, i+2) for i in range(beads-2)])
+        angle_idx = stats.return_indices('Angles')
+        harmonic_potential = HarmonicLayer(angles, angle_idx)
+        np.testing.assert_array_equal(angle_idx, harmonic_potential.feat_idx)
+    if 'Dihedral_cosines' in stats.descriptions:
+        # HarmonicLayer dihedrals test with random constants & means
+        dihedrals = dict((k, {'mean': np.random.randn(), 'std': np.random.randn()})
+                      for k in [(i, i+1, i+2, i+3) for i in range(beads-3)])
+        angle_idx = stats.return_indices('Angles')
+        harmonic_potential = HarmonicLayer(angles, angle_idx)
+        np.testing.assert_array_equal(angle_idx, harmonic_potential.feat_idx)
+    if 'Dihedral_sines' in stats.descriptions:
+        # HarmonicLayer dihedrals test with random constants & mean
+        dihedrals = dict((k, {'mean': np.random.randn(), 'std': np.random.randn()})
+                      for k in [(i, i+1, i+2, i+3) for i in range(beads-3)])
+        angle_idx = stats.return_indices('Angles')
+        harmonic_potential = HarmonicLayer(angles, angle_idx)
+        np.testing.assert_array_equal(angle_idx, harmonic_potential.feat_idx)
+
+
 def test_cgnet():
     # Tests CGnet class criterion attribute, architecture size, and network
     # output size. Also tests prior embedding.
-
     harmonic_potential = HarmonicLayer(bonds, descriptions, order,
                                        feature_type='Distances')
     feature_layer = GeometryFeature()
