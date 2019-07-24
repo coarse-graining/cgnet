@@ -54,14 +54,6 @@ class ProteinBackboneFeature(nn.Module):
         """Computes all planar angles."""
         self.angles = g.get_angles(self._angles, data)
         self.descriptions["Angles"] = self._angles
-        # descriptions = []
-        # self.angles = torch.acos(torch.sum(
-        #     self._adjacent_distances[:, 0:(self.n_beads-2), :] *
-        #     self._adjacent_distances[:, 1:(self.n_beads-1), :], dim=2)/torch.norm(
-        #     self._adjacent_distances[:, 0:(self.n_beads-2), :], dim=2)/torch.norm(
-        #     self._adjacent_distances[:, 1:(self.n_beads-1), :], dim=2))
-        # descriptions.extend([(i, i+1, i+2) for i in range(self.n_beads-2)])
-        # self.descriptions["Angles"] = descriptions
 
     def compute_dihedrals(self, data):
         """Computes all four-term dihedral (torsional) angles."""
@@ -69,30 +61,6 @@ class ProteinBackboneFeature(nn.Module):
          self.dihedral_sines) = g.get_dihedrals(self._dihedrals, data)
         self.descriptions["Dihedral_cosines"] = self._dihedrals
         self.descriptions["Dihedral_sines"] = self._dihedrals
-        # descriptions = []
-        # cross_product_adjacent = torch.cross(
-        #     self._adjacent_distances[:, 0:(self.n_beads-2), :],
-        #     self._adjacent_distances[:, 1:(self.n_beads-1), :],
-        #     dim=2)
-
-        # plane_vector = torch.cross(
-        #     cross_product_adjacent[:, 1:(self.n_beads-2)],
-        #     self._adjacent_distances[:, 1:(self.n_beads-2), :], dim=2)
-
-        # self.dihedral_cosines = torch.sum(
-        #     cross_product_adjacent[:, 0:(self.n_beads-3), :] *
-        #     cross_product_adjacent[:, 1:(self.n_beads-2), :], dim=2)/torch.norm(
-        #     cross_product_adjacent[:, 0:(self.n_beads-3), :], dim=2)/torch.norm(
-        #     cross_product_adjacent[:, 1:(self.n_beads-2), :], dim=2)
-
-        # self.dihedral_sines = torch.sum(
-        #     cross_product_adjacent[:, 0:(self.n_beads-3), :] *
-        #     plane_vector[:, 0:(self.n_beads-3), :], dim=2)/torch.norm(
-        #     cross_product_adjacent[:, 0:(self.n_beads-3), :], dim=2)/torch.norm(
-        #     plane_vector[:, 0:(self.n_beads-3), :], dim=2)
-        # descriptions.extend([(i, i+1, i+2, i+3)
-        #                      for i in range(self.n_beads-3)])
-        # self.descriptions["Dihedrals"] = descriptions
 
     def forward(self, data, feature_inds=[]):
         """Obtain differentiable feature
@@ -133,15 +101,21 @@ class ProteinBackboneFeature(nn.Module):
 
         self.descriptions = {}
         self.description_order = []
+        out = torch.Tensor([])
 
-        self.compute_distances()  # TODO
-        out = self.distances
-        self.description_order.append('Distances')
+        if len(self._distances) > 0:
+            self.compute_distances()  # TODO
+            out = torch.cat((out, self.angles), dim=1)
+            self.description_order.append('Distances')
+        else:
+            self.distances = torch.Tensor([])
 
         if len(self._angles) > 0:
             self.compute_angles(data)
             out = torch.cat((out, self.angles), dim=1)
             self.description_order.append('Angles')
+        else:
+            self.angles = torch.Tensor([])
 
         if len(self._dihedrals) > 0:
             self.compute_dihedrals(data)
@@ -150,5 +124,8 @@ class ProteinBackboneFeature(nn.Module):
                              self.dihedral_sines), dim=1)
             self.description_order.append('Dihedral_cosines')
             self.description_order.append('Dihedral_sines')
+        else:
+            self.dihedral_cosines = torch.Tensor([])
+            self.dihedral_sines = torch.Tensor([])
 
         return out
