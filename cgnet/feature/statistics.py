@@ -23,16 +23,17 @@ class ProteinBackboneStatistics():
     ----------
     data : torch.Tensor or np.array
         Coordinate data of dimension [n_frames, n_beads, n_dimensions]
-    custom_features : list of tuples or None (default=None)
+    custom_features : list of tuples (default=[])
         # TODO
     backbone_inds : 'all', list or np.ndarray, or None (default='all')
         Which bead indices correspond to consecutive beads along the backbone
     get_all_distances : Boolean (default=True)
         Whether to calculate all pairwise distances
     get_backbone_angles : Boolean (default=True)
-        Whether to calculate angles along the backbone
+        Whether to calculate angles among adjacent beads along the backbone
     get_backbone_dihedrals : Boolean, (default=True)
-        Whether to calculate dihedral cosines and sines along the backbone
+        Whether to calculate dihedral cosines and sines among adjacent beads
+        along the backbone
     temperature : float (default=300.0)
         Temperature of system
     get_redundant_distance_mapping : Boolean (default=True)

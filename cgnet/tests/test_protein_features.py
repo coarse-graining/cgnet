@@ -4,14 +4,21 @@ import numpy as np
 import scipy.spatial
 import torch
 
-from cgnet.feature import ProteinBackboneFeature
+from cgnet.feature import ProteinBackboneFeature, Geometry
+g = Geometry(method='torch')
 
 frames = np.random.randint(1, 10)
-beads = np.random.randint(4, 10)
+beads = np.random.randint(8, 10)
 dims = 3
 
 x = np.random.randn(frames, beads, dims)
 xt = torch.Tensor(x)
+
+distance_inds, _ = g.get_distance_indices(beads)
+angle_inds = [(i, i+1, i+2) for i in range(beads-2)]
+dihedral_inds = [(i, i+1, i+2, i+3) for i in range(beads-3)]
+
+
 
 
 def test_distance_features():
@@ -91,3 +98,48 @@ def test_dihedral_features():
                       for i in range(len(f.dihedral_sines))]
     np.testing.assert_allclose(np.abs(feature_diheds),
                                np.abs(diheds), rtol=1e-4)
+
+def test_angle_index_shuffling():
+    # Make sure shuffled angles return the right results
+
+    y = np.random.randn(1, 100, 3)
+    yt = torch.Tensor(y)
+
+    y_angle_inds = [(i, i+1, i+2) for i in range(100-2)]
+
+    f = ProteinBackboneFeature()
+    out = f.forward(yt, feature_inds=y_angle_inds)
+
+    inds = np.arange(100-2)
+    np.random.shuffle(inds)
+
+    shuffled_inds = np.array(y_angle_inds)[inds]
+    f_shuffle = ProteinBackboneFeature()
+    out_shuffle = f_shuffle.forward(yt, feature_inds=shuffled_inds)
+
+    np.testing.assert_array_equal(f_shuffle.angles[0], f.angles[0][inds])
+
+
+def test_dihedral_index_shuffling():
+    # Make sure shuffled dihedrals return the right results
+
+    y = np.random.randn(1, 100, 3)
+    yt = torch.Tensor(y)
+
+    y_dihed_inds = [(i, i+1, i+2, i+3) for i in range(100-3)]
+
+    f = ProteinBackboneFeature()
+    out = f.forward(yt, feature_inds=y_dihed_inds)
+
+    inds = np.arange(100-3)
+    np.random.shuffle(inds)
+
+    shuffled_inds = np.array(y_dihed_inds)[inds]
+    f_shuffle = ProteinBackboneFeature()
+    out_shuffle = f_shuffle.forward(yt, feature_inds=shuffled_inds)
+
+    np.testing.assert_allclose(f_shuffle.dihedral_cosines[0],
+                               f.dihedral_cosines[0][inds], rtol=1e-5)
+
+    np.testing.assert_allclose(f_shuffle.dihedral_sines[0],
+                               f.dihedral_sines[0][inds], rtol=1e-5)

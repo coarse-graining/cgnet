@@ -101,6 +101,8 @@ class ProteinBackboneFeature(nn.Module):
         ----------
         data : torch.Tensor
             Must be of dimensions [n_frames, n_beads, n_dimensions]
+        feature_inds : list of tuples (default=[])
+            # TODO
 
         Returns
         -------
@@ -140,7 +142,7 @@ class ProteinBackboneFeature(nn.Module):
             out = torch.cat((out, self.angles), dim=1)
             self.description_order.append('Angles')
 
-        if self.n_beads > 3:
+        if len(self._dihedrals) > 0:
             self.compute_dihedrals(data)
             out = torch.cat((out,
                              self.dihedral_cosines,
