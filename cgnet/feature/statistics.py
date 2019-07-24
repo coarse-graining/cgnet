@@ -227,53 +227,16 @@ class ProteinBackboneStatistics():
         self.distances = dlist
         self.descriptions['Distances'] = self._pair_order
 
-    # def _get_angle_inputs(self, angle_inds):
-    #     """TODO
-    #     """
-    #     ind_list = [[feat[i] for feat in angle_inds]
-    #                 for i in range(3)]
-
-    #     dist_list = [self.data[:, ind_list[i+1], :]
-    #                  - self.data[:, ind_list[i], :]
-    #                  for i in range(2)]
-
-    #     return dist_list
-
     def _get_angles(self, angle_inds):
         """TODO
         """
-        # base, offset = g.get_angle_inputs(angle_inds, self.data)
-
-        # self.angles = np.arccos(np.sum(base*offset, axis=2)/np.linalg.norm(
-        #                         base, axis=2)/np.linalg.norm(offset, axis=2))
         self.angles = g.get_angles(angle_inds, self.data)
 
         self.descriptions['Angles'].extend(angle_inds)
 
     def _get_dihedrals(self, dihed_inds):
         """TODO
-        This is really hacky and bad
         """
-        # angle_inds = np.concatenate([[(f[i], f[i+1], f[i+2])
-        #                          for i in range(2)] for f in dihed_inds])
-        # base, offset = g.get_angle_inputs(angle_inds, self.data)
-        # offset_2 = base[:,1:]
-
-        # cross_product_adj = np.cross(base, offset, axis=2)
-        # cp_base = cross_product_adj[:, :-1, :]
-        # cp_offset = cross_product_adj[:, 1:, :]
-
-        # plane_vector = np.cross(cp_offset, offset_2, axis=2)
-        # pv_base = plane_vector #[:, 0:2, :]
-
-        # self.dihedral_cosines = np.sum(cp_base[:,::2]*cp_offset[:,::2],
-        #                           axis=2)/np.linalg.norm(
-        #     cp_base[:,::2], axis=2)/np.linalg.norm(cp_offset[:,::2], axis=2)
-
-        # self.dihedral_sines = np.sum(cp_base[:,::2]*pv_base[:,::2],
-        #                         axis=2)/np.linalg.norm(
-        #     cp_base[:,::2], axis=2)/np.linalg.norm(pv_base[:,::2], axis=2)
-
         (self.dihedral_cosines,
             self.dihedral_sines) = g.get_dihedrals(dihed_inds, self.data)
 

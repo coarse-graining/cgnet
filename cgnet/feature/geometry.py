@@ -50,6 +50,7 @@ class Geometry():
 
     def get_dihedrals(self, dihed_inds, data):
         """TODO
+        Note: hacky/bad
         """
         angle_inds = np.concatenate([[(f[i], f[i+1], f[i+2])
                                  for i in range(2)] for f in dihed_inds])
