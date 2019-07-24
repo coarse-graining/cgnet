@@ -25,7 +25,7 @@ class _PriorLayer(nn.Module):
         \"Dihedral_sines\"
     order : list of str
         list of feature types that determines the order of features output
-        from a ProteinBackboneFeature() layer or ProteinBacboneStatitistics
+        from a ProteinBackboneFeature() layer or ProteinBacboneStatistics
         instance.
     feature_type: str
         features type from which to select coordinates.
@@ -104,7 +104,7 @@ class RepulsionLayer(_PriorLayer):
         \"Dihedral_sines\"
     order : list of str
         list of feature types that determines the order of features output
-        from a ProteinBackboneFeature() layer or ProteinBacboneStatitistics
+        from a ProteinBackboneFeature() layer or ProteinBacboneStatistics
         instance.
     feature_type: str
         features type from which to select coordinates.
@@ -184,7 +184,7 @@ class HarmonicLayer(_PriorLayer):
         \"Dihedral_sines\"
     order : list of str
         list of feature types that determines the order of features output
-        from a ProteinBackboneFeature() layer or ProteinBacboneStatitistics
+        from a ProteinBackboneFeature() layer or ProteinBacboneStatistics
         instance.
     feature_type: str
         features type from which to select coordinates.
