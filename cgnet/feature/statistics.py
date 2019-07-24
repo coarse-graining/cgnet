@@ -145,41 +145,41 @@ class ProteinBackboneStatistics():
                 self._custom_distances = []
 
         if get_backbone_angles:
-            angles = [(self.backbone_inds[i], self.backbone_inds[i+1],
+            angle_inds = [(self.backbone_inds[i], self.backbone_inds[i+1],
                        self.backbone_inds[i+2])
                        for i in range(len(self.backbone_inds) - 2)]
-            if np.any([cust_angle in angles for cust_angle in self._custom_angles]):
+            if np.any([cust_angle in angle_inds for cust_angle in self._custom_angles]):
                 warnings.warn(
         "Some custom angles were on the backbone and will not be re-calculated."
                     )
                 self._custom_angles = [cust_angle for cust_angle
                                        in self._custom_angles
-                                       if cust_angle not in angles]
+                                       if cust_angle not in angle_inds]
         else:
-            angles = []
-        angles.extend(self._custom_angles)
-        if len(angles) > 0:
-            self._get_angles(angles)
+            angle_inds = []
+        angle_inds.extend(self._custom_angles)
+        if len(angle_inds) > 0:
+            self._get_angles(angle_inds)
             self._name_dict['Angles'] = self.angles
             self._get_stats(self.angles, 'Angles') # TODO
             self.order += ['Angles']
 
         if get_backbone_dihedrals:
-            dihedrals = [(self.backbone_inds[i], self.backbone_inds[i+1],
+            dihed_inds = [(self.backbone_inds[i], self.backbone_inds[i+1],
                           self.backbone_inds[i+2], self.backbone_inds[i+3])
                        for i in range(len(self.backbone_inds) - 3)]
-            if np.any([cust_dih in dihedrals for cust_dih in self._custom_dihedrals]):
+            if np.any([cust_dih in dihed_inds for cust_dih in self._custom_dihedrals]):
                 warnings.warn(
         "Some custom dihedrals were on the backbone and will not be re-calculated."
                     )
                 self._custom_dihedrals = [cust_dih for _custom_dihedrals
                                        in self._custom_dihedrals
-                                       if cust_dih not in dihedrals]
+                                       if cust_dih not in dihed_inds]
         else:
-            dihedrals = []
-        dihedrals.extend(self._custom_dihedrals)
-        if len(dihedrals) > 0:
-            self._get_dihedrals(dihedrals)
+            dihed_inds = []
+        dihed_inds.extend(self._custom_dihedrals)
+        if len(dihed_inds) > 0:
+            self._get_dihedrals(dihed_inds)
             self._name_dict['Dihedral_cosines'] = self.dihedral_cosines
             self._name_dict['Dihedral_sines'] = self.dihedral_sines
             self._get_stats(self.dihedral_cosines, 'Dihedral_cosines') # TODO
@@ -237,21 +237,21 @@ class ProteinBackboneStatistics():
 
         return dist_list
 
-    def _get_angles(self, angles):
+    def _get_angles(self, angle_inds):
         """TODO
         """
-        base, offset = self._get_angle_inputs(angles)
+        base, offset = self._get_angle_inputs(angle_inds)
 
         self.angles = np.arccos(np.sum(base*offset, axis=2)/np.linalg.norm(
                                 base, axis=2)/np.linalg.norm(offset, axis=2))
-        self.descriptions['Angles'].extend(angles)
+        self.descriptions['Angles'].extend(angle_inds)
 
-    def _get_dihedrals(self, dihedrals):
+    def _get_dihedrals(self, dihed_inds):
         """TODO
         This is really hacky and bad
         """
         angles = np.concatenate([[(f[i], f[i+1], f[i+2])
-                                 for i in range(2)] for f in dihedrals])
+                                 for i in range(2)] for f in dihed_inds])
         base, offset = self._get_angle_inputs(angles)
         offset_2 = base[:,1:]
 
@@ -270,8 +270,8 @@ class ProteinBackboneStatistics():
                                 axis=2)/np.linalg.norm(
             cp_base[:,::2], axis=2)/np.linalg.norm(pv_base[:,::2], axis=2)
 
-        self.descriptions['Dihedral_cosines'].extend(dihedrals)
-        self.descriptions['Dihedral_sines'].extend(dihedrals)
+        self.descriptions['Dihedral_cosines'].extend(dihed_inds)
+        self.descriptions['Dihedral_sines'].extend(dihed_inds)
 
     def _get_stats(self, X, key):   
             """Populates stats dictionary with mean and std of feature  
