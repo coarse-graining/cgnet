@@ -100,6 +100,7 @@ class ProteinBackboneStatistics():
             if len(custom_features) == 0:
                 raise RuntimeError("Must have either backbone or custom features.")
             self.backbone_inds = np.array([])
+            self._backbone_map = None
         else:
             raise RuntimeError(
                 "backbone_inds must be list or np.ndarray of indices, 'all', or None"
@@ -130,7 +131,10 @@ class ProteinBackboneStatistics():
         self.stats_dict = {}
 
         if get_all_distances or len(self._custom_distances) > 0:
-            self._get_distance_indices()
+            (self._pair_order,
+             self._adj_backbone_pairs) = g.get_distance_indices(self.n_beads,
+                                                                self.backbone_inds,
+                                                                self._backbone_map)
 
         if get_all_distances:
             self._get_all_pairwise_distances()
@@ -196,20 +200,20 @@ class ProteinBackboneStatistics():
                    in range(self.n_beads) if mol_ind not in self.backbone_inds}
         return {**backbone_map, **pad_map}
 
-    def _get_distance_indices(self):
-        """Determines indices of pairwise distance features
-        """
-        pair_order = []
-        adj_backbone_pairs = []
-        for increment in range(1, self.data.shape[1]):
-            for i in range(self.data.shape[1] - increment):
-                pair_order.append((i, i+increment))
-                if len(self.backbone_inds) > 0:
-                    if (self._backbone_map[i+increment]
-                        - self._backbone_map[i] == 1):
-                        adj_backbone_pairs.append((i, i+increment))
-        self._pair_order = pair_order
-        self._adj_backbone_pairs = adj_backbone_pairs
+    # def _get_distance_indices(self):
+    #     """Determines indices of pairwise distance features
+    #     """
+    #     pair_order = []
+    #     adj_backbone_pairs = []
+    #     for increment in range(1, self.data.shape[1]):
+    #         for i in range(self.data.shape[1] - increment):
+    #             pair_order.append((i, i+increment))
+    #             if len(self.backbone_inds) > 0:
+    #                 if (self._backbone_map[i+increment]
+    #                     - self._backbone_map[i] == 1):
+    #                     adj_backbone_pairs.append((i, i+increment))
+    #     self._pair_order = pair_order
+    #     self._adj_backbone_pairs = adj_backbone_pairs
 
     def _get_all_pairwise_distances(self):
         """Obtain pairwise distances for all pairs of beads;

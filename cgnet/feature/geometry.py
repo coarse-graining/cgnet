@@ -3,6 +3,7 @@
 import torch
 import numpy as np
 
+
 class Geometry():
     def __init__(self, method='torch'):
         if method == 'torch':
@@ -14,17 +15,33 @@ class Geometry():
 
     def setup_torch(self):
         self.arccos = torch.acos
-        self.norm = torch.norm
-        self.sum = torch.sum
 
         self.cross = lambda x, y, axis : torch.cross(x, y, dim=axis)
+        self.norm = lambda x, axis : torch.norm(x, dim=axis)
+        self.sum = lambda x, axis : torch.sum(x, dim=axis)
 
     def setup_numpy(self):
         self.arccos = np.arccos
-        self.norm = np.linalg.norm
-        self.sum = np.sum
 
         self.cross = lambda x, y, axis : np.cross(x, y, axis=axis)
+        self.norm = lambda x, axis : np.linalg.norm(x, axis=axis)
+        self.sum = lambda x, axis : np.sum(x, axis=axis)
+
+    def get_distance_indices(self, n_beads, backbone_inds=[], backbone_map=None):
+        """Determines indices of pairwise distance features
+        """
+        pair_order = []
+        adj_backbone_pairs = []
+        for increment in range(1, n_beads):
+            for i in range(n_beads - increment):
+                pair_order.append((i, i+increment))
+                if len(backbone_inds) > 0:
+                    if (backbone_map[i+increment]
+                        - backbone_map[i] == 1):
+                        adj_backbone_pairs.append((i, i+increment))
+
+        return pair_order, adj_backbone_pairs
+
 
     def get_angle_inputs(self, angle_inds, data):
         """TODO

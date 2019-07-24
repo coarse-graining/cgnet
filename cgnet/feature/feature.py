@@ -6,6 +6,9 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+from .geometry import Geometry
+g = Geometry(method='torch')
+
 
 class ProteinBackboneFeature(nn.Module):
     """Featurization of a protein backbone into pairwise distances,
@@ -47,18 +50,20 @@ class ProteinBackboneFeature(nn.Module):
         self.distances = torch.norm(distances, dim=2)
         self.descriptions["Distances"] = descriptions
 
-    def compute_angles(self):
+    def compute_angles(self, data):
         """Computes all planar angles."""
-        descriptions = []
-        self.angles = torch.acos(torch.sum(
-            self._adjacent_distances[:, 0:(self.n_beads-2), :] *
-            self._adjacent_distances[:, 1:(self.n_beads-1), :], dim=2)/torch.norm(
-            self._adjacent_distances[:, 0:(self.n_beads-2), :], dim=2)/torch.norm(
-            self._adjacent_distances[:, 1:(self.n_beads-1), :], dim=2))
-        descriptions.extend([(i, i+1, i+2) for i in range(self.n_beads-2)])
-        self.descriptions["Angles"] = descriptions
+        self.angles = g.get_angles(self._angles, data)
+        self.descriptions["Angles"] = self._angles
+        # descriptions = []
+        # self.angles = torch.acos(torch.sum(
+        #     self._adjacent_distances[:, 0:(self.n_beads-2), :] *
+        #     self._adjacent_distances[:, 1:(self.n_beads-1), :], dim=2)/torch.norm(
+        #     self._adjacent_distances[:, 0:(self.n_beads-2), :], dim=2)/torch.norm(
+        #     self._adjacent_distances[:, 1:(self.n_beads-1), :], dim=2))
+        # descriptions.extend([(i, i+1, i+2) for i in range(self.n_beads-2)])
+        # self.descriptions["Angles"] = descriptions
 
-    def compute_dihedrals(self):
+    def compute_dihedrals(self, data):
         """Computes all four-term dihedral (torsional) angles."""
         descriptions = []
         cross_product_adjacent = torch.cross(
@@ -85,7 +90,14 @@ class ProteinBackboneFeature(nn.Module):
                              for i in range(self.n_beads-3)])
         self.descriptions["Dihedrals"] = descriptions
 
-    def forward(self, data):
+    def _get_all_backbone_inds(self):
+        distance_inds, _ = g.get_distance_indices(self.n_beads)
+        angle_inds = [(i, i+1, i+2) for i in range(self.n_beads-2)]
+        dihed_inds = [(i, i+1, i+2, i+3) for i in range(self.n_beads-3)]
+
+        return distance_inds, angle_inds, dihed_inds
+
+    def forward(self, data, feature_inds=[]):
         """Obtain differentiable feature
 
         Parameters
@@ -103,20 +115,36 @@ class ProteinBackboneFeature(nn.Module):
         self._coordinates = data
         self.n_beads = data.shape[1]
 
+        if len(feature_inds) == 0:
+            (self._distances,
+             self._angles,
+             self._dihedrals) = self._get_all_backbone_inds()
+
+        else:  
+            if (np.min([len(feat) for feat in feature_inds]) < 2 or
+                np.max([len(feat) for feat in feature_inds]) > 4):
+                raise ValueError(
+                "Custom features must be tuples of length 2, 3, or 4."
+                    )
+
+            self._distances = [feat for feat in feature_inds if len(feat) == 2]
+            self._angles = [feat for feat in feature_inds if len(feat) == 3]
+            self._dihedrals = [feat for feat in feature_inds if len(feat) == 4]
+
         self.descriptions = {}
         self.description_order = []
 
-        self.compute_distances()
+        self.compute_distances() # TODO
         out = self.distances
         self.description_order.append('Distances')
 
-        if self.n_beads > 2:
-            self.compute_angles()
+        if len(self._angles) > 0:
+            self.compute_angles(data)
             out = torch.cat((out, self.angles), dim=1)
             self.description_order.append('Angles')
 
         if self.n_beads > 3:
-            self.compute_dihedrals()
+            self.compute_dihedrals(data)
             out = torch.cat((out,
                              self.dihedral_cosines,
                              self.dihedral_sines), dim=1)
