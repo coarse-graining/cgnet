@@ -65,30 +65,34 @@ class ProteinBackboneFeature(nn.Module):
 
     def compute_dihedrals(self, data):
         """Computes all four-term dihedral (torsional) angles."""
-        descriptions = []
-        cross_product_adjacent = torch.cross(
-            self._adjacent_distances[:, 0:(self.n_beads-2), :],
-            self._adjacent_distances[:, 1:(self.n_beads-1), :],
-            dim=2)
+        (self.dihedral_cosines,
+         self.dihedral_sines) = g.get_dihedrals(self._dihedrals, data)
+        self.descriptions["Dihedral_cosines"] = self._dihedrals
+        self.descriptions["Dihedral_sines"] = self._dihedrals
+        # descriptions = []
+        # cross_product_adjacent = torch.cross(
+        #     self._adjacent_distances[:, 0:(self.n_beads-2), :],
+        #     self._adjacent_distances[:, 1:(self.n_beads-1), :],
+        #     dim=2)
 
-        plane_vector = torch.cross(
-            cross_product_adjacent[:, 1:(self.n_beads-2)],
-            self._adjacent_distances[:, 1:(self.n_beads-2), :], dim=2)
+        # plane_vector = torch.cross(
+        #     cross_product_adjacent[:, 1:(self.n_beads-2)],
+        #     self._adjacent_distances[:, 1:(self.n_beads-2), :], dim=2)
 
-        self.dihedral_cosines = torch.sum(
-            cross_product_adjacent[:, 0:(self.n_beads-3), :] *
-            cross_product_adjacent[:, 1:(self.n_beads-2), :], dim=2)/torch.norm(
-            cross_product_adjacent[:, 0:(self.n_beads-3), :], dim=2)/torch.norm(
-            cross_product_adjacent[:, 1:(self.n_beads-2), :], dim=2)
+        # self.dihedral_cosines = torch.sum(
+        #     cross_product_adjacent[:, 0:(self.n_beads-3), :] *
+        #     cross_product_adjacent[:, 1:(self.n_beads-2), :], dim=2)/torch.norm(
+        #     cross_product_adjacent[:, 0:(self.n_beads-3), :], dim=2)/torch.norm(
+        #     cross_product_adjacent[:, 1:(self.n_beads-2), :], dim=2)
 
-        self.dihedral_sines = torch.sum(
-            cross_product_adjacent[:, 0:(self.n_beads-3), :] *
-            plane_vector[:, 0:(self.n_beads-3), :], dim=2)/torch.norm(
-            cross_product_adjacent[:, 0:(self.n_beads-3), :], dim=2)/torch.norm(
-            plane_vector[:, 0:(self.n_beads-3), :], dim=2)
-        descriptions.extend([(i, i+1, i+2, i+3)
-                             for i in range(self.n_beads-3)])
-        self.descriptions["Dihedrals"] = descriptions
+        # self.dihedral_sines = torch.sum(
+        #     cross_product_adjacent[:, 0:(self.n_beads-3), :] *
+        #     plane_vector[:, 0:(self.n_beads-3), :], dim=2)/torch.norm(
+        #     cross_product_adjacent[:, 0:(self.n_beads-3), :], dim=2)/torch.norm(
+        #     plane_vector[:, 0:(self.n_beads-3), :], dim=2)
+        # descriptions.extend([(i, i+1, i+2, i+3)
+        #                      for i in range(self.n_beads-3)])
+        # self.descriptions["Dihedrals"] = descriptions
 
     def forward(self, data, feature_inds=[]):
         """Obtain differentiable feature
