@@ -137,6 +137,9 @@ class ContinuousFilterConvolution(nn.Module):
     locations in space using continuous radial filters (Schütt et al. 2018).
 
         x_i^{l+i} = (X^i * W^l)_i = \sum_{j=0}^{n_{atoms}} x_j^l \circ W^l (r_j -r_i)
+        
+    with feature representation X^l=(x^l_1, ..., x^l_n), filter-generating 
+    network W^l, positions R=(r_1, ..., r_n) and the current layer l.
 
     A continuous-filter convolution block consists of a filter generating network
     as follows:
@@ -188,7 +191,7 @@ class ContinuousFilterConvolution(nn.Module):
         features: torch.Tensor
             Feature vector of size [n_examples, n_beads, n_features].
         rbf_expansion: torch.Tensor
-            Gaussian expansion of atomic distances of size
+            Gaussian expansion of bead distances of size
             [n_examples, n_beads, n_neighbors, n_gaussians].
         neighbor_list: torch.Tensor
             Indices of all neighbors of each bead.
@@ -302,7 +305,7 @@ class InteractionBlock(nn.Module):
             Input features from an embedding or interaction layer.
             Shape [n_batch, n_beads, n_features]
         rbf_expansion: torch.Tensor
-            Radial basis function expansion of interatomic distances.
+            Radial basis function expansion of inter-bead distances.
             Shape [n_batch, n_beads, n_neighbors, n_gaussians]
         neighbor_list: torch.Tensor
             Indices of all neighbors of each bead.
