@@ -90,13 +90,6 @@ class ProteinBackboneFeature(nn.Module):
                              for i in range(self.n_beads-3)])
         self.descriptions["Dihedrals"] = descriptions
 
-    def _get_all_backbone_inds(self):
-        distance_inds, _ = g.get_distance_indices(self.n_beads)
-        angle_inds = [(i, i+1, i+2) for i in range(self.n_beads-2)]
-        dihed_inds = [(i, i+1, i+2, i+3) for i in range(self.n_beads-3)]
-
-        return distance_inds, angle_inds, dihed_inds
-
     def forward(self, data, feature_inds=[]):
         """Obtain differentiable feature
 
@@ -116,15 +109,15 @@ class ProteinBackboneFeature(nn.Module):
         self.n_beads = data.shape[1]
 
         if len(feature_inds) == 0:
-            (self._distances,
-             self._angles,
-             self._dihedrals) = self._get_all_backbone_inds()
+            self._distances, _ = g.get_distance_indices(self.n_beads)
+            self._angles = [(i, i+1, i+2) for i in range(self.n_beads-2)]
+            self._dihedrals = [(i, i+1, i+2, i+3) for i in range(self.n_beads-3)]
 
         else:  
             if (np.min([len(feat) for feat in feature_inds]) < 2 or
                 np.max([len(feat) for feat in feature_inds]) > 4):
                 raise ValueError(
-                "Custom features must be tuples of length 2, 3, or 4."
+                    "Custom features must be tuples of length 2, 3, or 4."
                     )
 
             self._distances = [feat for feat in feature_inds if len(feat) == 2]
