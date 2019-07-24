@@ -205,25 +205,25 @@ class ContinuousFilterConvolution(nn.Module):
         """
 
         # Generate the convolutional filter
-        # Shape (n_batch, n_beads, n_neighbors, n_features)
+        # Shape (n_examples, n_beads, n_neighbors, n_features)
         conv_filter = self.filter_generator(rbf_expansion)
 
         # Feature tensor needs to be transformed from
-        # (n_batch, n_beads, n_features)
+        # (n_examples, n_beads, n_features)
         # to
-        # (n_batch, n_beads, n_neighbors, n_features)
+        # (n_examples, n_beads, n_neighbors, n_features)
         # This can be done by feeding the features of a respective bead into
         # its position in the neighbor_list.
 
         num_batch, num_beads, num_neighbors = neighbor_list.size()
-        # Shape (n_batch, n_beads * n_neighbors, 1)
+        # Shape (n_examples, n_beads * n_neighbors, 1)
         neighbor_list = neighbor_list.reshape(-1, num_beads * num_neighbors, 1)
-        # Shape (n_batch, n_beads * n_neighbors, n_features)
+        # Shape (n_examples, n_beads * n_neighbors, n_features)
         neighbor_list = neighbor_list.expand(-1, -1, features.size(2))
 
         # Gather the features into the respective places in the neighbor list
         neighbor_features = torch.gather(features, 1, neighbor_list)
-        # Reshape back to (n_batch, n_beads, n_neighbors, n_features) for
+        # Reshape back to (n_examples, n_beads, n_neighbors, n_features) for
         # element-wise multiplication with the filter
         neighbor_features = neighbor_features.reshape(num_batch, num_beads,
                                                       num_neighbors, -1)
@@ -232,8 +232,8 @@ class ContinuousFilterConvolution(nn.Module):
         # the convolutional filter
         conv_features = neighbor_features * conv_filter
 
-        # Aggregate/pool the features from (n_batch, n_beads, n_neighs, n_feats)
-        # to (n_batch, n_beads, n_features)
+        # Aggregate/pool the features from (n_examples, n_beads, n_neighs, n_feats)
+        # to (n_examples, n_beads, n_features)
         agg_features = torch.sum(conv_features, dim=2)
         return agg_features
 
@@ -303,10 +303,10 @@ class InteractionBlock(nn.Module):
         ----------
         features: torch.Tensor
             Input features from an embedding or interaction layer.
-            Shape [n_batch, n_beads, n_features]
+            Shape [n_examples, n_beads, n_features]
         rbf_expansion: torch.Tensor
             Radial basis function expansion of inter-bead distances.
-            Shape [n_batch, n_beads, n_neighbors, n_gaussians]
+            Shape [n_examples, n_beads, n_neighbors, n_gaussians]
         neighbor_list: torch.Tensor
             Indices of all neighbors of each bead.
             Size [n_examples, n_beads, n_neighbors]
@@ -317,7 +317,7 @@ class InteractionBlock(nn.Module):
             Output of an interaction block. This output can be used to form
             a residual connection with the output of a prior embedding/interaction
             layer.
-            Shape [n_batch, n_beads, n_filters]
+            Shape [n_examples, n_beads, n_filters]
 
         """
         init_feature_output = self.inital_dense(features)
