@@ -18,17 +18,10 @@ class _PriorLayer(nn.Module):
         and the values are dictionaries of physical constants names/values
         (keys: strings, values: float) involved in the interaction encompassed
         by those CG beads
-    descriptions: dict
-        dictionary of CG bead indices as tuples, for feature keys. Possible
-        feature keys are those implemented in ProteinBackBoneStatistics():
-        \"Distances\", \"Angles\", \"Dihedral_cosines\", and/or
-        \"Dihedral_sines\"
-    order : list of str
-        list of feature types that determines the order of features output
-        from a ProteinBackboneFeature() layer or ProteinBacboneStatistics
-        instance.
-    feature_type: str
-        features type from which to select coordinates.
+    feat_indices: list of int
+        list of callback indices that the prior layer can use to access specific
+        outputs of a feature layer in the beginning of a CGnet architecture
+        through a residual connection.
 
     Examples
     --------
@@ -38,30 +31,15 @@ class _PriorLayer(nn.Module):
     features = stats.get_bond_constants(flip_dict=True, zscores=True)
     bonds = dict((k, features[k]) for k in [(i, i+1) for i in
                   range(stats.n_beads)])
-    bond_layer = HarmonicLayer(bonds, stats.descriptions, "Distances")
-
+    bond_layer = HarmonicLayer(bonds, bond_idx)
     """
 
-    def __init__(self, feat_data, descriptions, order, feature_type):
+    def __init__(self, feat_data, feat_indices):
         super(_PriorLayer, self).__init__()
-        if feature_type not in descriptions.keys():
-            raise ValueError('Feature type not found in descriptions')
         self.params = []
-        self.feature_type = feature_type
-        self.features = [feat for feat in feat_data.keys()]
-        self.feat_idx = []
-        # get number of each feature to determine starting idx
-        nums = [len(descriptions[desc]) for desc in order]
-        self.start_idx = 0
-        for num, desc in zip(nums, order):
-            if self.feature_type == desc:
-                break
-            else:
-                self.start_idx += num
-        for key, par in feat_data.items():
+        self.features = []
+        self.feat_idx = feat_indices
             self.features.append(key)
-            self.feat_idx.append(self.start_idx +
-                                 descriptions[self.feature_type].index(key))
             self.params.append(par)
 
     def forward(self, in_feat):
@@ -97,17 +75,10 @@ class RepulsionLayer(_PriorLayer):
 
             { (3, 9) : {  \"ex_vol\" : 5.5, \"exp\" : 6.0 }}
 
-    descriptions: dict
-        dictionary of CG bead indices as tuples, for feature keys. Possible
-        feature keys are those implemented in ProteinBackBoneStatistics():
-        \"Distacnces\", \"Angles\", \"Dihedral_cosines\", and/or
-        \"Dihedral_sines\"
-    order : list of str
-        list of feature types that determines the order of features output
-        from a ProteinBackboneFeature() layer or ProteinBacboneStatistics
-        instance.
-    feature_type: str
-        features type from which to select coordinates.
+    feat_indices: list of int
+        list of callback indices that the prior layer can use to access specific
+        outputs of a feature layer in the beginning of a CGnet architecture
+        through a residual connection.
 
     Notes
     -----
@@ -120,9 +91,8 @@ class RepulsionLayer(_PriorLayer):
 
     """
 
-    def __init__(self, feat_data, descriptions, order, feature_type):
-        super(RepulsionLayer, self).__init__(feat_data, descriptions, order,
-                                             feature_type)
+    def __init__(self, feat_data, feat_indices):
+        super(RepulsionLayer, self).__init__(feat_data, feat_indices)
         for param_dict in self.params:
             if (key in param_dict for key in ('ex_vol', 'exp')):
                 pass
@@ -177,17 +147,10 @@ class HarmonicLayer(_PriorLayer):
 
             { (3, 4) : {  \"k\" : 139.2, \"mean\" : 1.2 }}
 
-    descriptions: dict
-        dictionary of CG bead indices as tuples, for feature keys. Possible
-        feature keys are those implemented in ProteinBackBoneStatistics():
-        \"Distacnces\", \"Angles\", \"Dihedral_cosines\", and/or
-        \"Dihedral_sines\"
-    order : list of str
-        list of feature types that determines the order of features output
-        from a ProteinBackboneFeature() layer or ProteinBacboneStatistics
-        instance.
-    feature_type: str
-        features type from which to select coordinates.
+    feat_indices: list of int
+        list of callback indices that the prior layer can use to access specific
+        outputs of a feature layer in the beginning of a CGnet architecture
+        through a residual connection.
 
     Notes
     -----
@@ -201,9 +164,8 @@ class HarmonicLayer(_PriorLayer):
 
     """
 
-    def __init__(self, feat_data, descriptions, order, feature_type):
-        super(HarmonicLayer, self).__init__(feat_data, descriptions, order,
-                                            feature_type)
+    def __init__(self, feat_data, feat_indices):
+        super(HarmonicLayer, self).__init__(feat_data, feat_indices)
         for param_dict in self.params:
             if (key in param_dict for key in ('k', 'mean')):
                 pass
