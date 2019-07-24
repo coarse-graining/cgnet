@@ -19,8 +19,6 @@ angle_inds = [(i, i+1, i+2) for i in range(beads-2)]
 dihedral_inds = [(i, i+1, i+2, i+3) for i in range(beads-3)]
 
 
-
-
 def test_distance_features():
     # Make sure pairwise distance features are consistent with scipy
 
@@ -68,7 +66,7 @@ def test_angle_features():
 
 def test_dihedral_features():
     # Make sure dihedral features are consistent with manual calculation
-    
+
     f = ProteinBackboneFeature()
     out = f.forward(xt)
 
@@ -98,6 +96,7 @@ def test_dihedral_features():
                       for i in range(len(f.dihedral_sines))]
     np.testing.assert_allclose(np.abs(feature_diheds),
                                np.abs(diheds), rtol=1e-4)
+
 
 def test_angle_index_shuffling():
     # Make sure shuffled angles return the right results

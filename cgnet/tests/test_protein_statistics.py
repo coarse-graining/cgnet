@@ -20,7 +20,7 @@ out = f.forward(xt)
 stats = ProteinBackboneStatistics(xt)
 
 backbone_inds = [i for i in range(beads) if i % 2 == 0]
-xt_bb_only = xt[:,backbone_inds]
+xt_bb_only = xt[:, backbone_inds]
 
 
 def test_manual_backbone_calculations():
@@ -37,6 +37,7 @@ def test_manual_backbone_calculations():
     np.testing.assert_allclose(stats_bb_inds.dihedral_sines,
                                stats_bb_only.dihedral_sines)
 
+
 def test_manual_backbone_descriptions():
     # Make sure angle statistics work for manually specified backbone
     stats_bb_inds = ProteinBackboneStatistics(xt, backbone_inds=backbone_inds)
@@ -48,8 +49,9 @@ def test_manual_backbone_descriptions():
 
     bb_ind_dihed_descs = [(backbone_inds[i], backbone_inds[i+1],
                            backbone_inds[i+2], backbone_inds[i+3])
+                          for i in range(len(backbone_inds)-3)]
+    bb_only_dihed_descs = [(i, i+1, i+2, i+3)
                            for i in range(len(backbone_inds)-3)]
-    bb_only_dihed_descs = [(i, i+1, i+2, i+3) for i in range(len(backbone_inds)-3)]
 
     np.testing.assert_array_equal(stats_bb_inds.descriptions['Angles'],
                                   bb_ind_angle_descs)
@@ -256,7 +258,7 @@ def test_redundant_distance_mapping_vals():
         max_calls_to_generator = stats.n_beads - bead - 1
         generator = neighbor_sequence(bead, stats.n_beads)
         index = np.array([bead] + [next(generator)
-                       for _ in range(max_calls_to_generator-1)])
+                                   for _ in range(max_calls_to_generator-1)])
         mapping[bead, (bead):] = index
         if bead < stats.n_beads - 1:
             mapping[(bead+1):, bead] = index

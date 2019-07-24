@@ -117,14 +117,15 @@ class ProteinBackboneFeature(nn.Module):
         if len(feature_inds) == 0:
             self._distances, _ = g.get_distance_indices(self.n_beads)
             self._angles = [(i, i+1, i+2) for i in range(self.n_beads-2)]
-            self._dihedrals = [(i, i+1, i+2, i+3) for i in range(self.n_beads-3)]
+            self._dihedrals = [(i, i+1, i+2, i+3)
+                               for i in range(self.n_beads-3)]
 
-        else:  
+        else:
             if (np.min([len(feat) for feat in feature_inds]) < 2 or
-                np.max([len(feat) for feat in feature_inds]) > 4):
+                    np.max([len(feat) for feat in feature_inds]) > 4):
                 raise ValueError(
                     "Custom features must be tuples of length 2, 3, or 4."
-                    )
+                )
 
             self._distances = [feat for feat in feature_inds if len(feat) == 2]
             self._angles = [feat for feat in feature_inds if len(feat) == 3]
@@ -133,7 +134,7 @@ class ProteinBackboneFeature(nn.Module):
         self.descriptions = {}
         self.description_order = []
 
-        self.compute_distances() # TODO
+        self.compute_distances()  # TODO
         out = self.distances
         self.description_order.append('Distances')
 

@@ -65,18 +65,21 @@ class ProteinBackboneStatistics():
 
         self.n_frames = self.data.shape[0]
         self.n_beads = self.data.shape[1]
-        assert self.data.shape[2] == 3 # dimensions
+        assert self.data.shape[2] == 3  # dimensions
         self.temperature = temperature
 
         if len(custom_features) > 0:
             if (np.min([len(feat) for feat in custom_features]) < 2 or
-                np.max([len(feat) for feat in custom_features]) > 4):
+                    np.max([len(feat) for feat in custom_features]) > 4):
                 raise ValueError(
-                "Custom features must be tuples of length 2, 3, or 4."
-                    )
-            self._custom_distances = [feat for feat in custom_features if len(feat) == 2]
-            self._custom_angles = [feat for feat in custom_features if len(feat) == 3]
-            self._custom_dihedrals = [feat for feat in custom_features if len(feat) == 4]
+                    "Custom features must be tuples of length 2, 3, or 4."
+                )
+            self._custom_distances = [
+                feat for feat in custom_features if len(feat) == 2]
+            self._custom_angles = [
+                feat for feat in custom_features if len(feat) == 3]
+            self._custom_dihedrals = [
+                feat for feat in custom_features if len(feat) == 4]
         else:
             self._custom_distances = []
             self._custom_angles = []
@@ -85,21 +88,23 @@ class ProteinBackboneStatistics():
         if type(backbone_inds) is str:
             if backbone_inds == 'all':
                 self.backbone_inds = np.arange(self.n_beads)
-                self._backbone_map = {ind : ind for ind in range(self.n_beads)}
+                self._backbone_map = {ind: ind for ind in range(self.n_beads)}
         elif type(backbone_inds) in [list, np.ndarray]:
             if len(np.unique(backbone_inds)) != len(backbone_inds):
-                raise ValueError('Backbone is not allowed to have repeat entries')
+                raise ValueError(
+                    'Backbone is not allowed to have repeat entries')
             self.backbone_inds = np.array(backbone_inds)
 
             if not np.all(np.sort(self.backbone_inds) == self.backbone_inds):
                 warnings.warn(
-    "Your backbone indices aren't sorted. Make sure your backbone indices are in consecutive order."
-                               )
+                    "Your backbone indices aren't sorted. Make sure your backbone indices are in consecutive order."
+                )
 
             self._backbone_map = self._get_backbone_map()
         elif backbone_inds is None:
             if len(custom_features) == 0:
-                raise RuntimeError("Must have either backbone or custom features.")
+                raise RuntimeError(
+                    "Must have either backbone or custom features.")
             self.backbone_inds = np.array([])
             self._backbone_map = None
         else:
@@ -140,25 +145,25 @@ class ProteinBackboneStatistics():
         if get_all_distances:
             self._get_all_pairwise_distances()
             self._name_dict['Distances'] = self.distances
-            self._get_stats(self.distances, 'Distances') # TODO
+            self._get_stats(self.distances, 'Distances')  # TODO
             self.order += ['Distances']
             if get_redundant_distance_mapping:            # TODO
                 self._get_redundant_distance_mapping()
 
             if len(self._custom_distances) > 0:
                 warnings.warn(
-    "All distances are already being calculated, so custom distances are meaningless."
-                    )
+                    "All distances are already being calculated, so custom distances are meaningless."
+                )
                 self._custom_distances = []
 
         if get_backbone_angles:
             angle_inds = [(self.backbone_inds[i], self.backbone_inds[i+1],
-                       self.backbone_inds[i+2])
-                       for i in range(len(self.backbone_inds) - 2)]
+                           self.backbone_inds[i+2])
+                          for i in range(len(self.backbone_inds) - 2)]
             if np.any([cust_angle in angle_inds for cust_angle in self._custom_angles]):
                 warnings.warn(
-        "Some custom angles were on the backbone and will not be re-calculated."
-                    )
+                    "Some custom angles were on the backbone and will not be re-calculated."
+                )
                 self._custom_angles = [cust_angle for cust_angle
                                        in self._custom_angles
                                        if cust_angle not in angle_inds]
@@ -168,20 +173,20 @@ class ProteinBackboneStatistics():
         if len(angle_inds) > 0:
             self._get_angles(angle_inds)
             self._name_dict['Angles'] = self.angles
-            self._get_stats(self.angles, 'Angles') # TODO
+            self._get_stats(self.angles, 'Angles')  # TODO
             self.order += ['Angles']
 
         if get_backbone_dihedrals:
             dihed_inds = [(self.backbone_inds[i], self.backbone_inds[i+1],
-                          self.backbone_inds[i+2], self.backbone_inds[i+3])
-                       for i in range(len(self.backbone_inds) - 3)]
+                           self.backbone_inds[i+2], self.backbone_inds[i+3])
+                          for i in range(len(self.backbone_inds) - 3)]
             if np.any([cust_dih in dihed_inds for cust_dih in self._custom_dihedrals]):
                 warnings.warn(
-        "Some custom dihedrals were on the backbone and will not be re-calculated."
-                    )
+                    "Some custom dihedrals were on the backbone and will not be re-calculated."
+                )
                 self._custom_dihedrals = [cust_dih for _custom_dihedrals
-                                       in self._custom_dihedrals
-                                       if cust_dih not in dihed_inds]
+                                          in self._custom_dihedrals
+                                          if cust_dih not in dihed_inds]
         else:
             dihed_inds = []
         dihed_inds.extend(self._custom_dihedrals)
@@ -189,8 +194,8 @@ class ProteinBackboneStatistics():
             self._get_dihedrals(dihed_inds)
             self._name_dict['Dihedral_cosines'] = self.dihedral_cosines
             self._name_dict['Dihedral_sines'] = self.dihedral_sines
-            self._get_stats(self.dihedral_cosines, 'Dihedral_cosines') # TODO
-            self._get_stats(self.dihedral_sines, 'Dihedral_sines') # TODO
+            self._get_stats(self.dihedral_cosines, 'Dihedral_cosines')  # TODO
+            self._get_stats(self.dihedral_sines, 'Dihedral_sines')  # TODO
             self.order += ['Dihedral_cosines']
             self.order += ['Dihedral_sines']
 
@@ -248,15 +253,15 @@ class ProteinBackboneStatistics():
         self.descriptions['Dihedral_cosines'].extend(dihed_inds)
         self.descriptions['Dihedral_sines'].extend(dihed_inds)
 
-    def _get_stats(self, X, key):   
-            """Populates stats dictionary with mean and std of feature  
-            """ 
-            mean = np.mean(X, axis=0)   
-            std = np.std(X, axis=0) 
-            var = np.var(X, axis=0) 
-            self.stats_dict[key] = {}   
-            self.stats_dict[key]['mean'] = mean 
-            self.stats_dict[key]['std'] = std
+    def _get_stats(self, X, key):
+        """Populates stats dictionary with mean and std of feature  
+        """
+        mean = np.mean(X, axis=0)
+        std = np.std(X, axis=0)
+        var = np.var(X, axis=0)
+        self.stats_dict[key] = {}
+        self.stats_dict[key]['mean'] = mean
+        self.stats_dict[key]['std'] = std
 
     def _get_key(self, key, name):
         if name == 'Dihedral_cosines':
@@ -312,8 +317,8 @@ class ProteinBackboneStatistics():
                 raise ValueError("{} have not been calculated".format(key))
 
         zscore_keys = [[self._get_key(key, name)
-                               for key in self.descriptions[name]]
-                              for name in self.order]
+                        for key in self.descriptions[name]]
+                       for name in self.order]
         if len(zscore_keys) > 1:
             zscore_keys = np.sum(zscore_keys)
         else:
@@ -447,7 +452,7 @@ class ProteinBackboneStatistics():
                 break
             else:
                 start_idx += num
-        if feature_type == 'Bonds': # TODO
+        if feature_type == 'Bonds':  # TODO
             indices = [self.descriptions['Distances'].index(pair)
                        for pair in self._adj_backbone_pairs]
         if feature_type != 'Bonds':
@@ -467,10 +472,10 @@ class ProteinBackboneStatistics():
 
         """
         pairwise_dist_inds = [zipped_pair[1] for zipped_pair in sorted(
-                                [z for z in zip(self._pair_order,
-                                                np.arange(len(self._pair_order)))
-                                 ])
-                            ]
+            [z for z in zip(self._pair_order,
+                            np.arange(len(self._pair_order)))
+             ])
+        ]
         map_matrix = scipy.spatial.distance.squareform(pairwise_dist_inds)
         map_matrix = map_matrix[~np.eye(map_matrix.shape[0],
                                         dtype=bool)].reshape(
