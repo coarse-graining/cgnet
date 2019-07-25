@@ -233,6 +233,30 @@ def test_idx_functions_2():
                                                 num_diheds + dihedral_sin_start),
                                       stats.return_indices('Dihedral_sines'))
 
+def test_idx_functions_3():
+    # Test passing random tuples to return_indices method
+    # distance pairs
+    bead_list = np.arange(beads)
+    sub_beads = np.random.randint(2, high=beads)
+    pairs = np.sort(np.random.choice(bead_list, size=sub_beads, replace=False))
+    distance_pairs = [(pairs[i], pairs[i+1]) for i in range(len(pairs) - 1)]
+    dist_idx = stats.return_indices(distance_pairs)
+    assert len(dist_idx) == len(distance_pairs)
+
+    # angles
+    num_triplets = np.random.randint(1, high=beads - 2)
+    bases = np.arange(num_triplets)
+    angles = [(bases[i], bases[i+1], bases[i+2]) for i in bases]
+    angles_idx = stats.return_indices(angles)
+    assert len(angles_idx) == len(angles)
+
+    # dihedrals
+    num_quads = np.random.randint(1, high=beads - 3)
+    bases = np.arange(num_quads)
+    dihedrals = [(bases[i], bases[i+1], bases[i+2]) for i in bases]
+    angles_idx = stats.return_indices(dihedrals)
+    # both sin and cos are returned for dihedrals
+    assert len(angles_idx) == 2 * len(dihedals)
 
 def test_redundant_distance_mapping_shape():
     # Test to see if the redundant distance index matrix is formed properly
