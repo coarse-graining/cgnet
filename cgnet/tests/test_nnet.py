@@ -239,9 +239,8 @@ def test_prior_with_stats_dropout():
 def test_cgnet():
     # Tests CGnet class criterion attribute, architecture size, and network
     # output size. Also tests prior embedding.
-    harmonic_potential = HarmonicLayer(bonds, descriptions, order,
-                                       feature_type='Distances')
-    feature_layer = GeometryFeature()
+    harmonic_potential = HarmonicLayer(bonds, bond_idx)
+    feature_layer = ProteinBackboneFeature()
     num_feats = feature_layer(coords).size()[1]
 
     rand = np.random.randint(1, 10)
@@ -268,9 +267,8 @@ def test_cgnet_simulation():
     # Tests a simulation from a CGnet built with the GeometryFeature
     # for the shapes of its coordinate, force, and potential outputs
 
-    harmonic_potential = HarmonicLayer(bonds, descriptions, order,
-                                       feature_type='Distances')
-    feature_layer = GeometryFeature()
+    harmonic_potential = HarmonicLayer(bonds, bond_idx)
+    feature_layer = ProteinBackboneFeature()
     num_feats = feature_layer(coords).size()[1]
 
     rand = np.random.randint(1, 10)
