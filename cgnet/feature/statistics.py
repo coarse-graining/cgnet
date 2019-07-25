@@ -470,16 +470,16 @@ class ProteinBackboneStatistics():
                 for desc, sequence in self.descriptions.items():
                    if feat in sequence:
                       feature_found = True
-                      desc_idx = stats.order.index(desc)
-                      start_idx = sum([len(stats.descriptions[k]
-                                       for k in stats.order[:desc_idx]])
+                      desc_idx = self.order.index(desc)
+                      start_idx = sum([len(self.descriptions[k])
+                                       for k in self.order[:desc_idx]])
                       indices.append(start_idx + sequence.index(feat))
                       break
                 if feature_found == False:
                     raise RuntimeError("Feature {} not found in descriptions.".format(feat))
-           return indices
+            return indices
         else:
-           raise ValueError("features must be description string or list of tuples.")
+            raise ValueError("features must be description string or list of tuples.")
 
     def _get_redundant_distance_mapping(self):
         """Reformulates pairwise distances from shape [n_examples, n_dist]
