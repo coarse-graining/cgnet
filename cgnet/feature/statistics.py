@@ -474,7 +474,6 @@ class ProteinBackboneStatistics():
                       start_idx = sum([len(self.descriptions[k])
                                        for k in self.order[:desc_idx]])
                       indices.append(start_idx + sequence.index(feat))
-                      break
                 if feature_found == False:
                     raise RuntimeError("Feature {} not found in descriptions.".format(feat))
             return indices
