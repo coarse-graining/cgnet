@@ -47,9 +47,9 @@ class ProteinBackboneFeature(nn.Module):
                     "Custom features must be tuples of length 2, 3, or 4."
                 )
 
-            self._distances = [feat for feat in feature_inds if len(feat) == 2]
-            self._angles = [feat for feat in feature_inds if len(feat) == 3]
-            self._dihedrals = [feat for feat in feature_inds if len(feat) == 4]
+            self._distance_inds = [feat for feat in feature_inds if len(feat) == 2]
+            self._angle_inds = [feat for feat in feature_inds if len(feat) == 3]
+            self._dihedral_inds = [feat for feat in feature_inds if len(feat) == 4]
         else:
             self.feature_inds = None
 
@@ -67,20 +67,20 @@ class ProteinBackboneFeature(nn.Module):
         #         self._adjacent_distances = new_distances
         # distances = torch.cat(distances, dim=1)
         # self.distances = torch.norm(distances, dim=2)
-        self.distances = g.get_distances(self._distances, data, norm=True)
-        self.descriptions["Distances"] = self._distances
+        self.distances = g.get_distances(self._distance_inds, data, norm=True)
+        self.descriptions["Distances"] = self._distance_inds
 
     def compute_angles(self, data):
         """Computes planar angles."""
-        self.angles = g.get_angles(self._angles, data)
-        self.descriptions["Angles"] = self._angles
+        self.angles = g.get_angles(self._angle_inds, data)
+        self.descriptions["Angles"] = self._angle_inds
 
     def compute_dihedrals(self, data):
         """Computes four-term dihedral (torsional) angles."""
         (self.dihedral_cosines,
-         self.dihedral_sines) = g.get_dihedrals(self._dihedrals, data)
-        self.descriptions["Dihedral_cosines"] = self._dihedrals
-        self.descriptions["Dihedral_sines"] = self._dihedrals
+         self.dihedral_sines) = g.get_dihedrals(self._dihedral_inds, data)
+        self.descriptions["Dihedral_cosines"] = self._dihedral_inds
+        self.descriptions["Dihedral_sines"] = self._dihedral_inds
 
     def forward(self, data):
         """Obtain differentiable feature
@@ -103,17 +103,17 @@ class ProteinBackboneFeature(nn.Module):
         self.n_beads = data.shape[1]
 
         if self.feature_inds is None:
-            self._distances, _ = g.get_distance_indices(self.n_beads)
+            self._distance_inds, _ = g.get_distance_indices(self.n_beads)
             if self.n_beads > 2:
-                self._angles = [(i, i+1, i+2) for i in range(self.n_beads-2)]
+                self._angle_inds = [(i, i+1, i+2) for i in range(self.n_beads-2)]
             else:
-                self._angles = []
+                self._angle_inds = []
             if self.n_beads > 3:
-                self._dihedrals = [(i, i+1, i+2, i+3)
+                self._dihedral_inds = [(i, i+1, i+2, i+3)
                                     for i in range(self.n_beads-3)]
             else:
-                self._dihedrals = []
-            self.feature_inds = self._distances + self._angles + self._dihedrals
+                self._dihedral_inds = []
+            self.feature_inds = self._distance_inds + self._angle_inds + self._dihedral_inds
         else:
             if np.max([np.max(bead) for bead in self.feature_inds]) > self.n_beads - 1:
                 raise ValueError(
@@ -124,21 +124,21 @@ class ProteinBackboneFeature(nn.Module):
         self.description_order = []
         out = torch.Tensor([])
 
-        if len(self._distances) > 0:
+        if len(self._distance_inds) > 0:
             self.compute_distances(data)  # TODO
             out = torch.cat((out, self.distances), dim=1)
             self.description_order.append('Distances')
         else:
             self.distances = torch.Tensor([])
 
-        if len(self._angles) > 0:
+        if len(self._angle_inds) > 0:
             self.compute_angles(data)
             out = torch.cat((out, self.angles), dim=1)
             self.description_order.append('Angles')
         else:
             self.angles = torch.Tensor([])
 
-        if len(self._dihedrals) > 0:
+        if len(self._dihedral_inds) > 0:
             self.compute_dihedrals(data)
             out = torch.cat((out,
                              self.dihedral_cosines,
