@@ -32,13 +32,18 @@ class GeometryStatistics():
         Whether to calculate all pairwise distances
     get_backbone_angles : Boolean (default=True)
         Whether to calculate angles among adjacent beads along the backbone
-    get_backbone_dihedrals : Boolean, (default=True)
+    get_backbone_dihedrals : Boolean (default=True)
         Whether to calculate dihedral cosines and sines among adjacent beads
         along the backbone
     temperature : float or None (default=300.0)
         Temperature of system. Use None for dimensionless calculations.
     get_redundant_distance_mapping : Boolean (default=True)
         If true, creates a redundant_distance_mapping attribute
+    bond_inds : list of tuples (default=[])
+        List of 2-element tuples containing bonded pairs
+    adjacent_backbone_bonds : Boolean, (default=True)
+        Whether adjacent beads along the backbone should be considered
+        as bonds
 
     Attributes
     ----------
@@ -59,7 +64,8 @@ class GeometryStatistics():
     def __init__(self, data, custom_features=[], backbone_inds='all',
                  get_all_distances=True, get_backbone_angles=True,
                  get_backbone_dihedrals=True, temperature=300.0,
-                 get_redundant_distance_mapping=True):
+                 get_redundant_distance_mapping=True, bond_inds=[],
+                 adjacent_backbone_bonds=True):
         if torch.is_tensor(data):
             self.data = data.detach().numpy()
         else:
@@ -77,6 +83,17 @@ class GeometryStatistics():
         self._process_backbone(backbone_inds)
         self._process_custom_features(custom_features)
         self.get_redundant_distance_mapping = get_redundant_distance_mapping
+
+        if np.any([bond_ind not in custom_features for bond_ind in bond_inds]):
+            raise ValueError(
+                "All bond_inds must be also in custom_features."
+                )
+        if np.any([len(bond_ind) != 2 for bond_ind in bond_inds]):
+            raise RuntimeError(
+                "All bonds must be of length 2."
+                )
+        self._bond_inds = bond_inds
+        self.adjacent_backbone_bonds = adjacent_backbone_bonds
 
         self.order = []
 
@@ -105,9 +122,23 @@ class GeometryStatistics():
                 )
                 self._custom_distance_inds = []
             distance_inds = self._pair_order
+
+            if self.adjacent_backbone_bonds:
+                if np.any([bond_ind in self._adj_backbone_pairs
+                           for bond_ind in self._bond_inds]):
+                    warnings.warn(
+                        "Some bond indices were already on the backbone."
+                    )
+                    self._bond_inds = [bond_ind for bond_ind
+                                           in self._bond_inds
+                                           if bond_ind not in self._adj_backbone_pairs]
+            self.bond_inds = self._adj_backbone_pairs
+
         else:
             distance_inds = []
+            self.bond_inds = []
         distance_inds.extend(self._custom_distance_inds)
+        self.bond_inds.extend(self._bond_inds)
 
         if len(distance_inds) > 0:
             self._get_distances(distance_inds)
@@ -116,7 +147,8 @@ class GeometryStatistics():
             angle_inds = [(self.backbone_inds[i], self.backbone_inds[i+1],
                            self.backbone_inds[i+2])
                           for i in range(len(self.backbone_inds) - 2)]
-            if np.any([cust_angle in angle_inds for cust_angle in self._custom_angle_inds]):
+            if np.any([cust_angle in angle_inds
+                       for cust_angle in self._custom_angle_inds]):
                 warnings.warn(
                     "Some custom angles were on the backbone and will not be re-calculated."
                 )
@@ -133,7 +165,8 @@ class GeometryStatistics():
             dihedral_inds = [(self.backbone_inds[i], self.backbone_inds[i+1],
                            self.backbone_inds[i+2], self.backbone_inds[i+3])
                           for i in range(len(self.backbone_inds) - 3)]
-            if np.any([cust_dih in dihedral_inds for cust_dih in self._custom_dihedral_inds]):
+            if np.any([cust_dih in dihedral_inds
+                       for cust_dih in self._custom_dihedral_inds]):
                 warnings.warn(
                     "Some custom dihedrals were on the backbone and will not be re-calculated."
                 )
@@ -361,7 +394,7 @@ class GeometryStatistics():
             list of integers corresponding the indices of specified features
             output from a GeometryFeature() layer.
 
-        """
+        """        
         if feature_type not in self.descriptions.keys() and feature_type != 'Bonds':
             raise RuntimeError(
                 "Error: \'{}\' is not a valid backbone feature.".format(feature_type))
@@ -375,7 +408,7 @@ class GeometryStatistics():
                 start_idx += num
         if feature_type == 'Bonds':  # TODO
             indices = [self.descriptions['Distances'].index(pair)
-                       for pair in self._adj_backbone_pairs]
+                       for pair in self.bond_inds]
         if feature_type != 'Bonds':
             indices = range(0, len(self.descriptions[feature_type]))
         indices = [idx + start_idx for idx in indices]
