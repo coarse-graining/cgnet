@@ -79,12 +79,6 @@ class ProteinBackboneStatistics():
         self.dihedral_cosines = []
         self.dihedral_sines = []
 
-        self._name_dict = {
-            'Distances': self.distances,
-            'Angles': self.angles,
-            'Dihedral_cosines': self.dihedral_cosines,
-            'Dihedral_sines': self.dihedral_sines
-        }
         self.descriptions = {
             'Distances': [],
             'Angles': [],
@@ -204,7 +198,6 @@ class ProteinBackboneStatistics():
     def _get_distances(self, distance_inds):
         self.distances = g.get_distances(distance_inds, self.data, norm=True)
         self.descriptions['Distances'].extend(distance_inds)
-        self._name_dict['Distances'] = self.distances
         self._get_stats(self.distances, 'Distances')  # TODO
         self.order += ['Distances']
         if self.get_redundant_distance_mapping:            # TODO
@@ -216,7 +209,6 @@ class ProteinBackboneStatistics():
         self.angles = g.get_angles(angle_inds, self.data)
 
         self.descriptions['Angles'].extend(angle_inds)
-        self._name_dict['Angles'] = self.angles
         self._get_stats(self.angles, 'Angles')  # TODO
         self.order += ['Angles']
 
@@ -229,8 +221,6 @@ class ProteinBackboneStatistics():
         self.descriptions['Dihedral_cosines'].extend(dihed_inds)
         self.descriptions['Dihedral_sines'].extend(dihed_inds)
 
-        self._name_dict['Dihedral_cosines'] = self.dihedral_cosines
-        self._name_dict['Dihedral_sines'] = self.dihedral_sines
         self._get_stats(self.dihedral_cosines, 'Dihedral_cosines')  # TODO
         self._get_stats(self.dihedral_sines, 'Dihedral_sines')  # TODO
         self.order += ['Dihedral_cosines']
@@ -295,10 +285,6 @@ class ProteinBackboneStatistics():
             standard deviations in the second row, where n is
             the number of features
         """
-        for key in self.order:
-            if self._name_dict[key] is None:
-                raise ValueError("{} have not been calculated".format(key))
-
         zscore_keys = [[self._get_key(key, name)
                         for key in self.descriptions[name]]
                        for name in self.order]
