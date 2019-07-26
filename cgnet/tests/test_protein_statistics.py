@@ -187,9 +187,9 @@ def test_idx_functions_2():
     np.random.shuffle(bool_list)
 
     stats = GeometryStatistics(xt,
-                                      get_all_distances=bool_list[0],
-                                      get_backbone_angles=bool_list[1],
-                                      get_backbone_dihedrals=bool_list[2])
+                               get_all_distances=bool_list[0],
+                               get_backbone_angles=bool_list[1],
+                               get_backbone_dihedrals=bool_list[2])
 
     num_dists = bool_list[0] * (beads) * (beads - 1) / 2
     num_angles = beads - 2

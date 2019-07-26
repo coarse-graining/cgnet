@@ -87,12 +87,12 @@ class GeometryStatistics():
         if not get_all_distances:
             if np.any([bond_ind not in custom_features for bond_ind in bond_inds]):
                 raise ValueError(
-            "All bond_inds must be also in custom_features if get_all_distances is False."
-                    )
+                    "All bond_inds must be also in custom_features if get_all_distances is False."
+                )
         if np.any([len(bond_ind) != 2 for bond_ind in bond_inds]):
             raise RuntimeError(
                 "All bonds must be of length 2."
-                )
+            )
         self._bond_inds = bond_inds
         self.adjacent_backbone_bonds = adjacent_backbone_bonds
 
@@ -119,7 +119,7 @@ class GeometryStatistics():
                                                                 self._backbone_map)
             if len(self._custom_distance_inds) > 0:
                 warnings.warn(
-            "All distances are already being calculated, so custom distances are meaningless."
+                    "All distances are already being calculated, so custom distances are meaningless."
                 )
                 self._custom_distance_inds = []
             distance_inds = self._pair_order
@@ -131,8 +131,8 @@ class GeometryStatistics():
                         "Some bond indices were already on the backbone."
                     )
                     self._bond_inds = [bond_ind for bond_ind
-                                           in self._bond_inds
-                                           if bond_ind not in self._adj_backbone_pairs]
+                                       in self._bond_inds
+                                       if bond_ind not in self._adj_backbone_pairs]
             self.bond_inds = self._adj_backbone_pairs
 
         else:
@@ -154,8 +154,8 @@ class GeometryStatistics():
                     "Some custom angles were on the backbone and will not be re-calculated."
                 )
                 self._custom_angle_inds = [cust_angle for cust_angle
-                                       in self._custom_angle_inds
-                                       if cust_angle not in angle_inds]
+                                           in self._custom_angle_inds
+                                           if cust_angle not in angle_inds]
         else:
             angle_inds = []
         angle_inds.extend(self._custom_angle_inds)
@@ -164,16 +164,16 @@ class GeometryStatistics():
 
         if get_backbone_dihedrals:
             dihedral_inds = [(self.backbone_inds[i], self.backbone_inds[i+1],
-                           self.backbone_inds[i+2], self.backbone_inds[i+3])
-                          for i in range(len(self.backbone_inds) - 3)]
+                              self.backbone_inds[i+2], self.backbone_inds[i+3])
+                             for i in range(len(self.backbone_inds) - 3)]
             if np.any([cust_dih in dihedral_inds
                        for cust_dih in self._custom_dihedral_inds]):
                 warnings.warn(
                     "Some custom dihedrals were on the backbone and will not be re-calculated."
                 )
                 self._custom_dihedral_inds = [cust_dih for _custom_dihedral_inds
-                                          in self._custom_dihedral_inds
-                                          if cust_dih not in dihedral_inds]
+                                              in self._custom_dihedral_inds
+                                              if cust_dih not in dihedral_inds]
         else:
             dihedral_inds = []
         dihedral_inds.extend(self._custom_dihedral_inds)
@@ -193,7 +193,7 @@ class GeometryStatistics():
             if np.max([np.max(bead) for bead in custom_features]) > self.n_beads - 1:
                 raise ValueError(
                     "Bead index in at least one feature is out of range."
-                    )
+                )
 
             self._custom_distance_inds = [
                 feat for feat in custom_features if len(feat) == 2]
@@ -341,39 +341,41 @@ class GeometryStatistics():
 
         Returns
         -------
-        _dict : python dictionary (if as_dict=True)
+        prior_statistics_dict : python dictionary (if as_dict=True)
             If flip_dict is True, the outer keys will be bead pairs, triples,
             or quadruples+phase, e.g. (1, 2) or (0, 1, 2, 3, 'cos'), and
             the inner keys will be 'mean' and 'std' statistics.
             If flip_dict is False, the outer keys will be the 'mean' and 'std'
             statistics and the inner keys will be bead pairs, triples, or
             quadruples+phase
-        zscore_array : torch.Tensor or np.array (if as_dict=False)
+        prior_statistics_array : torch.Tensor or np.array (if as_dict=False)
             2 by n tensor/array with means in the first row and
             standard deviations in the second row, where n is
             the number of features
         """
         temp_keys = [[self._get_key(key, name)
-                        for key in self.descriptions[name]]
-                       for name in self.order]
+                      for key in self.descriptions[name]]
+                     for name in self.order]
         prior_stat_keys = []
         for sublist in temp_keys:
             prior_stat_keys.extend(sublist)
         prior_stat_array = np.vstack([
             np.concatenate([self._stats_dict[key][stat]
-                            for key in self.order]) for stat in ['mean', 'std', 'k']])
+                            for key in self.order])
+                            for stat in ['mean', 'std', 'k']])
         if tensor:
             prior_stat_array = torch.from_numpy(prior_stat_array).float()
         self.prior_statistics_keys = prior_stat_keys
         self.prior_statistics_array = prior_stat_array
 
         if as_dict:
-            prior_stat_dict = {}
+            prior_statistics_dict = {}
             for i, stat in enumerate(['mean', 'std']):
-                prior_stat_dict[stat] = dict(zip(prior_stat_keys, prior_stat_array[i, :]))
+                prior_statistics_dict[stat] = dict(zip(prior_stat_keys,
+                                                       prior_stat_array[i, :]))
             if flip_dict:
-                prior_stat_dict = self._flip_dict(prior_stat_dict)
-            return prior_stat_dict
+                prior_statistics_dict = self._flip_dict(prior_statistics_dict)
+            return prior_statistics_dict
         else:
             return prior_stat_array
 
@@ -395,7 +397,7 @@ class GeometryStatistics():
             list of integers corresponding the indices of specified features
             output from a GeometryFeature() layer.
 
-        """        
+        """
         if feature_type not in self.descriptions.keys() and feature_type != 'Bonds':
             raise RuntimeError(
                 "Error: \'{}\' is not a valid backbone feature.".format(feature_type))

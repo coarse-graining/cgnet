@@ -13,6 +13,7 @@ class Geometry():
     ----------
     method : 'torch' or 'numpy' (default='torch')
     """
+
     def __init__(self, method='torch'):
         self.method = method
         if method == 'torch':
@@ -57,7 +58,7 @@ class Geometry():
         if len(np.unique([len(feat) for feat in inds])) > 1:
             raise ValueError(
                 "All features must be the same length."
-                )
+            )
         feat_length = len(inds[0])
 
         ind_list = [[feat[i] for feat in inds]

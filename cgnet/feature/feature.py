@@ -38,7 +38,7 @@ class GeometryFeature(nn.Module):
 
     def __init__(self, feature_inds='all'):
         super(GeometryFeature, self).__init__()
-        
+
         if feature_inds is not 'all':
             self.feature_inds = feature_inds
             if (np.min([len(feat) for feat in feature_inds]) < 2 or
@@ -47,26 +47,17 @@ class GeometryFeature(nn.Module):
                     "Custom features must be tuples of length 2, 3, or 4."
                 )
 
-            self._distance_inds = [feat for feat in feature_inds if len(feat) == 2]
-            self._angle_inds = [feat for feat in feature_inds if len(feat) == 3]
-            self._dihedral_inds = [feat for feat in feature_inds if len(feat) == 4]
+            self._distance_inds = [
+                feat for feat in feature_inds if len(feat) == 2]
+            self._angle_inds = [
+                feat for feat in feature_inds if len(feat) == 3]
+            self._dihedral_inds = [
+                feat for feat in feature_inds if len(feat) == 4]
         else:
             self.feature_inds = None
 
     def compute_distances(self, data):
         """Computes all pairwise distances."""
-        # distances = []
-        # descriptions = []
-        # for j in range(self.n_beads-1):
-        #     new_distances = (self._coordinates[:, (j+1):self.n_beads, :]
-        #                      - self._coordinates[:, 0:(self.n_beads-(j+1)), :])
-        #     descriptions.extend([(0+i, j+1+i)
-        #                          for i in range(self.n_beads - (j+1))])
-        #     distances.append(new_distances)
-        #     if j == 0:
-        #         self._adjacent_distances = new_distances
-        # distances = torch.cat(distances, dim=1)
-        # self.distances = torch.norm(distances, dim=2)
         self.distances = g.get_distances(self._distance_inds, data, norm=True)
         self.descriptions["Distances"] = self._distance_inds
 
@@ -103,20 +94,22 @@ class GeometryFeature(nn.Module):
         if self.feature_inds is None:
             self._distance_inds, _ = g.get_distance_indices(self.n_beads)
             if self.n_beads > 2:
-                self._angle_inds = [(i, i+1, i+2) for i in range(self.n_beads-2)]
+                self._angle_inds = [(i, i+1, i+2)
+                                    for i in range(self.n_beads-2)]
             else:
                 self._angle_inds = []
             if self.n_beads > 3:
                 self._dihedral_inds = [(i, i+1, i+2, i+3)
-                                    for i in range(self.n_beads-3)]
+                                       for i in range(self.n_beads-3)]
             else:
                 self._dihedral_inds = []
-            self.feature_inds = self._distance_inds + self._angle_inds + self._dihedral_inds
+            self.feature_inds = self._distance_inds + \
+                self._angle_inds + self._dihedral_inds
         else:
             if np.max([np.max(bead) for bead in self.feature_inds]) > self.n_beads - 1:
                 raise ValueError(
                     "Bead index in at least one feature is out of range."
-                    )
+                )
 
         self.descriptions = {}
         self.description_order = []
