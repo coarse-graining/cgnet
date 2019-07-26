@@ -16,8 +16,9 @@ class GeometryFeature(nn.Module):
 
     Parameters
     ----------
-    feature_inds : 
-        # TODO
+    feature_inds : list of tuples (default=[])
+        List of 2-, 3-, and 4-element tuples containing distance, angle, and
+        dihedral features to be calculated.
 
     Attributes
     ----------

@@ -5,6 +5,14 @@ import numpy as np
 
 
 class Geometry():
+    """Helper class to calculate distances, angles, and dihedrals
+    with a unified, vectorized framework depending on whether pytorch
+    or numpy is used.
+
+    Parameters
+    ----------
+    method : 'torch' or 'numpy' (default='torch')
+    """
     def __init__(self, method='torch'):
         self.method = method
         if method == 'torch':
@@ -29,7 +37,7 @@ class Geometry():
         self.sum = lambda x, axis: np.sum(x, axis=axis)
 
     def get_distance_indices(self, n_beads, backbone_inds=[], backbone_map=None):
-        """Determines indices of pairwise distance features
+        """Determines indices of pairwise distance features.
         """
         pair_order = []
         adj_backbone_pairs = []
@@ -44,7 +52,7 @@ class Geometry():
         return pair_order, adj_backbone_pairs
 
     def get_vectorize_inputs(self, inds, data):
-        """TODO
+        """Helper function to obtain indices for vectorized calculations.
         """
         if len(np.unique([len(feat) for feat in inds])) > 1:
             raise ValueError(
@@ -65,13 +73,15 @@ class Geometry():
         return dist_list
 
     def get_distances(self, distance_inds, data, norm=True):
+        """Calculates distances in a vectorized fashion.
+        """
         distances = self.get_vectorize_inputs(distance_inds, data)
         if norm:
             distances = self.norm(distances, axis=2)
         return distances
 
     def get_angles(self, angle_inds, data):
-        """TODO
+        """Calculates angles in a vectorized fashion.
         """
         base, offset = self.get_vectorize_inputs(angle_inds, data)
 
@@ -81,8 +91,14 @@ class Geometry():
         return angles
 
     def get_dihedrals(self, dihed_inds, data):
-        """TODO
-        Note: hacky/bad
+        """Calculates dihedrals in a vectorized fashion.
+
+        Note
+        ----
+        This is implemented in a hacky/bad way. It calculates twice as many
+        dihedrals as needed and removes every other one. There is a better
+        way to do this, I think using two lists of angles, but for now
+        this has the correct functionality.
         """
         angle_inds = np.concatenate([[(f[i], f[i+1], f[i+2])
                                       for i in range(2)] for f in dihed_inds])
