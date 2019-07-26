@@ -42,22 +42,28 @@ class Geometry():
 
         return pair_order, adj_backbone_pairs
 
-    def get_angle_inputs(self, angle_inds, data):
+    def get_vectorize_inputs(self, inds, data):
         """TODO
         """
-        ind_list = [[feat[i] for feat in angle_inds]
-                    for i in range(3)]
+        if len(np.unique([len(feat) for feat in inds])) > 1:
+            raise ValueError(
+                "All features must be the same length."
+                )
+        feat_length = len(inds[0])
+
+        ind_list = [[feat[i] for feat in inds]
+                    for i in range(feat_length)]
 
         dist_list = [data[:, ind_list[i+1], :]
                      - data[:, ind_list[i], :]
-                     for i in range(2)]
+                     for i in range(feat_length - 1)]
 
         return dist_list
 
     def get_angles(self, angle_inds, data):
         """TODO
         """
-        base, offset = self.get_angle_inputs(angle_inds, data)
+        base, offset = self.get_vectorize_inputs(angle_inds, data)
 
         angles = self.arccos(self.sum(base*offset, axis=2)/self.norm(
             base, axis=2)/self.norm(offset, axis=2))
@@ -70,7 +76,7 @@ class Geometry():
         """
         angle_inds = np.concatenate([[(f[i], f[i+1], f[i+2])
                                       for i in range(2)] for f in dihed_inds])
-        base, offset = self.get_angle_inputs(angle_inds, data)
+        base, offset = self.get_vectorize_inputs(angle_inds, data)
         offset_2 = base[:, 1:]
 
         cross_product_adj = self.cross(base, offset, axis=2)
