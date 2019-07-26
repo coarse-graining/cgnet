@@ -38,7 +38,33 @@ def test_distance_features():
                                x0_scipy_distances, rtol=1e-6)
 
 
-def test_angle_features():
+def test_backbone_angle_features():
+    # Make sure angle features are consistent with manual calculation
+
+    f = ProteinBackboneFeature()
+    out = f.forward(xt)
+
+    angles = []
+    for j, z in enumerate(x):
+        angle_list = []
+        for i in range(x.shape[1]-2):
+            a = z[i]
+            b = z[i+1]
+            c = z[i+2]
+
+            ba = b-a
+            cb = c-b
+
+            cos_angle = np.dot(ba, cb) / (np.linalg.norm(ba)
+                                          * np.linalg.norm(cb))
+            angle = np.arccos(cos_angle)
+            angle_list.append(angle)
+        angles.append(angle_list)
+
+    np.testing.assert_allclose(f.angles, angles, rtol=1e-5)
+
+
+def test_random_angle_features():
     # Make sure angle features are consistent with manual calculation
 
     f = ProteinBackboneFeature()
@@ -106,15 +132,15 @@ def test_angle_index_shuffling():
 
     y_angle_inds = [(i, i+1, i+2) for i in range(100-2)]
 
-    f = ProteinBackboneFeature()
-    out = f.forward(yt, feature_inds=y_angle_inds)
+    f = ProteinBackboneFeature(feature_inds=y_angle_inds)
+    out = f.forward(yt)
 
     inds = np.arange(100-2)
     np.random.shuffle(inds)
 
     shuffled_inds = np.array(y_angle_inds)[inds]
-    f_shuffle = ProteinBackboneFeature()
-    out_shuffle = f_shuffle.forward(yt, feature_inds=shuffled_inds)
+    f_shuffle = ProteinBackboneFeature(feature_inds=shuffled_inds)
+    out_shuffle = f_shuffle.forward(yt)
 
     np.testing.assert_array_equal(f_shuffle.angles[0], f.angles[0][inds])
 
@@ -127,15 +153,15 @@ def test_dihedral_index_shuffling():
 
     y_dihed_inds = [(i, i+1, i+2, i+3) for i in range(100-3)]
 
-    f = ProteinBackboneFeature()
-    out = f.forward(yt, feature_inds=y_dihed_inds)
+    f = ProteinBackboneFeature(feature_inds=y_dihed_inds)
+    out = f.forward(yt)
 
     inds = np.arange(100-3)
     np.random.shuffle(inds)
 
     shuffled_inds = np.array(y_dihed_inds)[inds]
-    f_shuffle = ProteinBackboneFeature()
-    out_shuffle = f_shuffle.forward(yt, feature_inds=shuffled_inds)
+    f_shuffle = ProteinBackboneFeature(feature_inds=shuffled_inds)
+    out_shuffle = f_shuffle.forward(yt)
 
     np.testing.assert_allclose(f_shuffle.dihedral_cosines[0],
                                f.dihedral_cosines[0][inds], rtol=1e-5)

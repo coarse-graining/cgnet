@@ -215,7 +215,6 @@ class ProteinBackboneStatistics():
         for frame in range(self.n_frames):
             dmat = scipy.spatial.distance.squareform(
                 scipy.spatial.distance.pdist(self.data[frame]))
-            self._dmat = dmat
             frame_dists = [dmat[self._pair_order[i]]
                            for i in range(len(self._pair_order))]
             dlist[frame, :] = frame_dists

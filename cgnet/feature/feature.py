@@ -14,6 +14,11 @@ class ProteinBackboneFeature(nn.Module):
     """Featurization of a protein backbone into pairwise distances,
     angles, and dihedrals.
 
+    Parameters
+    ----------
+    feature_inds : 
+        # TODO
+
     Attributes
     ----------
     n_beads : int
@@ -31,8 +36,22 @@ class ProteinBackboneFeature(nn.Module):
         List of four-bead torsions according to descriptions['Torsions']
     """
 
-    def __init__(self):
+    def __init__(self, feature_inds='all'):
         super(ProteinBackboneFeature, self).__init__()
+        
+        if feature_inds is not 'all':
+            self.feature_inds = feature_inds
+            if (np.min([len(feat) for feat in feature_inds]) < 2 or
+                    np.max([len(feat) for feat in feature_inds]) > 4):
+                raise ValueError(
+                    "Custom features must be tuples of length 2, 3, or 4."
+                )
+
+            self._distances = [feat for feat in feature_inds if len(feat) == 2]
+            self._angles = [feat for feat in feature_inds if len(feat) == 3]
+            self._dihedrals = [feat for feat in feature_inds if len(feat) == 4]
+        else:
+            self.feature_inds = None
 
     def compute_distances(self):
         """Computes all pairwise distances."""
@@ -62,7 +81,7 @@ class ProteinBackboneFeature(nn.Module):
         self.descriptions["Dihedral_cosines"] = self._dihedrals
         self.descriptions["Dihedral_sines"] = self._dihedrals
 
-    def forward(self, data, feature_inds=[]):
+    def forward(self, data):
         """Obtain differentiable feature
 
         Parameters
@@ -82,22 +101,23 @@ class ProteinBackboneFeature(nn.Module):
         self._coordinates = data
         self.n_beads = data.shape[1]
 
-        if len(feature_inds) == 0:
+        if self.feature_inds is None:
             self._distances, _ = g.get_distance_indices(self.n_beads)
-            self._angles = [(i, i+1, i+2) for i in range(self.n_beads-2)]
-            self._dihedrals = [(i, i+1, i+2, i+3)
-                               for i in range(self.n_beads-3)]
-
+            if self.n_beads > 2:
+                self._angles = [(i, i+1, i+2) for i in range(self.n_beads-2)]
+            else:
+                self._angles = []
+            if self.n_beads > 3:
+                self._dihedrals = [(i, i+1, i+2, i+3)
+                                    for i in range(self.n_beads-3)]
+            else:
+                self._dihedrals = []
+            self.feature_inds = self._distances + self._angles + self._dihedrals
         else:
-            if (np.min([len(feat) for feat in feature_inds]) < 2 or
-                    np.max([len(feat) for feat in feature_inds]) > 4):
+            if np.max([np.max(bead) for bead in self.feature_inds]) > self.n_beads - 1:
                 raise ValueError(
-                    "Custom features must be tuples of length 2, 3, or 4."
-                )
-
-            self._distances = [feat for feat in feature_inds if len(feat) == 2]
-            self._angles = [feat for feat in feature_inds if len(feat) == 3]
-            self._dihedrals = [feat for feat in feature_inds if len(feat) == 4]
+                    "Bead index in at least one feature is out of range."
+                    )
 
         self.descriptions = {}
         self.description_order = []
@@ -105,7 +125,7 @@ class ProteinBackboneFeature(nn.Module):
 
         if len(self._distances) > 0:
             self.compute_distances()  # TODO
-            out = torch.cat((out, self.angles), dim=1)
+            out = torch.cat((out, self.distances), dim=1)
             self.description_order.append('Distances')
         else:
             self.distances = torch.Tensor([])
