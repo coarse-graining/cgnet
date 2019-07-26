@@ -10,8 +10,8 @@ from .geometry import Geometry
 g = Geometry(method='torch')
 
 
-class ProteinBackboneFeature(nn.Module):
-    """Featurization of a protein backbone into pairwise distances,
+class GeometryFeature(nn.Module):
+    """Featurization of coarse-grained beads into pairwise distances,
     angles, and dihedrals.
 
     Parameters
@@ -22,8 +22,7 @@ class ProteinBackboneFeature(nn.Module):
     Attributes
     ----------
     n_beads : int
-        Number of beads in the coarse-graining, assumed to be consecutive
-        along a protein backbone
+        Number of beads in the coarse-graining
     descriptions : dictionary
         List of indices (value) for each feature type (key)
     description_order : list
@@ -37,7 +36,7 @@ class ProteinBackboneFeature(nn.Module):
     """
 
     def __init__(self, feature_inds='all'):
-        super(ProteinBackboneFeature, self).__init__()
+        super(GeometryFeature, self).__init__()
         
         if feature_inds is not 'all':
             self.feature_inds = feature_inds
@@ -89,8 +88,6 @@ class ProteinBackboneFeature(nn.Module):
         ----------
         data : torch.Tensor
             Must be of dimensions [n_frames, n_beads, n_dimensions]
-        feature_inds : list of tuples (default=[])
-            # TODO
 
         Returns
         -------
@@ -125,7 +122,7 @@ class ProteinBackboneFeature(nn.Module):
         out = torch.Tensor([])
 
         if len(self._distance_inds) > 0:
-            self.compute_distances(data)  # TODO
+            self.compute_distances(data)
             out = torch.cat((out, self.distances), dim=1)
             self.description_order.append('Distances')
         else:

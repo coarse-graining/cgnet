@@ -15,8 +15,8 @@ AVOGADRO = 6.022140857e23
 JPERKCAL = 4184
 
 
-class ProteinBackboneStatistics():
-    """Calculation of statistics for protein backbone features; namely
+class GeometryStatistics():
+    """Calculation of statistics for geometric features; namely
    distances, angles, and dihedral cosines and sines.
 
     Parameters
@@ -50,7 +50,7 @@ class ProteinBackboneStatistics():
 
     Example
     -------
-    ds = ProteinBackboneStatistics(data, n_beads = 10)
+    ds = GeometryStatistics(data, n_beads = 10)
     print(ds.stats_dict['Distances']['mean'])
     """
 
@@ -88,19 +88,17 @@ class ProteinBackboneStatistics():
 
         self.stats_dict = {}
 
-        if get_all_distances or len(self._custom_distance_inds) > 0:
+        if get_all_distances:
             (self._pair_order,
              self._adj_backbone_pairs) = g.get_distance_indices(self.n_beads,
                                                                 self.backbone_inds,
                                                                 self._backbone_map)
-
-        if get_all_distances:
-            distance_inds, _ = g.get_distance_indices(self.n_beads)
             if len(self._custom_distance_inds) > 0:
                 warnings.warn(
             "All distances are already being calculated, so custom distances are meaningless."
                 )
                 self._custom_distance_inds = []
+            distance_inds = self._pair_order
         else:
             distance_inds = []
         distance_inds.extend(self._custom_distance_inds)
@@ -199,9 +197,9 @@ class ProteinBackboneStatistics():
     def _get_distances(self, distance_inds):
         self.distances = g.get_distances(distance_inds, self.data, norm=True)
         self.descriptions['Distances'].extend(distance_inds)
-        self._get_stats(self.distances, 'Distances')  # TODO
+        self._get_stats(self.distances, 'Distances')
         self.order += ['Distances']
-        if self.get_redundant_distance_mapping:            # TODO
+        if self.get_redundant_distance_mapping:
             self._get_redundant_distance_mapping()
 
     def _get_angles(self, angle_inds):
@@ -210,7 +208,7 @@ class ProteinBackboneStatistics():
         self.angles = g.get_angles(angle_inds, self.data)
 
         self.descriptions['Angles'].extend(angle_inds)
-        self._get_stats(self.angles, 'Angles')  # TODO
+        self._get_stats(self.angles, 'Angles')
         self.order += ['Angles']
 
     def _get_dihedrals(self, dihedral_inds):
@@ -222,8 +220,8 @@ class ProteinBackboneStatistics():
         self.descriptions['Dihedral_cosines'].extend(dihedral_inds)
         self.descriptions['Dihedral_sines'].extend(dihedral_inds)
 
-        self._get_stats(self.dihedral_cosines, 'Dihedral_cosines')  # TODO
-        self._get_stats(self.dihedral_sines, 'Dihedral_sines')  # TODO
+        self._get_stats(self.dihedral_cosines, 'Dihedral_cosines')
+        self._get_stats(self.dihedral_sines, 'Dihedral_sines')
         self.order += ['Dihedral_cosines']
         self.order += ['Dihedral_sines']
 
@@ -395,7 +393,7 @@ class ProteinBackboneStatistics():
     def return_indices(self, feature_type):
         """Return all indices for specified feature type. Useful for
         constructing priors or other layers that make callbacks to
-        a subset of features output from a ProteinBackboneFeature()
+        a subset of features output from a GeometryFeature()
         layer
 
         Parameters
@@ -408,7 +406,7 @@ class ProteinBackboneStatistics():
         -------
         indices : list(int)
             list of integers corresponding the indices of specified features
-            output from a ProteinBackboneFeature() layer.
+            output from a GeometryFeature() layer.
 
         """
         if feature_type not in self.descriptions.keys() and feature_type != 'Bonds':

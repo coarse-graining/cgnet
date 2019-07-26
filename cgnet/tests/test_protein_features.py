@@ -4,7 +4,7 @@ import numpy as np
 import scipy.spatial
 import torch
 
-from cgnet.feature import ProteinBackboneFeature, Geometry
+from cgnet.feature import GeometryFeature, Geometry
 g = Geometry(method='torch')
 
 frames = np.random.randint(1, 10)
@@ -22,7 +22,7 @@ dihedral_inds = [(i, i+1, i+2, i+3) for i in range(beads-3)]
 def test_distance_features():
     # Make sure pairwise distance features are consistent with scipy
 
-    f = ProteinBackboneFeature()
+    f = GeometryFeature()
     out = f.forward(xt)
 
     Dmat_x0 = scipy.spatial.distance.squareform(
@@ -41,7 +41,7 @@ def test_distance_features():
 def test_backbone_angle_features():
     # Make sure angle features are consistent with manual calculation
 
-    f = ProteinBackboneFeature()
+    f = GeometryFeature()
     out = f.forward(xt)
 
     angles = []
@@ -67,7 +67,7 @@ def test_backbone_angle_features():
 def test_random_angle_features():
     # Make sure angle features are consistent with manual calculation
 
-    f = ProteinBackboneFeature()
+    f = GeometryFeature()
     out = f.forward(xt)
 
     angles = []
@@ -93,7 +93,7 @@ def test_random_angle_features():
 def test_dihedral_features():
     # Make sure dihedral features are consistent with manual calculation
 
-    f = ProteinBackboneFeature()
+    f = GeometryFeature()
     out = f.forward(xt)
 
     diheds = []
@@ -132,14 +132,14 @@ def test_distance_index_shuffling():
 
     y_dist_inds, _ = g.get_distance_indices(10)
 
-    f = ProteinBackboneFeature(feature_inds=y_dist_inds)
+    f = GeometryFeature(feature_inds=y_dist_inds)
     out = f.forward(yt)
 
     inds = np.arange(len(y_dist_inds))
     np.random.shuffle(inds)
 
     shuffled_inds = np.array(y_dist_inds)[inds]
-    f_shuffle = ProteinBackboneFeature(feature_inds=shuffled_inds)
+    f_shuffle = GeometryFeature(feature_inds=shuffled_inds)
     out_shuffle = f_shuffle.forward(yt)
 
     np.testing.assert_array_equal(f_shuffle.distances[0], f.distances[0][inds])
@@ -153,14 +153,14 @@ def test_angle_index_shuffling():
 
     y_angle_inds = [(i, i+1, i+2) for i in range(100-2)]
 
-    f = ProteinBackboneFeature(feature_inds=y_angle_inds)
+    f = GeometryFeature(feature_inds=y_angle_inds)
     out = f.forward(yt)
 
     inds = np.arange(100-2)
     np.random.shuffle(inds)
 
     shuffled_inds = np.array(y_angle_inds)[inds]
-    f_shuffle = ProteinBackboneFeature(feature_inds=shuffled_inds)
+    f_shuffle = GeometryFeature(feature_inds=shuffled_inds)
     out_shuffle = f_shuffle.forward(yt)
 
     np.testing.assert_array_equal(f_shuffle.angles[0], f.angles[0][inds])
@@ -174,14 +174,14 @@ def test_dihedral_index_shuffling():
 
     y_dihed_inds = [(i, i+1, i+2, i+3) for i in range(100-3)]
 
-    f = ProteinBackboneFeature(feature_inds=y_dihed_inds)
+    f = GeometryFeature(feature_inds=y_dihed_inds)
     out = f.forward(yt)
 
     inds = np.arange(100-3)
     np.random.shuffle(inds)
 
     shuffled_inds = np.array(y_dihed_inds)[inds]
-    f_shuffle = ProteinBackboneFeature(feature_inds=shuffled_inds)
+    f_shuffle = GeometryFeature(feature_inds=shuffled_inds)
     out_shuffle = f_shuffle.forward(yt)
 
     np.testing.assert_allclose(f_shuffle.dihedral_cosines[0],

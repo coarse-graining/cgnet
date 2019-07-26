@@ -8,7 +8,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
 from cgnet.network import (CGnet, ForceLoss, RepulsionLayer,
                            HarmonicLayer, ZscoreLayer, Simulation)
-from cgnet.feature import (ProteinBackboneStatistics, ProteinBackboneFeature,
+from cgnet.feature import (GeometryStatistics, GeometryFeature,
                            LinearLayer)
 
 # Random test data
@@ -23,7 +23,7 @@ beads = np.random.randint(5, 10)
 dims = 3
 
 coords = torch.randn((frames, beads, 3), requires_grad=True)
-stats = ProteinBackboneStatistics(coords.detach().numpy())
+stats = GeometryStatistics(coords.detach().numpy())
 
 # Prior variables
 bondsdict = stats.get_bond_constants(flip_dict=True, zscores=True)
@@ -81,7 +81,7 @@ def test_zscore_layer():
     #
     # However, the equality is only preserved with precision >= 1e-4.
 
-    feat_layer = ProteinBackboneFeature()
+    feat_layer = GeometryFeature()
     feat = feat_layer(coords)
     rescaled_feat_truth = (feat - zscores[0, :])/zscores[1, :]
 
@@ -97,7 +97,7 @@ def test_repulsion_layer():
 
     repulsion_potential = RepulsionLayer(repul_dict, descriptions, order,
                                          feature_type='Distances')
-    feat_layer = ProteinBackboneFeature()
+    feat_layer = GeometryFeature()
     feat = feat_layer(coords)
     energy = repulsion_potential(feat[:, repulsion_potential.feat_idx])
 
@@ -125,7 +125,7 @@ def test_harmonic_layer():
 
     harmonic_potential = HarmonicLayer(bonds, descriptions, order,
                                        feature_type='Distances')
-    feat_layer = ProteinBackboneFeature()
+    feat_layer = GeometryFeature()
     feat = feat_layer(coords)
     energy = harmonic_potential(feat[:, harmonic_potential.feat_idx])
 
@@ -161,7 +161,7 @@ def test_cgnet():
 
     harmonic_potential = HarmonicLayer(bonds, descriptions, order,
                                        feature_type='Distances')
-    feature_layer = ProteinBackboneFeature()
+    feature_layer = GeometryFeature()
     num_feats = feature_layer(coords).size()[1]
 
     rand = np.random.randint(1, 10)
@@ -171,7 +171,7 @@ def test_cgnet():
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, 1, bias=True, activation=None)\
 
-    model = CGnet(arch, ForceLoss(), feature=ProteinBackboneFeature(),
+    model = CGnet(arch, ForceLoss(), feature=GeometryFeature(),
                   priors=[harmonic_potential])
     np.testing.assert_equal(True, model.priors is not None)
     np.testing.assert_equal(len(arch), model.arch.__len__())
@@ -185,12 +185,12 @@ def test_cgnet():
 
 
 def test_cgnet_simulation():
-    # Tests a simulation from a CGnet built with the ProteinBackboneFeature
+    # Tests a simulation from a CGnet built with the GeometryFeature
     # for the shapes of its coordinate, force, and potential outputs
 
     harmonic_potential = HarmonicLayer(bonds, descriptions, order,
                                        feature_type='Distances')
-    feature_layer = ProteinBackboneFeature()
+    feature_layer = GeometryFeature()
     num_feats = feature_layer(coords).size()[1]
 
     rand = np.random.randint(1, 10)
@@ -200,7 +200,7 @@ def test_cgnet_simulation():
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, 1, bias=True, activation=None)\
 
-    model = CGnet(arch, ForceLoss(), feature=ProteinBackboneFeature(),
+    model = CGnet(arch, ForceLoss(), feature=GeometryFeature(),
                   priors=[harmonic_potential])
 
     forces = torch.randn((frames, beads, 3), requires_grad=False)

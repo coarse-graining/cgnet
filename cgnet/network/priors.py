@@ -20,12 +20,12 @@ class _PriorLayer(nn.Module):
         by those CG beads
     descriptions: dict
         dictionary of CG bead indices as tuples, for feature keys. Possible
-        feature keys are those implemented in ProteinBackBoneStatistics():
+        feature keys are those implemented in GeometryStatistics():
         \"Distances\", \"Angles\", \"Dihedral_cosines\", and/or
         \"Dihedral_sines\"
     order : list of str
         list of feature types that determines the order of features output
-        from a ProteinBackboneFeature() layer or ProteinBacboneStatistics
+        from a GeometryFeature() layer or ProteinBacboneStatistics
         instance.
     feature_type: str
         features type from which to select coordinates.
@@ -33,7 +33,7 @@ class _PriorLayer(nn.Module):
     Examples
     --------
     To assemble the feat_dict input for a HarmonicLayer prior for bonds from an
-    instance of a stats = ProteinBackboneStatistics():
+    instance of a stats = GeometryStatistics():
 
     features = stats.get_bond_constants(flip_dict=True, zscores=True)
     bonds = dict((k, features[k]) for k in [(i, i+1) for i in
@@ -99,12 +99,12 @@ class RepulsionLayer(_PriorLayer):
 
     descriptions: dict
         dictionary of CG bead indices as tuples, for feature keys. Possible
-        feature keys are those implemented in ProteinBackBoneStatistics():
+        feature keys are those implemented in GeometryStatistics():
         \"Distacnces\", \"Angles\", \"Dihedral_cosines\", and/or
         \"Dihedral_sines\"
     order : list of str
         list of feature types that determines the order of features output
-        from a ProteinBackboneFeature() layer or ProteinBacboneStatistics
+        from a GeometryFeature() layer or ProteinBacboneStatistics
         instance.
     feature_type: str
         features type from which to select coordinates.
@@ -179,12 +179,12 @@ class HarmonicLayer(_PriorLayer):
 
     descriptions: dict
         dictionary of CG bead indices as tuples, for feature keys. Possible
-        feature keys are those implemented in ProteinBackBoneStatistics():
+        feature keys are those implemented in GeometryStatistics():
         \"Distacnces\", \"Angles\", \"Dihedral_cosines\", and/or
         \"Dihedral_sines\"
     order : list of str
         list of feature types that determines the order of features output
-        from a ProteinBackboneFeature() layer or ProteinBacboneStatistics
+        from a GeometryFeature() layer or ProteinBacboneStatistics
         instance.
     feature_type: str
         features type from which to select coordinates.
@@ -251,7 +251,7 @@ class ZscoreLayer(nn.Module):
     Notes
     -----
     Zscore normalization can accelerate training convergence if placed
-    after a ProteinBackboneFeature() layer, especially if the input features
+    after a GeometryFeature() layer, especially if the input features
     span different orders of magnitudes, such as the combination of angles
     and distances.
 

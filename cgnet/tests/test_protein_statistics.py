@@ -5,7 +5,7 @@ import numpy as np
 import scipy.spatial
 import torch
 
-from cgnet.feature import ProteinBackboneFeature, ProteinBackboneStatistics
+from cgnet.feature import GeometryFeature, GeometryStatistics
 
 frames = np.random.randint(1, 10)
 beads = np.random.randint(8, 20)
@@ -14,9 +14,9 @@ dims = 3
 x = np.random.randn(frames, beads, dims)
 xt = torch.Tensor(x)
 
-f = ProteinBackboneFeature()
+f = GeometryFeature()
 out = f.forward(xt)
-stats = ProteinBackboneStatistics(xt)
+stats = GeometryStatistics(xt)
 
 backbone_inds = [i for i in range(beads) if i % 2 == 0]
 xt_bb_only = xt[:, backbone_inds]
@@ -24,8 +24,8 @@ xt_bb_only = xt[:, backbone_inds]
 
 def test_manual_backbone_calculations():
     # Make sure angle statistics work for manually specified backbone
-    stats_bb_inds = ProteinBackboneStatistics(xt, backbone_inds=backbone_inds)
-    stats_bb_only = ProteinBackboneStatistics(xt_bb_only)
+    stats_bb_inds = GeometryStatistics(xt, backbone_inds=backbone_inds)
+    stats_bb_only = GeometryStatistics(xt_bb_only)
 
     np.testing.assert_allclose(stats_bb_inds.angles,
                                stats_bb_only.angles)
@@ -39,8 +39,8 @@ def test_manual_backbone_calculations():
 
 def test_manual_backbone_descriptions():
     # Make sure angle statistics work for manually specified backbone
-    stats_bb_inds = ProteinBackboneStatistics(xt, backbone_inds=backbone_inds)
-    stats_bb_only = ProteinBackboneStatistics(xt_bb_only)
+    stats_bb_inds = GeometryStatistics(xt, backbone_inds=backbone_inds)
+    stats_bb_only = GeometryStatistics(xt_bb_only)
 
     bb_ind_angle_descs = [(backbone_inds[i], backbone_inds[i+1], backbone_inds[i+2])
                           for i in range(len(backbone_inds)-2)]
@@ -167,7 +167,7 @@ def test_idx_functions_1():
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
-    stats = ProteinBackboneStatistics(xt,
+    stats = GeometryStatistics(xt,
                                       get_all_distances=bool_list[0],
                                       get_backbone_angles=bool_list[1],
                                       get_backbone_dihedrals=bool_list[2])
@@ -196,7 +196,7 @@ def test_idx_functions_2():
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
-    stats = ProteinBackboneStatistics(xt,
+    stats = GeometryStatistics(xt,
                                       get_all_distances=bool_list[0],
                                       get_backbone_angles=bool_list[1],
                                       get_backbone_dihedrals=bool_list[2])
