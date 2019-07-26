@@ -65,14 +65,10 @@ class Geometry():
         return dist_list
 
     def get_distances(self, distance_inds, data, norm=True):
-        if self.method == 'torch':
-            distances = self.get_vectorize_inputs(distance_inds, data)
-            if norm:
-                distances = self.norm(distances, axis=2)
-            return distances
-
-        # elif self.method == 'numpy':
-        #     return self._get_distances_numpy(distance_inds, data)
+        distances = self.get_vectorize_inputs(distance_inds, data)
+        if norm:
+            distances = self.norm(distances, axis=2)
+        return distances
 
     def get_angles(self, angle_inds, data):
         """TODO

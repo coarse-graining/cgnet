@@ -143,7 +143,8 @@ class ProteinBackboneStatistics():
                                                                 self._backbone_map)
 
         if get_all_distances:
-            self._get_all_pairwise_distances()
+            distance_inds, _ = g.get_distance_indices(self.n_beads)
+            self._get_distances(distance_inds)
             self._name_dict['Distances'] = self.distances
             self._get_stats(self.distances, 'Distances')  # TODO
             self.order += ['Distances']
@@ -206,20 +207,24 @@ class ProteinBackboneStatistics():
                    in range(self.n_beads) if mol_ind not in self.backbone_inds}
         return {**backbone_map, **pad_map}
 
-    def _get_all_pairwise_distances(self):
-        """Obtain pairwise distances for all pairs of beads;
-           shape=(n_frames, n_beads-1)
-        """
-        dlist = np.empty([self.n_frames,
-                          len(self._pair_order)])
-        for frame in range(self.n_frames):
-            dmat = scipy.spatial.distance.squareform(
-                scipy.spatial.distance.pdist(self.data[frame]))
-            frame_dists = [dmat[self._pair_order[i]]
-                           for i in range(len(self._pair_order))]
-            dlist[frame, :] = frame_dists
-        self.distances = dlist
-        self.descriptions['Distances'] = self._pair_order
+    # def _get_all_pairwise_distances(self):
+    #     """Obtain pairwise distances for all pairs of beads;
+    #        shape=(n_frames, n_beads-1)
+    #     """
+    #     dlist = np.empty([self.n_frames,
+    #                       len(self._pair_order)])
+    #     for frame in range(self.n_frames):
+    #         dmat = scipy.spatial.distance.squareform(
+    #             scipy.spatial.distance.pdist(self.data[frame]))
+    #         frame_dists = [dmat[self._pair_order[i]]
+    #                        for i in range(len(self._pair_order))]
+    #         dlist[frame, :] = frame_dists
+    #     self.distances = dlist
+    #     self.descriptions['Distances'] = self._pair_order
+
+    def _get_distances(self, distance_inds):
+        self.distances = g.get_distances(distance_inds, self.data, norm=True)
+        self.descriptions['Distances'].extend(distance_inds)
 
     def _get_angles(self, angle_inds):
         """TODO
