@@ -5,8 +5,7 @@ import numpy as np
 import scipy.spatial
 import torch
 
-from cgnet.feature import ProteinBackboneFeature
-from cgnet.feature import ProteinBackboneStatistics
+from cgnet.feature import ProteinBackboneFeature, ProteinBackboneStatistics
 
 frames = np.random.randint(1, 10)
 beads = np.random.randint(8, 20)

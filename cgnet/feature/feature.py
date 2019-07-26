@@ -51,12 +51,12 @@ class ProteinBackboneFeature(nn.Module):
         self.descriptions["Distances"] = descriptions
 
     def compute_angles(self, data):
-        """Computes all planar angles."""
+        """Computes planar angles."""
         self.angles = g.get_angles(self._angles, data)
         self.descriptions["Angles"] = self._angles
 
     def compute_dihedrals(self, data):
-        """Computes all four-term dihedral (torsional) angles."""
+        """Computes four-term dihedral (torsional) angles."""
         (self.dihedral_cosines,
          self.dihedral_sines) = g.get_dihedrals(self._dihedrals, data)
         self.descriptions["Dihedral_cosines"] = self._dihedrals

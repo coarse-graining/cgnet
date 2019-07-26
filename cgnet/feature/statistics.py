@@ -206,21 +206,6 @@ class ProteinBackboneStatistics():
                    in range(self.n_beads) if mol_ind not in self.backbone_inds}
         return {**backbone_map, **pad_map}
 
-    # def _get_distance_indices(self):
-    #     """Determines indices of pairwise distance features
-    #     """
-    #     pair_order = []
-    #     adj_backbone_pairs = []
-    #     for increment in range(1, self.data.shape[1]):
-    #         for i in range(self.data.shape[1] - increment):
-    #             pair_order.append((i, i+increment))
-    #             if len(self.backbone_inds) > 0:
-    #                 if (self._backbone_map[i+increment]
-    #                     - self._backbone_map[i] == 1):
-    #                     adj_backbone_pairs.append((i, i+increment))
-    #     self._pair_order = pair_order
-    #     self._adj_backbone_pairs = adj_backbone_pairs
-
     def _get_all_pairwise_distances(self):
         """Obtain pairwise distances for all pairs of beads;
            shape=(n_frames, n_beads-1)
