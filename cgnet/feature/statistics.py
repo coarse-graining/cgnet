@@ -141,6 +141,9 @@ class GeometryStatistics():
             self._get_dihedrals(dihedral_inds)
 
     def _process_custom_features(self, custom_features):
+        """Helper function to sort custom features into distances, angles,
+        and dihedrals.
+        """
         if len(custom_features) > 0:
             if (np.min([len(feat) for feat in custom_features]) < 2 or
                     np.max([len(feat) for feat in custom_features]) > 4):
@@ -159,6 +162,15 @@ class GeometryStatistics():
             self._custom_dihedral_inds = []
 
     def _get_backbone_map(self):
+        """Helper function that maps bead indices to indices along the backbone
+        only.
+
+        Returns
+        -------
+        backbone_map : dict
+            Dictionary with bead indices as keys and, as values, backbone
+            indices for beads along the backbone or np.nan otherwise.
+        """
         backbone_map = {mol_ind: bb_ind for bb_ind, mol_ind
                         in enumerate(self.backbone_inds)}
         pad_map = {mol_ind: np.nan for mol_ind
@@ -166,6 +178,8 @@ class GeometryStatistics():
         return {**backbone_map, **pad_map}
 
     def _process_backbone(self, backbone_inds):
+        """Helper function to obtain attributes needed for backbone atoms.
+        """
         if type(backbone_inds) is str:
             if backbone_inds == 'all':
                 self.backbone_inds = np.arange(self.n_beads)
@@ -195,6 +209,8 @@ class GeometryStatistics():
         self.n_backbone_beads = len(self.backbone_inds)
 
     def _get_distances(self, distance_inds):
+        """Obtains all pairwise distances for the two-bead indices provided.
+        """
         self.distances = g.get_distances(distance_inds, self.data, norm=True)
         self.descriptions['Distances'].extend(distance_inds)
         self._get_stats(self.distances, 'Distances')
@@ -203,7 +219,7 @@ class GeometryStatistics():
             self._get_redundant_distance_mapping()
 
     def _get_angles(self, angle_inds):
-        """TODO
+        """Obtains all planar angles for the three-bead indices provided.
         """
         self.angles = g.get_angles(angle_inds, self.data)
 
@@ -212,7 +228,7 @@ class GeometryStatistics():
         self.order += ['Angles']
 
     def _get_dihedrals(self, dihedral_inds):
-        """TODO
+        """Obtains all dihedral angles for the four-bead indices provided.
         """
         (self.dihedral_cosines,
             self.dihedral_sines) = g.get_dihedrals(dihedral_inds, self.data)
@@ -226,7 +242,7 @@ class GeometryStatistics():
         self.order += ['Dihedral_sines']
 
     def _get_stats(self, X, key):
-        """Populates stats dictionary with mean and std of feature  
+        """Populates stats dictionary with mean and std of feature.
         """
         mean = np.mean(X, axis=0)
         std = np.std(X, axis=0)
@@ -236,6 +252,9 @@ class GeometryStatistics():
         self.stats_dict[key]['std'] = std
 
     def _get_key(self, key, name):
+        """Returns keys for zscore and bond constant dictionaries based on
+        description names.
+        """
         if name == 'Dihedral_cosines':
             return tuple(list(key) + ['cos'])
         if name == 'Dihedral_sines':
@@ -244,8 +263,10 @@ class GeometryStatistics():
             return key
 
     def _flip_dict(self, mydict):
-        all_inds = np.unique(np.concatenate([list(mydict[stat].keys())
-                                             for stat in mydict.keys()]))
+        """Flips the dictionary; see documentation for get_zscores or
+        get_bond_constants.
+        """
+        all_inds = list(mydict['mean'].keys())
 
         newdict = {}
         for i in all_inds:
@@ -284,20 +305,19 @@ class GeometryStatistics():
             standard deviations in the second row, where n is
             the number of features
         """
-        zscore_keys = [[self._get_key(key, name)
+        temp_zscore_keys = [[self._get_key(key, name)
                         for key in self.descriptions[name]]
                        for name in self.order]
-        if len(zscore_keys) > 1:
-            zscore_keys = np.sum(zscore_keys)
-        else:
-            zscore_keys = zscore_keys[0]
-        self._zscore_keys = zscore_keys
+        zscore_keys = []
+        for sublist in temp_zscore_keys:
+            zscore_keys.extend(sublist)
         zscore_array = np.vstack([
             np.concatenate([self.stats_dict[key][stat]
                             for key in self.order]) for stat in ['mean', 'std']])
         if tensor:
             zscore_array = torch.from_numpy(zscore_array).float()
-        self._zscore_array = zscore_array
+        self.zscore_keys = zscore_keys
+        self.zscore_array = zscore_array
 
         if as_dict:
             zscore_dict = {}

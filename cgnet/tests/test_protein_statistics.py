@@ -119,16 +119,34 @@ def test_backbone_dihedral_statistics():
 
 def test_zscore_dict_1():
     # Make sure the "flipped" zscore dict has the right structure
+    bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
+    np.random.shuffle(bool_list)
+
+    stats = GeometryStatistics(xt,
+                               get_all_distances=bool_list[0],
+                               get_backbone_angles=bool_list[1],
+                               get_backbone_dihedrals=bool_list[2])
+
     zscore_dict = stats.get_zscores(flip_dict=True)
-    n_keys = beads*(beads-1)/2 + beads-2 + 2*(beads-3)
+    n_keys = (bool_list[0]*beads*(beads-1)/2 + bool_list[1]*(beads-2)
+              + bool_list[2]*2*(beads-3))
 
     assert len(zscore_dict) == n_keys
 
 
 def test_zscore_dict_2():
     # Make sure the zscore dict has the right structure
+    bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
+    np.random.shuffle(bool_list)
+
+    stats = GeometryStatistics(xt,
+                               get_all_distances=bool_list[0],
+                               get_backbone_angles=bool_list[1],
+                               get_backbone_dihedrals=bool_list[2])
+
     zscore_dict = stats.get_zscores(flip_dict=False)
-    n_keys = beads*(beads-1)/2 + beads-2 + 2*(beads-3)
+    n_keys = (bool_list[0]*beads*(beads-1)/2 + bool_list[1]*(beads-2)
+              + bool_list[2]*2*(beads-3))
 
     for k in zscore_dict.keys():
         assert len(zscore_dict[k]) == n_keys
@@ -168,9 +186,9 @@ def test_idx_functions_1():
     np.random.shuffle(bool_list)
 
     stats = GeometryStatistics(xt,
-                                      get_all_distances=bool_list[0],
-                                      get_backbone_angles=bool_list[1],
-                                      get_backbone_dihedrals=bool_list[2])
+                               get_all_distances=bool_list[0],
+                               get_backbone_angles=bool_list[1],
+                               get_backbone_dihedrals=bool_list[2])
 
     if bool_list[0]:
         assert len(stats.return_indices('Distances')) == (
