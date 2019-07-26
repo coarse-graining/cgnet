@@ -84,10 +84,11 @@ class GeometryStatistics():
         self._process_custom_features(custom_features)
         self.get_redundant_distance_mapping = get_redundant_distance_mapping
 
-        if np.any([bond_ind not in custom_features for bond_ind in bond_inds]):
-            raise ValueError(
-                "All bond_inds must be also in custom_features."
-                )
+        if not get_all_distances:
+            if np.any([bond_ind not in custom_features for bond_ind in bond_inds]):
+                raise ValueError(
+            "All bond_inds must be also in custom_features if get_all_distances is False."
+                    )
         if np.any([len(bond_ind) != 2 for bond_ind in bond_inds]):
             raise RuntimeError(
                 "All bonds must be of length 2."
