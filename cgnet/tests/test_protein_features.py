@@ -124,6 +124,27 @@ def test_dihedral_features():
                                np.abs(diheds), rtol=1e-4)
 
 
+def test_distance_index_shuffling():
+    # Make sure shuffled distances return the right results
+
+    y = np.random.randn(1, 10, 3)
+    yt = torch.Tensor(y)
+
+    y_dist_inds, _ = g.get_distance_indices(10)
+
+    f = ProteinBackboneFeature(feature_inds=y_dist_inds)
+    out = f.forward(yt)
+
+    inds = np.arange(len(y_dist_inds))
+    np.random.shuffle(inds)
+
+    shuffled_inds = np.array(y_dist_inds)[inds]
+    f_shuffle = ProteinBackboneFeature(feature_inds=shuffled_inds)
+    out_shuffle = f_shuffle.forward(yt)
+
+    np.testing.assert_array_equal(f_shuffle.distances[0], f.distances[0][inds])
+
+
 def test_angle_index_shuffling():
     # Make sure shuffled angles return the right results
 
