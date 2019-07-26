@@ -34,15 +34,16 @@ class GeometryStatistics():
     get_backbone_dihedrals : Boolean, (default=True)
         Whether to calculate dihedral cosines and sines among adjacent beads
         along the backbone
-    temperature : float (default=300.0)
-        Temperature of system
+    temperature : float or None (default=300.0)
+        Temperature of system. Use None for dimensionless calculations.
     get_redundant_distance_mapping : Boolean (default=True)
         If true, creates a redundant_distance_mapping attribute
 
     Attributes
     ----------
-    stats_dict : dictionary
-        Stores 'mean' and 'std' for caluclated features
+    beta : float
+        1/(Boltzmann constant)/(temperature) if temperature is not None in
+        units of kcal per mole; otherwise 1.0
     descriptions : dictionary
         List of indices (value) for each feature type (key)
     redundant_distance_mapping
@@ -50,8 +51,8 @@ class GeometryStatistics():
 
     Example
     -------
-    ds = GeometryStatistics(data, n_beads = 10)
-    print(ds.stats_dict['Distances']['mean'])
+    stats = GeometryStatistics(data, n_beads = 10)
+    prior_stats_dict = ds.get_prior_statistics()
     """
 
     def __init__(self, data, custom_features=[], backbone_inds='all',
@@ -67,6 +68,10 @@ class GeometryStatistics():
         self.n_beads = self.data.shape[1]
         assert self.data.shape[2] == 3  # dimensions
         self.temperature = temperature
+        if self.temperature is not None:
+            self.beta = JPERKCAL/KBOLTZMANN/AVOGADRO/self.temperature
+        else:
+            self.beta = 1.0
 
         self._process_backbone(backbone_inds)
         self._process_custom_features(custom_features)
@@ -86,7 +91,7 @@ class GeometryStatistics():
             'Dihedral_sines': []
         }
 
-        self.stats_dict = {}
+        self._stats_dict = {}
 
         if get_all_distances:
             (self._pair_order,
@@ -247,9 +252,11 @@ class GeometryStatistics():
         mean = np.mean(X, axis=0)
         std = np.std(X, axis=0)
         var = np.var(X, axis=0)
-        self.stats_dict[key] = {}
-        self.stats_dict[key]['mean'] = mean
-        self.stats_dict[key]['std'] = std
+        k = 1/var/self.beta
+        self._stats_dict[key] = {}
+        self._stats_dict[key]['mean'] = mean
+        self._stats_dict[key]['std'] = std
+        self._stats_dict[key]['k'] = k
 
     def _get_key(self, key, name):
         """Returns keys for zscore and bond constant dictionaries based on
@@ -276,8 +283,9 @@ class GeometryStatistics():
                     newdict[i][stat] = mydict[stat][i]
         return newdict
 
-    def get_zscores(self, tensor=True, as_dict=True, flip_dict=True):
-        """Obtain zscores (mean and standard deviation) for features
+    def get_prior_statistics(self, tensor=True, as_dict=True, flip_dict=True):
+        """Obtain prior statistics (mean, standard deviation, and
+        bond/angle/dihedral constants) for features
 
         Parameters
         ----------
@@ -293,7 +301,7 @@ class GeometryStatistics():
 
         Returns
         -------
-        zscore_dict : python dictionary (if as_dict=True)
+        _dict : python dictionary (if as_dict=True)
             If flip_dict is True, the outer keys will be bead pairs, triples,
             or quadruples+phase, e.g. (1, 2) or (0, 1, 2, 3, 'cos'), and
             the inner keys will be 'mean' and 'std' statistics.
@@ -305,110 +313,101 @@ class GeometryStatistics():
             standard deviations in the second row, where n is
             the number of features
         """
-        temp_zscore_keys = [[self._get_key(key, name)
+        temp_keys = [[self._get_key(key, name)
                         for key in self.descriptions[name]]
                        for name in self.order]
-        zscore_keys = []
-        for sublist in temp_zscore_keys:
-            zscore_keys.extend(sublist)
-        zscore_array = np.vstack([
-            np.concatenate([self.stats_dict[key][stat]
-                            for key in self.order]) for stat in ['mean', 'std']])
+        prior_stat_keys = []
+        for sublist in temp_keys:
+            prior_stat_keys.extend(sublist)
+        prior_stat_array = np.vstack([
+            np.concatenate([self._stats_dict[key][stat]
+                            for key in self.order]) for stat in ['mean', 'std', 'k']])
         if tensor:
-            zscore_array = torch.from_numpy(zscore_array).float()
-        self.zscore_keys = zscore_keys
-        self.zscore_array = zscore_array
+            prior_stat_array = torch.from_numpy(prior_stat_array).float()
+        self.prior_statistics_keys = prior_stat_keys
+        self.prior_statistics_array = prior_stat_array
 
         if as_dict:
-            zscore_dict = {}
+            prior_stat_dict = {}
             for i, stat in enumerate(['mean', 'std']):
-                zscore_dict[stat] = dict(zip(zscore_keys, zscore_array[i, :]))
+                prior_stat_dict[stat] = dict(zip(prior_stat_keys, prior_stat_array[i, :]))
             if flip_dict:
-                zscore_dict = self._flip_dict(zscore_dict)
-            return zscore_dict
+                prior_stat_dict = self._flip_dict(prior_stat_dict)
+            return prior_stat_dict
         else:
-            return zscore_array
+            return prior_stat_array
 
-    def get_bond_constants(self, tensor=True, as_dict=True, zscores=True,
-                           flip_dict=True):
-        """Obtain bond constants (K values and means) for adjacent distance
-           and angle features. K values depend on the temperature.
+    # def get_bond_constants(self, tensor=True, as_dict=True, flip_dict=True):
+    #     """Obtain bond constants (K values and means) for adjacent distance
+    #        and angle features. K values depend on the temperature.
 
-        Parameters
-        ----------
-        tensor : Boolean (default=True)
-            Returns (innermost data) of type torch.Tensor if True and np.array
-             if False
-        as_dict : Boolean (default=True)
-            Returns a dictionary instead of an array (see "Returns"
-            documentation)
-        zscores : Boolean (default=True)
-            Includes results from the get_zscores() method if True;
-            only allowed if as_dict is also True
-        flip_dict : Boolean (default=True)
-            Returns a dictionary with outer keys as indices if True and
-            outer keys as statistic string names if False
+    #     Parameters
+    #     ----------
+    #     tensor : Boolean (default=True)
+    #         Returns (innermost data) of type torch.Tensor if True and np.array
+    #          if False
+    #     as_dict : Boolean (default=True)
+    #         Returns a dictionary instead of an array (see "Returns"
+    #         documentation)
+    #     zscores : Boolean (default=True)
+    #         Includes results from the get_zscores() method if True;
+    #         only allowed if as_dict is also True
+    #     flip_dict : Boolean (default=True)
+    #         Returns a dictionary with outer keys as indices if True and
+    #         outer keys as statistic string names if False
 
-        Returns
-        -------
-        bondconst_dict : python dictionary (if as_dict=True)
-            If flip_dict is True, the outer keys will be bead pairs, triples,
-            or quadruples+phase, e.g. (1, 2) or (0, 1, 2, 3, 'cos'), and
-            the inner keys will be 'mean', 'std', and 'k' statistics (only
-            'mean' and 'k', and no quadruples, if zscores is False)
-            If flip_dict is False, the outer keys will be the 'mean', 'std',
-            and 'k' statistics (only 'mean' and 'k' if zscores if False) and
-            the inner keys will be bead pairs, triples, or, unless zscores is
-            False, quadruples+phase
-        bondconst_array : torch.Tensor or np.array (if as_dict=False)
-            2 by n tensor/array with bond constants in the first row and
-            means in the second row, where n is the number of adjacent
-            pairwise distances plus the number of angles
-        """
-        if zscores and not as_dict:
-            raise RuntimeError('zscores can only be True if as_dict is True')
+    #     Returns
+    #     -------
+    #     bondconst_dict : python dictionary (if as_dict=True)
+    #         If flip_dict is True, the outer keys will be bead pairs, triples,
+    #         or quadruples+phase, e.g. (1, 2) or (0, 1, 2, 3, 'cos'), and
+    #         the inner keys will be 'mean', 'std', and 'k' statistics (only
+    #         'mean' and 'k', and no quadruples, if zscores is False)
+    #         If flip_dict is False, the outer keys will be the 'mean', 'std',
+    #         and 'k' statistics (only 'mean' and 'k' if zscores if False) and
+    #         the inner keys will be bead pairs, triples, or, unless zscores is
+    #         False, quadruples+phase
+    #     bondconst_array : torch.Tensor or np.array (if as_dict=False)
+    #         2 by n tensor/array with bond constants in the first row and
+    #         means in the second row, where n is the number of adjacent
+    #         pairwise distances plus the number of angles
+    #     """
+    #     self.beta = JPERKCAL/KBOLTZMANN/AVOGADRO/self.temperature
 
-        if self.distances is None or self.angles is None:
-            raise RuntimeError(
-                'Must compute distances and angles in order to get bond constants'
-            )
+    #     bond_mean = self.stats_dict['Distances']['mean'][:self.n_beads-1]
+    #     angle_mean = self.stats_dict['Angles']['mean']
 
-        self.beta = JPERKCAL/KBOLTZMANN/AVOGADRO/self.temperature
+    #     bond_var = self.stats_dict['Distances']['std'][:self.n_beads-1]**2
+    #     angle_var = self.stats_dict['Angles']['std']**2
 
-        bond_mean = self.stats_dict['Distances']['mean'][:self.n_beads-1]
-        angle_mean = self.stats_dict['Angles']['mean']
+    #     bond_keys = self.descriptions['Distances'][:self.n_beads-1]
+    #     angle_keys = self.descriptions['Angles']
 
-        bond_var = self.stats_dict['Distances']['std'][:self.n_beads-1]**2
-        angle_var = self.stats_dict['Angles']['std']**2
+    #     K_bond = 1/bond_var/self.beta
+    #     K_angle = 1/angle_var/self.beta
 
-        bond_keys = self.descriptions['Distances'][:self.n_beads-1]
-        angle_keys = self.descriptions['Angles']
+    #     bondconst_keys = np.sum([bond_keys, angle_keys])
+    #     bondconst_array = np.vstack([np.concatenate([K_bond, K_angle]),
+    #                                  np.concatenate([bond_mean, angle_mean])])
+    #     if not tensor:
+    #         bondconst_array = torch.from_numpy(bondconst_array)
 
-        K_bond = 1/bond_var/self.beta
-        K_angle = 1/angle_var/self.beta
-
-        bondconst_keys = np.sum([bond_keys, angle_keys])
-        bondconst_array = np.vstack([np.concatenate([K_bond, K_angle]),
-                                     np.concatenate([bond_mean, angle_mean])])
-        if not tensor:
-            bondconst_array = torch.from_numpy(bondconst_array)
-
-        if as_dict:
-            if zscores:
-                bondconst_dict = self.get_zscores(tensor=tensor, as_dict=True,
-                                                  flip_dict=False)
-                bondconst_dict['k'] = dict(zip(bondconst_keys,
-                                               bondconst_array[0, :]))
-            else:
-                bondconst_dict = {}
-                for i, stat in enumerate(['k', 'mean']):
-                    bondconst_dict[stat] = dict(zip(bondconst_keys,
-                                                    bondconst_array[i, :]))
-            if flip_dict:
-                bondconst_dict = self._flip_dict(bondconst_dict)
-            return bondconst_dict
-        else:
-            return bondconst_array
+    #     if as_dict:
+    #         if zscores:
+    #             bondconst_dict = self.get_zscores(tensor=tensor, as_dict=True,
+    #                                               flip_dict=False)
+    #             bondconst_dict['k'] = dict(zip(bondconst_keys,
+    #                                            bondconst_array[0, :]))
+    #         else:
+    #             bondconst_dict = {}
+    #             for i, stat in enumerate(['k', 'mean']):
+    #                 bondconst_dict[stat] = dict(zip(bondconst_keys,
+    #                                                 bondconst_array[i, :]))
+    #         if flip_dict:
+    #             bondconst_dict = self._flip_dict(bondconst_dict)
+    #         return bondconst_dict
+    #     else:
+    #         return bondconst_array
 
     def return_indices(self, feature_type):
         """Return all indices for specified feature type. Useful for
