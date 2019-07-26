@@ -6,6 +6,7 @@ import numpy as np
 
 class Geometry():
     def __init__(self, method='torch'):
+        self.method = method
         if method == 'torch':
             self.setup_torch()
         elif method == 'numpy':
@@ -58,7 +59,20 @@ class Geometry():
                      - data[:, ind_list[i], :]
                      for i in range(feat_length - 1)]
 
+        if len(dist_list) == 1:
+            dist_list = dist_list[0]
+
         return dist_list
+
+    def get_distances(self, distance_inds, data, norm=True):
+        if self.method == 'torch':
+            distances = self.get_vectorize_inputs(distance_inds, data)
+            if norm:
+                distances = self.norm(distances, axis=2)
+            return distances
+
+        # elif self.method == 'numpy':
+        #     return self._get_distances_numpy(distance_inds, data)
 
     def get_angles(self, angle_inds, data):
         """TODO

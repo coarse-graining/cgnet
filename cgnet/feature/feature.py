@@ -53,21 +53,22 @@ class ProteinBackboneFeature(nn.Module):
         else:
             self.feature_inds = None
 
-    def compute_distances(self):
+    def compute_distances(self, data):
         """Computes all pairwise distances."""
-        distances = []
-        descriptions = []
-        for j in range(self.n_beads-1):
-            new_distances = (self._coordinates[:, (j+1):self.n_beads, :]
-                             - self._coordinates[:, 0:(self.n_beads-(j+1)), :])
-            descriptions.extend([(0+i, j+1+i)
-                                 for i in range(self.n_beads - (j+1))])
-            distances.append(new_distances)
-            if j == 0:
-                self._adjacent_distances = new_distances
-        distances = torch.cat(distances, dim=1)
-        self.distances = torch.norm(distances, dim=2)
-        self.descriptions["Distances"] = descriptions
+        # distances = []
+        # descriptions = []
+        # for j in range(self.n_beads-1):
+        #     new_distances = (self._coordinates[:, (j+1):self.n_beads, :]
+        #                      - self._coordinates[:, 0:(self.n_beads-(j+1)), :])
+        #     descriptions.extend([(0+i, j+1+i)
+        #                          for i in range(self.n_beads - (j+1))])
+        #     distances.append(new_distances)
+        #     if j == 0:
+        #         self._adjacent_distances = new_distances
+        # distances = torch.cat(distances, dim=1)
+        # self.distances = torch.norm(distances, dim=2)
+        self.distances = g.get_distances(self._distances, data, norm=True)
+        self.descriptions["Distances"] = self._distances
 
     def compute_angles(self, data):
         """Computes planar angles."""
@@ -124,7 +125,7 @@ class ProteinBackboneFeature(nn.Module):
         out = torch.Tensor([])
 
         if len(self._distances) > 0:
-            self.compute_distances()  # TODO
+            self.compute_distances(data)  # TODO
             out = torch.cat((out, self.distances), dim=1)
             self.description_order.append('Distances')
         else:
