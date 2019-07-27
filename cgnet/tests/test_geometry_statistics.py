@@ -14,7 +14,7 @@ dims = 3
 x = np.random.randn(frames, beads, dims)
 xt = torch.Tensor(x)
 
-f = GeometryFeature()
+f = GeometryFeature(n_beads=beads)
 out = f.forward(xt)
 stats = GeometryStatistics(xt)
 

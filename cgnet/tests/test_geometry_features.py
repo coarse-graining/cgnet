@@ -22,7 +22,7 @@ dihedral_inds = [(i, i+1, i+2, i+3) for i in range(beads-3)]
 def test_distance_features():
     # Make sure pairwise distance features are consistent with scipy
 
-    f = GeometryFeature()
+    f = GeometryFeature(n_beads=beads)
     out = f.forward(xt)
 
     Dmat_x0 = scipy.spatial.distance.squareform(
@@ -41,7 +41,7 @@ def test_distance_features():
 def test_backbone_angle_features():
     # Make sure angle features are consistent with manual calculation
 
-    f = GeometryFeature()
+    f = GeometryFeature(n_beads=beads)
     out = f.forward(xt)
 
     angles = []
@@ -67,7 +67,7 @@ def test_backbone_angle_features():
 def test_random_angle_features():
     # Make sure angle features are consistent with manual calculation
 
-    f = GeometryFeature()
+    f = GeometryFeature(n_beads=beads)
     out = f.forward(xt)
 
     angles = []
@@ -93,7 +93,7 @@ def test_random_angle_features():
 def test_dihedral_features():
     # Make sure dihedral features are consistent with manual calculation
 
-    f = GeometryFeature()
+    f = GeometryFeature(n_beads=beads)
     out = f.forward(xt)
 
     diheds = []

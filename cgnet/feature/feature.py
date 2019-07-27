@@ -5,6 +5,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import warnings
 
 from .geometry import Geometry
 g = Geometry(method='torch')
@@ -36,10 +37,18 @@ class GeometryFeature(nn.Module):
         List of four-bead torsions according to descriptions['Torsions']
     """
 
-    def __init__(self, feature_tuples='all'):
+    def __init__(self, feature_tuples='all', n_beads=None):
         super(GeometryFeature, self).__init__()
 
+        self._n_beads = n_beads
         if feature_tuples is not 'all':
+            _temp_dict = dict(zip(feature_tuples, np.arange(len(feature_tuples))))
+            if len(_temp_dict) < len(feature_tuples):
+                feature_tuples = list(_temp_dict.keys())
+                warnings.warn(
+                    "Some feature tuples are repeated and have been removed."
+                    )
+
             self.feature_tuples = feature_tuples
             if (np.min([len(feat) for feat in feature_tuples]) < 2 or
                     np.max([len(feat) for feat in feature_tuples]) > 4):
@@ -54,7 +63,23 @@ class GeometryFeature(nn.Module):
             self._dihedral_quads = [
                 feat for feat in feature_tuples if len(feat) == 4]
         else:
-            self.feature_tuples = None
+            if n_beads is None:
+                raise RuntimeError(
+                    "Must specify n_beads if feature_tuples is 'all'."
+                    )
+            self._distance_pairs, _ = g.get_distance_indices(n_beads)
+            if n_beads > 2:
+                self._angle_trips = [(i, i+1, i+2)
+                                    for i in range(n_beads-2)]
+            else:
+                self._angle_trips = []
+            if n_beads > 3:
+                self._dihedral_quads = [(i, i+1, i+2, i+3)
+                                       for i in range(n_beads-3)]
+            else:
+                self._dihedral_quads = []
+            self.feature_tuples = self._distance_pairs + \
+                self._angle_trips + self._dihedral_quads
 
     def compute_distances(self, data):
         """Computes all pairwise distances."""
@@ -90,26 +115,14 @@ class GeometryFeature(nn.Module):
 
         self._coordinates = data
         self.n_beads = data.shape[1]
-
-        if self.feature_tuples is None:
-            self._distance_pairs, _ = g.get_distance_indices(self.n_beads)
-            if self.n_beads > 2:
-                self._angle_trips = [(i, i+1, i+2)
-                                    for i in range(self.n_beads-2)]
-            else:
-                self._angle_trips = []
-            if self.n_beads > 3:
-                self._dihedral_quads = [(i, i+1, i+2, i+3)
-                                       for i in range(self.n_beads-3)]
-            else:
-                self._dihedral_quads = []
-            self.feature_tuples = self._distance_pairs + \
-                self._angle_trips + self._dihedral_quads
-        else:
-            if np.max([np.max(bead) for bead in self.feature_tuples]) > self.n_beads - 1:
-                raise ValueError(
-                    "Bead index in at least one feature is out of range."
+        if self._n_beads is not None and self.n_beads != self._n_beads:
+            raise ValueError(
+                "n_beads passed to __init__ does not match n_beads in data."
                 )
+        if np.max([np.max(bead) for bead in self.feature_tuples]) > self.n_beads - 1:
+            raise ValueError(
+                "Bead index in at least one feature is out of range."
+            )
 
         self.descriptions = {}
         self.description_order = []
