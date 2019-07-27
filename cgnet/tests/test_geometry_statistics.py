@@ -16,14 +16,14 @@ xt = torch.Tensor(x)
 
 f = GeometryFeature(n_beads=beads)
 out = f.forward(xt)
+
 stats = GeometryStatistics(xt)
-
-backbone_inds = [i for i in range(beads) if i % 2 == 0]
-xt_bb_only = xt[:, backbone_inds]
-
 
 def test_manual_backbone_calculations():
     # Make sure angle statistics work for manually specified backbone
+    backbone_inds = [i for i in range(beads) if i % 2 == 0]
+    xt_bb_only = xt[:, backbone_inds]
+
     stats_bb_inds = GeometryStatistics(xt, backbone_inds=backbone_inds)
     stats_bb_only = GeometryStatistics(xt_bb_only)
 
@@ -39,6 +39,9 @@ def test_manual_backbone_calculations():
 
 def test_manual_backbone_descriptions():
     # Make sure angle statistics work for manually specified backbone
+    backbone_inds = [i for i in range(beads) if i % 2 == 0]
+    xt_bb_only = xt[:, backbone_inds]
+
     stats_bb_inds = GeometryStatistics(xt, backbone_inds=backbone_inds)
     stats_bb_only = GeometryStatistics(xt_bb_only)
 
@@ -70,7 +73,6 @@ def test_manual_backbone_descriptions():
 
 def test_backbone_distance_statistics():
     # Make sure distance statistics are consistent with numpy
-
     feature_dist_mean = np.mean(f.distances.numpy(), axis=0)
     feature_dist_std = np.std(f.distances.numpy(), axis=0)
 
@@ -122,12 +124,12 @@ def test_prior_statistics_1():
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
-    stats = GeometryStatistics(xt,
+    stats_ = GeometryStatistics(xt,
                                get_all_distances=bool_list[0],
                                get_backbone_angles=bool_list[1],
                                get_backbone_dihedrals=bool_list[2])
 
-    zscore_dict = stats.get_prior_statistics(flip_dict=True)
+    zscore_dict = stats_.get_prior_statistics(flip_dict=True)
     n_keys = (bool_list[0]*beads*(beads-1)/2 + bool_list[1]*(beads-2)
               + bool_list[2]*2*(beads-3))
 
@@ -139,12 +141,12 @@ def test_prior_statistics_2():
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
-    stats = GeometryStatistics(xt,
+    stats_ = GeometryStatistics(xt,
                                get_all_distances=bool_list[0],
                                get_backbone_angles=bool_list[1],
                                get_backbone_dihedrals=bool_list[2])
 
-    zscore_dict = stats.get_prior_statistics(flip_dict=False)
+    zscore_dict = stats_.get_prior_statistics(flip_dict=False)
     n_keys = (bool_list[0]*beads*(beads-1)/2 + bool_list[1]*(beads-2)
               + bool_list[2]*2*(beads-3))
 
@@ -152,28 +154,28 @@ def test_prior_statistics_2():
         assert len(zscore_dict[k]) == n_keys
 
 
-def test_idx_functions_1():
+def test_return_indices_1():
     # Test proper retrieval of feature indices for sizes
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
-    stats = GeometryStatistics(xt,
+    stats_ = GeometryStatistics(xt,
                                get_all_distances=bool_list[0],
                                get_backbone_angles=bool_list[1],
                                get_backbone_dihedrals=bool_list[2])
 
     if bool_list[0]:
-        assert len(stats.return_indices('Distances')) == (
+        assert len(stats_.return_indices('Distances')) == (
             beads) * (beads - 1) / 2
-        assert len(stats.return_indices('Bonds')) == beads - 1
+        assert len(stats_.return_indices('Bonds')) == beads - 1
     if bool_list[1]:
-        assert len(stats.return_indices('Angles')) == beads - 2
+        assert len(stats_.return_indices('Angles')) == beads - 2
     if bool_list[2]:
-        assert len(stats.return_indices('Dihedral_cosines')) == beads - 3
-        assert len(stats.return_indices('Dihedral_sines')) == beads - 3
+        assert len(stats_.return_indices('Dihedral_cosines')) == beads - 3
+        assert len(stats_.return_indices('Dihedral_sines')) == beads - 3
 
-    sum_feats = np.sum([len(stats.descriptions[feat_name])
-                        for feat_name in stats.order])
+    sum_feats = np.sum([len(stats_.descriptions[feat_name])
+                        for feat_name in stats_.order])
     check_sum_feats = (bool_list[0] * (beads) * (beads - 1) / 2 +
                        bool_list[1] * (beads - 2) +
                        bool_list[2] * (beads - 3) * 2
@@ -181,12 +183,12 @@ def test_idx_functions_1():
     assert sum_feats == check_sum_feats
 
 
-def test_idx_functions_2():
+def test_return_indices_2():
     # Test proper retrieval of feature indices for specific indices
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
-    stats = GeometryStatistics(xt,
+    stats_ = GeometryStatistics(xt,
                                get_all_distances=bool_list[0],
                                get_backbone_angles=bool_list[1],
                                get_backbone_dihedrals=bool_list[2])
@@ -197,30 +199,44 @@ def test_idx_functions_2():
 
     if bool_list[0]:
         np.testing.assert_array_equal(np.arange(0, num_dists),
-                                      stats.return_indices('Distances'))
+                                      stats_.return_indices('Distances'))
 
         bond_ind_list = [ind for ind, pair in enumerate(
             stats.descriptions['Distances'])
             if pair[1] - pair[0] == 1]
         np.testing.assert_array_equal(bond_ind_list,
-                                      stats.return_indices('Bonds'))
+                                      stats_.return_indices('Bonds'))
 
     if bool_list[1]:
         angle_start = bool_list[0]*num_dists
         np.testing.assert_array_equal(np.arange(angle_start,
                                                 num_angles + angle_start),
-                                      stats.return_indices('Angles'))
+                                      stats_.return_indices('Angles'))
 
     if bool_list[2]:
         dihedral_cos_start = bool_list[0]*num_dists + bool_list[1]*num_angles
         np.testing.assert_array_equal(np.arange(dihedral_cos_start,
                                                 num_diheds + dihedral_cos_start),
-                                      stats.return_indices('Dihedral_cosines'))
+                                      stats_.return_indices('Dihedral_cosines'))
 
         dihedral_sin_start = dihedral_cos_start + num_diheds
         np.testing.assert_array_equal(np.arange(dihedral_sin_start,
                                                 num_diheds + dihedral_sin_start),
-                                      stats.return_indices('Dihedral_sines'))
+                                      stats_.return_indices('Dihedral_sines'))
+
+def test_return_indices_3():
+    # Test retrival of custom bonds
+    bond_starts = [np.random.randint(beads-4) for _ in range(4)]
+    # this may have repeats, but the method should be robust to that
+    custom_bond_pairs = [(bs, bs+np.random.randint(2,5)) for bs in bond_starts]
+
+    stats_ = GeometryStatistics(xt, bond_pairs=custom_bond_pairs,
+                                adjacent_backbone_bonds = bool(np.random.randint(2)))
+    returned_bond_inds = stats_.return_indices('Bonds')
+    bond_pairs = np.array(stats_.descriptions['Distances'])[returned_bond_inds]
+    bond_pairs = [tuple(bp) for bp in bond_pairs if bp[1]-bp[0]>1]
+
+    np.testing.assert_array_equal(custom_bond_pairs, bond_pairs)
 
 
 def test_redundant_distance_mapping_shape():

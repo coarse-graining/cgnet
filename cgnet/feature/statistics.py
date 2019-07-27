@@ -191,7 +191,8 @@ class GeometryStatistics():
 
         self.feature_tuples = []
         for feature_type in self.order:
-            if feature_type != 'Dihedral_sines':
+            # because they have the same indices as dihedral cosines:
+            if feature_type != 'Dihedral_sines': 
                 self.feature_tuples.extend(self.descriptions[feature_type])
 
     def _process_custom_feature_tuples(self, custom_feature_tuples):
