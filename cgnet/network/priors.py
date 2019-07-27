@@ -4,6 +4,33 @@
 import torch
 import torch.nn as nn
 
+def assemble_harmonic_inputs(prior_dict, indices, beta=1.0):
+    """Function for assembling __init__ arguments for a HarmonicLayer
+
+    Parameters
+    ----------
+    prior_dict : dict
+        output dictionary of
+        cgnet.feature.GeometryStatistics.get_prior_statistics()
+    indices : list of int
+        list of callback indices used to access a feature layer
+    beta : float (default=1.0)
+        thermodynamic inverse temperature 1 / k_bT, where k_b is
+        the Boltzman constant, and T is the system temperature
+
+    Returns
+    -------
+    feat_dict : dict
+        feat_dict input for HarmonicLayer
+
+    """
+    feat_dict = {}
+    for idx, beads, stats in zip(indices, prior_dict.keys(), prior_dict.values()):
+        feat_dict[idx] = {'beads' : beads,
+                          'params' : {'k' : 1 / (beta * stats['std']),
+                                      'mean' : stats['mean']}}
+    return feat_dict
+
 
 class _PriorLayer(nn.Module):
     """Layer for adding prior energy computations external to CGnet hidden
@@ -12,16 +39,11 @@ class _PriorLayer(nn.Module):
     Parameters
     ----------
     feat_data: dict
-        dictionary defining the CG beads and interaction parameters for
-        computing the energy contributions of the residual prior energy. The
-        keys are tuples defining the CG beads involved in each interaction,
-        and the values are dictionaries of physical constants names/values
-        (keys: strings, values: float) involved in the interaction encompassed
-        by those CG beads
-    feat_indices: list of int
-        list of callback indices that the prior layer can use to access specific
-        outputs of a feature layer in the beginning of a CGnet architecture
-        through a residual connection.
+        dictionary defining feature layer callback indices, feature bead tuples,
+        and the phyiscal constants defining the prior energy interaction. This
+        input is organized into the following form:
+
+            { idx : {'beads' : (b1, b2,...), 'parameters' : dict } }
 
     Examples
     --------
@@ -29,19 +51,19 @@ class _PriorLayer(nn.Module):
     instance of a stats = GeometryStatistics():
 
     features = stats.get_bond_constants(flip_dict=True, zscores=True)
-    bonds = dict((k, features[k]) for k in [(i, i+1) for i in
-                  range(stats.n_beads)])
-    bond_layer = HarmonicLayer(bonds, bond_idx)
+    bonds = dict((idx, k) for idx in bond_idx)
+    bond_layer = HarmonicLayer(bonds)
     """
 
-    def __init__(self, feat_data, feat_indices):
+    def __init__(self, feat_data):
         super(_PriorLayer, self).__init__()
         self.params = []
         self.features = []
-        self.feat_idx = feat_indices
-        for key, par in feat_data.items():
-            self.features.append(key)
-            self.params.append(par)
+        self.feat_idx = []
+        for idx, par in feat_data.items():
+            self.feat_idx.append(idx)
+            self.features.append(par['beads'])
+            self.params.append(par['params'])
 
     def forward(self, in_feat):
         """Forward method to compute the prior energy contribution.
@@ -92,8 +114,8 @@ class RepulsionLayer(_PriorLayer):
 
     """
 
-    def __init__(self, feat_data, feat_indices):
-        super(RepulsionLayer, self).__init__(feat_data, feat_indices)
+    def __init__(self, feat_data):
+        super(RepulsionLayer, self).__init__(feat_data)
         for param_dict in self.params:
             if (key in param_dict for key in ('ex_vol', 'exp')):
                 pass
@@ -146,7 +168,6 @@ class HarmonicLayer(_PriorLayer):
         respectively. The corresponding values are the the numerical values of
         each constant. For example, for one such feat_dict entry:
 
-            { (3, 4) : {  \"k\" : 139.2, \"mean\" : 1.2 }}
 
     feat_indices: list of int
         list of callback indices that the prior layer can use to access specific
@@ -165,8 +186,8 @@ class HarmonicLayer(_PriorLayer):
 
     """
 
-    def __init__(self, feat_data, feat_indices):
-        super(HarmonicLayer, self).__init__(feat_data, feat_indices)
+    def __init__(self, feat_data):
+        super(HarmonicLayer, self).__init__(feat_data)
         for param_dict in self.params:
             if (key in param_dict for key in ('k', 'mean')):
                 pass
