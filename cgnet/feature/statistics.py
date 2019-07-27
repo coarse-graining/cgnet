@@ -39,7 +39,7 @@ class GeometryStatistics():
         Temperature of system. Use None for dimensionless calculations.
     get_redundant_distance_mapping : Boolean (default=True)
         If true, creates a redundant_distance_mapping attribute
-    bond_inds : list of tuples (default=[])
+    bond_pairs : list of tuples (default=[])
         List of 2-element tuples containing bonded pairs
     adjacent_backbone_bonds : Boolean, (default=True)
         Whether adjacent beads along the backbone should be considered
@@ -64,7 +64,7 @@ class GeometryStatistics():
     def __init__(self, data, custom_features=[], backbone_inds='all',
                  get_all_distances=True, get_backbone_angles=True,
                  get_backbone_dihedrals=True, temperature=300.0,
-                 get_redundant_distance_mapping=True, bond_inds=[],
+                 get_redundant_distance_mapping=True, bond_pairs=[],
                  adjacent_backbone_bonds=True):
         if torch.is_tensor(data):
             self.data = data.detach().numpy()
@@ -85,15 +85,15 @@ class GeometryStatistics():
         self.get_redundant_distance_mapping = get_redundant_distance_mapping
 
         if not get_all_distances:
-            if np.any([bond_ind not in custom_features for bond_ind in bond_inds]):
+            if np.any([bond_ind not in custom_features for bond_ind in bond_pairs]):
                 raise ValueError(
-                    "All bond_inds must be also in custom_features if get_all_distances is False."
+                    "All bond_pairs must be also in custom_features if get_all_distances is False."
                 )
-        if np.any([len(bond_ind) != 2 for bond_ind in bond_inds]):
+        if np.any([len(bond_ind) != 2 for bond_ind in bond_pairs]):
             raise RuntimeError(
                 "All bonds must be of length 2."
             )
-        self._bond_inds = bond_inds
+        self._bond_pairs = bond_pairs
         self.adjacent_backbone_bonds = adjacent_backbone_bonds
 
         self.order = []
@@ -126,20 +126,20 @@ class GeometryStatistics():
 
             if self.adjacent_backbone_bonds:
                 if np.any([bond_ind in self._adj_backbone_pairs
-                           for bond_ind in self._bond_inds]):
+                           for bond_ind in self._bond_pairs]):
                     warnings.warn(
                         "Some bond indices were already on the backbone."
                     )
-                    self._bond_inds = [bond_ind for bond_ind
-                                       in self._bond_inds
+                    self._bond_pairs = [bond_ind for bond_ind
+                                       in self._bond_pairs
                                        if bond_ind not in self._adj_backbone_pairs]
-            self.bond_inds = self._adj_backbone_pairs
+            self.bond_pairs = self._adj_backbone_pairs
 
         else:
             distance_inds = []
-            self.bond_inds = []
+            self.bond_pairs = []
         distance_inds.extend(self._custom_distance_inds)
-        self.bond_inds.extend(self._bond_inds)
+        self.bond_pairs.extend(self._bond_pairs)
 
         if len(distance_inds) > 0:
             self._get_distances(distance_inds)
@@ -411,7 +411,7 @@ class GeometryStatistics():
                 start_idx += num
         if feature_type == 'Bonds':  # TODO
             indices = [self.descriptions['Distances'].index(pair)
-                       for pair in self.bond_inds]
+                       for pair in self.bond_pairs]
         if feature_type != 'Bonds':
             indices = range(0, len(self.descriptions[feature_type]))
         indices = [idx + start_idx for idx in indices]
