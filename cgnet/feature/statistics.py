@@ -145,7 +145,7 @@ class GeometryStatistics():
             self._get_distances(distance_inds)
 
         if get_backbone_angles:
-            angle_inds = [(self.backbone_inds[i], self.backbone_inds[i+1],
+            self.angle_inds = [(self.backbone_inds[i], self.backbone_inds[i+1],
                            self.backbone_inds[i+2])
                           for i in range(len(self.backbone_inds) - 2)]
             if np.any([cust_angle in angle_inds
@@ -157,13 +157,13 @@ class GeometryStatistics():
                                            in self._custom_angle_inds
                                            if cust_angle not in angle_inds]
         else:
-            angle_inds = []
-        angle_inds.extend(self._custom_angle_inds)
-        if len(angle_inds) > 0:
-            self._get_angles(angle_inds)
+            self.angle_inds = []
+        self.angle_inds.extend(self._custom_angle_inds)
+        if len(self.angle_inds) > 0:
+            self._get_angles(self.angle_inds)
 
         if get_backbone_dihedrals:
-            dihedral_inds = [(self.backbone_inds[i], self.backbone_inds[i+1],
+            self.dihedral_inds = [(self.backbone_inds[i], self.backbone_inds[i+1],
                               self.backbone_inds[i+2], self.backbone_inds[i+3])
                              for i in range(len(self.backbone_inds) - 3)]
             if np.any([cust_dih in dihedral_inds
@@ -175,10 +175,10 @@ class GeometryStatistics():
                                               in self._custom_dihedral_inds
                                               if cust_dih not in dihedral_inds]
         else:
-            dihedral_inds = []
-        dihedral_inds.extend(self._custom_dihedral_inds)
-        if len(dihedral_inds) > 0:
-            self._get_dihedrals(dihedral_inds)
+            self.dihedral_inds = []
+        self.dihedral_inds.extend(self._custom_dihedral_inds)
+        if len(self.dihedral_inds) > 0:
+            self._get_dihedrals(self.dihedral_inds)
 
     def _process_custom_features(self, custom_features):
         """Helper function to sort custom features into distances, angles,
