@@ -323,7 +323,8 @@ class GeometryStatistics():
                     newdict[i][stat] = mydict[stat][i]
         return newdict
 
-    def get_prior_statistics(self, tensor=True, as_dict=True, flip_dict=True):
+    def get_prior_statistics(self, tensor=True, features=None, as_dict=True,
+                             flip_dict=True):
         """Obtain prior statistics (mean, standard deviation, and
         bond/angle/dihedral constants) for features
 
@@ -331,7 +332,11 @@ class GeometryStatistics():
         ----------
         tensor : Boolean (default=True)
             Returns (innermost data) of type torch.Tensor if True and np.array
-             if False
+            if False
+        features : str or list of tuples (default=None)
+            specifies which feature to form the prior statistics for. If list
+            of tuples is provided, only those corresponding features will be
+            processed. If None, all features will be processed.
         as_dict : Boolean (default=True)
             Returns a dictionary instead of an array (see "Returns"
             documentation)
@@ -353,12 +358,41 @@ class GeometryStatistics():
             standard deviations in the second row, where n is
             the number of features
         """
-        temp_keys = [[self._get_key(key, name)
-                      for key in self.descriptions[name]]
-                     for name in self.order]
-        prior_stat_keys = []
-        for sublist in temp_keys:
-            prior_stat_keys.extend(sublist)
+
+        if features == "Distances":
+            prior_stat_keys = [self._get_key(key, 'Distances')
+                         for key in self.descriptions['Distances']]
+        if features == "Bonds":
+            prior_stat_keys = [self._get_key(key, 'Distances')
+                         for key in self.descriptions['Distances']
+                         if abs(key[1]-key[0]) == 1]
+        if features == "Angles":
+            prior_stat_keys = [self._get_key(key, 'Angles')
+                          for key in self.descriptions['Angles']]
+        if features == "Dihedral_cosines":
+            prior_stat_keys = [self._get_key(key, 'Dihedral_cosines')
+                          for key in self.descriptions['Dihedral_cosines']]
+        if features == "Dihedral_sines":
+            prior_stat_keys = [self._get_key(key, 'Dihedral_sines')
+                          for key in self.descriptions['Dihedral_sines']]
+        if features == None:
+            temp_keys = [[self._get_key(key,name)
+                          for key in self.descriptions[name]]
+                          for name in self.order]
+            prior_stat_keys = []
+            for sublist in temp_keys:
+                prior_stat_keys.extend(sublist)
+        if isinstance(features, list):
+            if any(not isinstance(i, tuple) for i in features):
+                raise ValueError("Feature list must be list of tuples of beads")
+            for bead_tuple in features:
+                if any(bead > self.n_beads - 1 for bead in bead_tuple):
+                    raise ValueError("Bead index larger than maximum detected")
+            prior_stat_keys = features
+        if (not isinstance(features, list) and features is not None
+            and features not in self.order + ['Bonds']):
+            raise ValueError("{} is not a valid feature type or list of feature " \
+                             "tuples".format(features))
         prior_stat_array = np.vstack([
             np.concatenate([self._stats_dict[key][stat]
                             for key in self.order])
