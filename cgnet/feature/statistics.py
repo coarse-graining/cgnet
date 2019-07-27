@@ -112,6 +112,9 @@ class GeometryStatistics():
 
         self._stats_dict = {}
 
+        # # # # # # #
+        # Distances #
+        # # # # # # #
         if get_all_distances:
             (self._pair_order,
              self._adj_backbone_pairs) = g.get_distance_indices(self.n_beads,
@@ -122,7 +125,7 @@ class GeometryStatistics():
                     "All distances are already being calculated, so custom distances are meaningless."
                 )
                 self._custom_distance_pairs = []
-            distance_pairs = self._pair_order
+            self._distance_pairs = self._pair_order
 
             if self.adjacent_backbone_bonds:
                 if np.any([bond_ind in self._adj_backbone_pairs
@@ -136,49 +139,60 @@ class GeometryStatistics():
             self.bond_pairs = self._adj_backbone_pairs
 
         else:
-            distance_pairs = []
+            self._distance_pairs = []
             self.bond_pairs = []
-        distance_pairs.extend(self._custom_distance_pairs)
+        self._distance_pairs.extend(self._custom_distance_pairs)
         self.bond_pairs.extend(self._bond_pairs)
 
-        if len(distance_pairs) > 0:
-            self._get_distances(distance_pairs)
+        if len(self._distance_pairs) > 0:
+            self._get_distances()
 
+        # # # # # #
+        # Angles  #
+        # # # # # #
         if get_backbone_angles:
-            angle_trips = [(self.backbone_inds[i], self.backbone_inds[i+1],
+            self._angle_trips = [(self.backbone_inds[i], self.backbone_inds[i+1],
                            self.backbone_inds[i+2])
                           for i in range(len(self.backbone_inds) - 2)]
-            if np.any([cust_angle in angle_trips
+            if np.any([cust_angle in self._angle_trips
                        for cust_angle in self._custom_angle_trips]):
                 warnings.warn(
                     "Some custom angles were on the backbone and will not be re-calculated."
                 )
                 self._custom_angle_trips = [cust_angle for cust_angle
                                            in self._custom_angle_trips
-                                           if cust_angle not in angle_trips]
+                                           if cust_angle not in self._angle_trips]
         else:
-            angle_trips = []
-        angle_trips.extend(self._custom_angle_trips)
-        if len(angle_trips) > 0:
-            self._get_angles(angle_trips)
+            self._angle_trips = []
+        self._angle_trips.extend(self._custom_angle_trips)
+        if len(self._angle_trips) > 0:
+            self._get_angles()
 
+        # # # # # # #
+        # Dihedrals #
+        # # # # # # #
         if get_backbone_dihedrals:
-            dihedral_quads = [(self.backbone_inds[i], self.backbone_inds[i+1],
+            self._dihedral_quads = [(self.backbone_inds[i], self.backbone_inds[i+1],
                               self.backbone_inds[i+2], self.backbone_inds[i+3])
                              for i in range(len(self.backbone_inds) - 3)]
-            if np.any([cust_dih in dihedral_quads
+            if np.any([cust_dih in self._dihedral_quads
                        for cust_dih in self._custom_dihedral_quads]):
                 warnings.warn(
                     "Some custom dihedrals were on the backbone and will not be re-calculated."
                 )
                 self._custom_dihedral_quads = [cust_dih for _custom_dihedral_quads
                                               in self._custom_dihedral_quads
-                                              if cust_dih not in dihedral_quads]
+                                              if cust_dih not in self._dihedral_quads]
         else:
-            dihedral_quads = []
-        dihedral_quads.extend(self._custom_dihedral_quads)
-        if len(dihedral_quads) > 0:
-            self._get_dihedrals(dihedral_quads)
+            self._dihedral_quads = []
+        self._dihedral_quads.extend(self._custom_dihedral_quads)
+        if len(self._dihedral_quads) > 0:
+            self._get_dihedrals()
+
+        self.feature_tuples = []
+        for feature_type in self.order:
+            if feature_type != 'Dihedral_sines':
+                self.feature_tuples.extend(self.descriptions[feature_type])
 
     def _process_custom_feature_tuples(self, custom_feature_tuples):
         """Helper function to sort custom features into distances, angles,
@@ -260,33 +274,33 @@ class GeometryStatistics():
             )
         self.n_backbone_beads = len(self.backbone_inds)
 
-    def _get_distances(self, distance_pairs):
+    def _get_distances(self):
         """Obtains all pairwise distances for the two-bead indices provided.
         """
-        self.distances = g.get_distances(distance_pairs, self.data, norm=True)
-        self.descriptions['Distances'].extend(distance_pairs)
+        self.distances = g.get_distances(self._distance_pairs, self.data, norm=True)
+        self.descriptions['Distances'].extend(self._distance_pairs)
         self._get_stats(self.distances, 'Distances')
         self.order += ['Distances']
         if self.get_redundant_distance_mapping:
             self._get_redundant_distance_mapping()
 
-    def _get_angles(self, angle_trips):
+    def _get_angles(self):
         """Obtains all planar angles for the three-bead indices provided.
         """
-        self.angles = g.get_angles(angle_trips, self.data)
+        self.angles = g.get_angles(self._angle_trips, self.data)
 
-        self.descriptions['Angles'].extend(angle_trips)
+        self.descriptions['Angles'].extend(self._angle_trips)
         self._get_stats(self.angles, 'Angles')
         self.order += ['Angles']
 
-    def _get_dihedrals(self, dihedral_quads):
+    def _get_dihedrals(self):
         """Obtains all dihedral angles for the four-bead indices provided.
         """
         (self.dihedral_cosines,
-            self.dihedral_sines) = g.get_dihedrals(dihedral_quads, self.data)
+            self.dihedral_sines) = g.get_dihedrals(self._dihedral_quads, self.data)
 
-        self.descriptions['Dihedral_cosines'].extend(dihedral_quads)
-        self.descriptions['Dihedral_sines'].extend(dihedral_quads)
+        self.descriptions['Dihedral_cosines'].extend(self._dihedral_quads)
+        self.descriptions['Dihedral_sines'].extend(self._dihedral_quads)
 
         self._get_stats(self.dihedral_cosines, 'Dihedral_cosines')
         self._get_stats(self.dihedral_sines, 'Dihedral_sines')
