@@ -54,6 +54,8 @@ class GeometryStatistics():
         List of indices (value) for each feature type (key)
     redundant_distance_mapping
         Redundant square distance matrix
+    feature_tuples : list of tuples
+        List of tuples for non-redundant feature descriptions in order
 
     Example
     -------

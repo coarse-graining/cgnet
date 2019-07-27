@@ -132,14 +132,14 @@ def test_distance_index_shuffling():
 
     y_dist_inds, _ = g.get_distance_indices(10)
 
-    f = GeometryFeature(feature_inds=y_dist_inds)
+    f = GeometryFeature(feature_tuples=y_dist_inds)
     out = f.forward(yt)
 
     inds = np.arange(len(y_dist_inds))
     np.random.shuffle(inds)
 
-    shuffled_inds = np.array(y_dist_inds)[inds]
-    f_shuffle = GeometryFeature(feature_inds=shuffled_inds)
+    shuffled_inds = [tuple(i) for i in np.array(y_dist_inds)[inds]]
+    f_shuffle = GeometryFeature(feature_tuples=shuffled_inds)
     out_shuffle = f_shuffle.forward(yt)
 
     np.testing.assert_array_equal(f_shuffle.distances[0], f.distances[0][inds])
@@ -153,14 +153,14 @@ def test_angle_index_shuffling():
 
     y_angle_inds = [(i, i+1, i+2) for i in range(100-2)]
 
-    f = GeometryFeature(feature_inds=y_angle_inds)
+    f = GeometryFeature(feature_tuples=y_angle_inds)
     out = f.forward(yt)
 
     inds = np.arange(100-2)
     np.random.shuffle(inds)
 
-    shuffled_inds = np.array(y_angle_inds)[inds]
-    f_shuffle = GeometryFeature(feature_inds=shuffled_inds)
+    shuffled_inds = [tuple(i) for i in np.array(y_angle_inds)[inds]]
+    f_shuffle = GeometryFeature(feature_tuples=shuffled_inds)
     out_shuffle = f_shuffle.forward(yt)
 
     np.testing.assert_array_equal(f_shuffle.angles[0], f.angles[0][inds])
@@ -174,14 +174,14 @@ def test_dihedral_index_shuffling():
 
     y_dihed_inds = [(i, i+1, i+2, i+3) for i in range(100-3)]
 
-    f = GeometryFeature(feature_inds=y_dihed_inds)
+    f = GeometryFeature(feature_tuples=y_dihed_inds)
     out = f.forward(yt)
 
     inds = np.arange(100-3)
     np.random.shuffle(inds)
 
-    shuffled_inds = np.array(y_dihed_inds)[inds]
-    f_shuffle = GeometryFeature(feature_inds=shuffled_inds)
+    shuffled_inds = [tuple(i) for i in np.array(y_dihed_inds)[inds]]
+    f_shuffle = GeometryFeature(feature_tuples=shuffled_inds)
     out_shuffle = f_shuffle.forward(yt)
 
     np.testing.assert_allclose(f_shuffle.dihedral_cosines[0],
