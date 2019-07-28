@@ -192,10 +192,18 @@ class GeometryStatistics():
             self._get_dihedrals()
 
         self.feature_tuples = []
+        self.master_description_inds = []
+
         for feature_type in self.order:
-            # because they have the same indices as dihedral cosines:
-            if feature_type != 'Dihedral_sines': 
+            if feature_type not in ['Dihedral_cosines', 'Dihedral_sines']: 
                 self.feature_tuples.extend(self.descriptions[feature_type])
+                self.master_description_inds.extend(self.descriptions[feature_type])
+            else:
+                self.master_description_inds.extend(
+                    [self._get_key(desc, feature_type) for desc in self.descriptions[feature_type]])
+                if feature_type == 'Dihedral_cosines':
+                    # because they have the same indices as dihedral sines, do only cosines
+                    self.feature_tuples.extend(self.descriptions[feature_type])    
 
     def _process_custom_feature_tuples(self, custom_feature_tuples):
         """Helper function to sort custom features into distances, angles,
@@ -504,55 +512,23 @@ class GeometryStatistics():
             indices = [idx + start_idx for idx in indices]
             return indices
 
-        if isinstance(features, list) or isinstance(features, np.array):
-            indices = []
-            temp_keys = []
-            distances = [bead_tuple for bead_tuple in features
-                         if len(bead_tuple) == 2]
-            temp_keys.append(distances)
-            angles = [bead_tuple for bead_tuple in features
-                         if len(bead_tuple) == 3]
-            temp_keys.append(angles)
-            dihedrals = [bead_tuple for bead_tuple in features
-                         if len(bead_tuple) == 5]
-            temp_keys.append(dihedrals)
+        elif isinstance(features, list):
+            distance_pairs = [bead_tuple for bead_tuple in features
+                              if len(bead_tuple) == 2]
+            angle_trips = [bead_tuple for bead_tuple in features
+                           if len(bead_tuple) == 3]
+            dihedrals_with_trig = [bead_tuple for bead_tuple in features
+                                   if len(bead_tuple) == 5]
             if any(len(bead_tuple) == 4 for bead_tuple in features):
                 raise ValueError("Bead tuples of 4 beads need to specify "\
                                  "\'cos\' or \'sin\' as 5th element")
-            for keyset in temp_keys:
-                if keyset == []:
-                    continue
-                for feat in keyset:
-                    feature_found = False
-                    if feat[-1] == 'cos':
-                        desc = "Dihedral_cosines"
-                        sequence = self.descriptions[desc]
-                        if feat[:-1] in sequence:
-                            feature_found = True
-                            desc_idx = self.order.index(desc)
-                            start_idx = sum([len(self.descriptions[k])
-                                       for k in self.order[:desc_idx]])
-                            indices.append(start_idx + sequence.index(feat[:-1]))
-                    if feat[-1] == 'sin':
-                        desc = "Dihedral_sines"
-                        sequence = self.descriptions[desc]
-                        if feat[:-1] in sequence:
-                            feature_found = True
-                            desc_idx = self.order.index(desc)
-                            start_idx = sum([len(self.descriptions[k])
-                                       for k in self.order[:desc_idx]])
-                            indices.append(start_idx + sequence.index(feat[:-1]))
-                    else:
-                        for desc, sequence in self.descriptions.items():
-                            if feat in sequence:
-                                feature_found = True
-                                desc_idx = self.order.index(desc)
-                                start_idx = sum([len(self.descriptions[k])
-                                       for k in self.order[:desc_idx]])
-                                indices.append(start_idx + sequence.index(feat))
-                    if feature_found == False:
-                        raise RuntimeError("Feature {} not found in descriptions.".format(feat))
-            return indices
+            if (np.min([len(bead_tuple) for bead_tuple in features]) < 2 or
+                    np.max([len(bead_tuple) for bead_tuple in features]) > 4):
+                raise ValueError(
+                    "Custom features must be tuples of length 2, 3, or 4."
+                )
+
+
         else:
             raise ValueError("features must be description string or list of tuples.")
 
