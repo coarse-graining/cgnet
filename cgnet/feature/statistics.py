@@ -495,30 +495,28 @@ class GeometryStatistics():
         if isinstance(features, str):
             if features not in self.descriptions.keys() and features != 'Bonds':
                 raise RuntimeError(
-                    "Error: \'{}\' is not a valid backbone feature.".format(features))
-            nums = [len(self.descriptions[i]) for i in self.order]
-            start_idx = 0
-            for num, desc in zip(nums, self.order):
-                if features == desc or (features == 'Bonds'
-                                            and desc == 'Distances'):
-                    break
-                else:
-                    start_idx += num
-            if features == 'Bonds':  # TODO
-                indices = [self.descriptions['Distances'].index(pair)
-                           for pair in self._adj_backbone_pairs]
-            if features != 'Bonds':
-                indices = range(0, len(self.descriptions[features]))
-            indices = [idx + start_idx for idx in indices]
-            return indices
+                    "Error: \'{}\' is not a valid backbone feature.".format(features)
+                    )
+            if features in ["Distances", "Angles"]:
+                return [ind for ind, feat in
+                        enumerate(self.master_description_inds)
+                        if feat in self.descriptions[features]] 
+            elif features == "Dihedral_cosines":
+                return [ind for ind, feat in
+                        enumerate(self.master_description_inds)
+                        if feat[:-1] in self.descriptions[features]
+                        and feat[-1] == 'cos'] 
+            elif features == "Dihedral_sines":
+                return [ind for ind, feat in
+                        enumerate(self.master_description_inds)
+                        if feat[:-1] in self.descriptions[features]
+                        and feat[-1] == 'sin'] 
+            elif features == 'Bonds':
+                return [ind for ind, feat in
+                        enumerate(self.master_description_inds)
+                        if feat in self.bond_pairs] 
 
         elif isinstance(features, list):
-            distance_pairs = [bead_tuple for bead_tuple in features
-                              if len(bead_tuple) == 2]
-            angle_trips = [bead_tuple for bead_tuple in features
-                           if len(bead_tuple) == 3]
-            dihedrals_with_trig = [bead_tuple for bead_tuple in features
-                                   if len(bead_tuple) == 5]
             if any(len(bead_tuple) == 4 for bead_tuple in features):
                 raise ValueError("Bead tuples of 4 beads need to specify "\
                                  "\'cos\' or \'sin\' as 5th element")
@@ -527,7 +525,9 @@ class GeometryStatistics():
                 raise ValueError(
                     "Custom features must be tuples of length 2, 3, or 4."
                 )
-
+            return [ind for ind, feat in 
+                    enumerate(self.master_description_inds)
+                    if feat in features]
 
         else:
             raise ValueError("features must be description string or list of tuples.")
