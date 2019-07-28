@@ -227,7 +227,7 @@ def test_return_indices_2():
 def test_return_indices_3():
     # Test retrival of custom bonds
     bond_starts = [np.random.randint(beads-4) for _ in range(4)]
-    # this may have repeats, but the method should be robust to that
+    bond_starts = np.unique(bond_starts)
     custom_bond_pairs = [(bs, bs+np.random.randint(2,5)) for bs in bond_starts]
 
     stats_ = GeometryStatistics(xt, bond_pairs=custom_bond_pairs,
@@ -236,9 +236,10 @@ def test_return_indices_3():
     bond_pairs = np.array(stats_.descriptions['Distances'])[returned_bond_inds]
     bond_pairs = [tuple(bp) for bp in bond_pairs if bp[1]-bp[0]>1]
 
-    np.testing.assert_array_equal(custom_bond_pairs, bond_pairs)
+    np.testing.assert_array_equal(sorted(custom_bond_pairs),
+                                  sorted(bond_pairs))
 
-def test_idx_functions_3():
+def test_return_indices_4():
     # Test passing random tuples to return_indices method
     # distance pairs
     bead_list = np.arange(beads)
@@ -259,9 +260,9 @@ def test_idx_functions_3():
     num_quads = np.random.randint(1, high=beads - 3)
     bases = np.arange(num_quads)
     dihedrals = [(bases[i], bases[i+1], bases[i+2]) for i in bases]
-    angles_idx = stats.return_indices(dihedrals)
+    diheds_idx = stats.return_indices(dihedrals)
     # both sin and cos are returned for dihedrals
-    assert len(angles_idx) == 2 * len(dihedals)
+    assert len(diheds_idx) == 2 * len(dihedals)
 
 def test_redundant_distance_mapping_shape():
     # Test to see if the redundant distance index matrix is formed properly
