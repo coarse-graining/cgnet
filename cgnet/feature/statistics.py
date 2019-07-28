@@ -484,7 +484,6 @@ class GeometryStatistics():
             output from a GeometryFeature() layer.
 
         """
-<<<<<<< HEAD
         if isinstance(features, str):
             if features not in self.descriptions.keys() and features != 'Bonds':
                 raise RuntimeError(
