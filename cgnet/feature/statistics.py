@@ -392,9 +392,9 @@ class GeometryStatistics():
             the number of features
         """
         if features is not None:
-            prior_stat_keys = self.master_description_tuples[
-                                    self.return_indices(features)
-                                    ]
+            prior_stat_keys = [feat for ind, feat in
+                                enumerate(self.master_description_tuples)
+                                if ind in self.return_indices(features)]
         else:
             prior_stat_keys = self.master_description_tuples
         prior_stat_array = np.vstack([
@@ -469,9 +469,9 @@ class GeometryStatistics():
                 raise ValueError("Bead tuples of 4 beads need to specify "\
                                  "\'cos\' or \'sin\' as 5th element")
             if (np.min([len(bead_tuple) for bead_tuple in features]) < 2 or
-                    np.max([len(bead_tuple) for bead_tuple in features]) > 4):
+                    np.max([len(bead_tuple) for bead_tuple in features]) > 5):
                 raise ValueError(
-                    "Custom features must be tuples of length 2, 3, or 4."
+                    "Features must be tuples of length 2, 3, or 5."
                 )
             return [ind for ind, feat in 
                     enumerate(self.master_description_tuples)
