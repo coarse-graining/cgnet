@@ -481,13 +481,10 @@ class GeometryStatistics():
                 raise ValueError(
                     "Features must be tuples of length 2, 3, or 5."
                 )
-            inds = []
-            for feat_tupl in features:
-                for master_ind, master_tupl in enumerate(
-                        self.master_description_tuples):
-                    if feat_tupl == master_tupl:
-                        inds.append(master_ind)
-            return inds
+
+            tupl_to_ind_dict = {tupl : i for i, tupl in
+                            enumerate(self.master_description_tuples)}
+            return [tupl_to_ind_dict[tupl] for tupl in features]
 
         else:
             raise ValueError("features must be description string or list of tuples.")
