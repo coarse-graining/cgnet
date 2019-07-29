@@ -366,8 +366,7 @@ class GeometryStatistics():
                     newdict[i][stat] = mydict[stat][i]
         return newdict
 
-    def get_prior_statistics(self, features=None, tensor=True, as_dict=True, 
-                             flip_dict=True):
+    def get_prior_statistics(self, features=None, tensor=True, flip_dict=True):
         """Obtain prior statistics (mean, standard deviation, and
         bond/angle/dihedral constants) for features
 
@@ -380,9 +379,6 @@ class GeometryStatistics():
             specifies which feature to form the prior statistics for. If list
             of tuples is provided, only those corresponding features will be
             processed. If None, all features will be processed.
-        as_dict : Boolean (default=True)
-            Returns a dictionary instead of an array (see "Returns"
-            documentation)
         flip_dict : Boolean (default=True)
             Returns a dictionary with outer keys as indices if True and
             outer keys as statistic string names if False
@@ -392,14 +388,14 @@ class GeometryStatistics():
         prior_statistics_dict : python dictionary (if as_dict=True)
             If flip_dict is True, the outer keys will be bead pairs, triples,
             or quadruples+phase, e.g. (1, 2) or (0, 1, 2, 3, 'cos'), and
-            the inner keys will be 'mean' and 'std' statistics.
+            the inner keys will be 'mean', 'std', and 'k' statistics.
             If flip_dict is False, the outer keys will be the 'mean' and 'std'
             statistics and the inner keys will be bead pairs, triples, or
             quadruples+phase
-        prior_statistics_array : torch.Tensor or np.array (if as_dict=False)
-            2 by n tensor/array with means in the first row and
-            standard deviations in the second row, where n is
-            the number of features
+
+        Notes
+        -----
+        Dihedral features must specify 'cos' or 'sin', e.g. (1, 2, 3, 4, 'sin')
         """
         if features is not None:
             stats_inds = self.return_indices(features)
@@ -414,20 +410,17 @@ class GeometryStatistics():
 
         if tensor:
             prior_stat_array = torch.from_numpy(prior_stat_array).float()
-        self.prior_statistics_keys = prior_stat_keys
-        self.prior_statistics_array = prior_stat_array
+        self._prior_statistics_keys = prior_stat_keys
+        self._prior_statistics_array = prior_stat_array
 
-        if as_dict:
-            prior_statistics_dict = {}
-            for i, stat in enumerate(['mean', 'std', 'k']):
-                prior_statistics_dict[stat] = dict(zip(prior_stat_keys,
-                                                       prior_stat_array[i, :]))
-            if flip_dict:
-                prior_statistics_dict = self._flip_dict(prior_statistics_dict)
-            return prior_statistics_dict
-        else:
-            return prior_stat_array
+        prior_statistics_dict = {}
+        for i, stat in enumerate(['mean', 'std', 'k']):
+            prior_statistics_dict[stat] = dict(zip(prior_stat_keys,
+                                                   prior_stat_array[i, :]))
+        if flip_dict:
+            prior_statistics_dict = self._flip_dict(prior_statistics_dict)
 
+        return prior_statistics_dict
 
     def return_indices(self, features):
         """Return all indices for specified feature type. Useful for
@@ -449,6 +442,10 @@ class GeometryStatistics():
         indices : list(int)
             list of integers corresponding the indices of specified features
             output from a GeometryFeature() layer.
+
+        Notes
+        -----
+        Dihedral features must specify 'cos' or 'sin', e.g. (1, 2, 3, 4, 'sin')
 
         """
         if isinstance(features, str):
