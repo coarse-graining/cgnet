@@ -119,7 +119,7 @@ def test_backbone_dihedral_statistics():
                                rtol=1e-6)
 
 
-def test_prior_statistics_1():
+def test_prior_statistics_shape_1():
     # Make sure the "flipped" prior statistics dict has the right structure
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
@@ -136,7 +136,7 @@ def test_prior_statistics_1():
     assert len(zscore_dict) == n_keys
 
 
-def test_prior_statistics_2():
+def test_prior_statistics_shape_2():
     # Make sure the prior statistics dict has the right structure
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
@@ -154,7 +154,7 @@ def test_prior_statistics_2():
         assert len(zscore_dict[k]) == n_keys
 
 
-def test_prior_statistics_3():
+def test_prior_statistics():
     # Make sure distance means and stds are returned correctly
     bond_starts = [np.random.randint(beads-4) for _ in range(4)]
     bond_starts = np.unique(bond_starts)
@@ -175,7 +175,7 @@ def test_prior_statistics_3():
                                rtol=1e-5)
 
 
-def test_return_indices_1():
+def test_return_indices_shape_1():
     # Test proper retrieval of feature indices for sizes
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
@@ -204,7 +204,7 @@ def test_return_indices_1():
     assert sum_feats == check_sum_feats
 
 
-def test_return_indices_2():
+def test_return_indices_1():
     # Test proper retrieval of feature indices for specific indices
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
@@ -245,7 +245,7 @@ def test_return_indices_2():
                                                 num_diheds + dihedral_sin_start),
                                       stats_.return_indices('Dihedral_sines'))
 
-def test_return_indices_3():
+def test_return_indices_2():
     # Test retrival of custom bonds
     bond_starts = [np.random.randint(beads-4) for _ in range(4)]
     bond_starts = np.unique(bond_starts)
@@ -297,6 +297,7 @@ def test_return_indices_and_prior_stats():
     np.testing.assert_array_equal(sorted(dihed_quads),
                                   list(stats.get_prior_statistics(
                                     dihed_quads).keys()))
+
 
 def test_redundant_distance_mapping_shape():
     # Test to see if the redundant distance index matrix is formed properly
