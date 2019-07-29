@@ -192,15 +192,16 @@ class GeometryStatistics():
             self._get_dihedrals()
 
         self.feature_tuples = []
-        self.master_description_inds = []
+        self.master_description_tuples = []
 
         for feature_type in self.order:
             if feature_type not in ['Dihedral_cosines', 'Dihedral_sines']: 
                 self.feature_tuples.extend(self.descriptions[feature_type])
-                self.master_description_inds.extend(self.descriptions[feature_type])
+                self.master_description_tuples.extend(self.descriptions[feature_type])
             else:
-                self.master_description_inds.extend(
-                    [self._get_key(desc, feature_type) for desc in self.descriptions[feature_type]])
+                self.master_description_tuples.extend(
+                    [self._get_key(desc, feature_type)
+                     for desc in self.descriptions[feature_type]])
                 if feature_type == 'Dihedral_cosines':
                     # because they have the same indices as dihedral sines, do only cosines
                     self.feature_tuples.extend(self.descriptions[feature_type])    
@@ -355,7 +356,8 @@ class GeometryStatistics():
                     newdict[i][stat] = mydict[stat][i]
         return newdict
 
-    def get_prior_statistics(self, tensor=True, as_dict=True, flip_dict=True):
+    def get_prior_statistics(self, features=None, tensor=True, as_dict=True, 
+                             flip_dict=True):
         """Obtain prior statistics (mean, standard deviation, and
         bond/angle/dihedral constants) for features
 
@@ -389,7 +391,12 @@ class GeometryStatistics():
             standard deviations in the second row, where n is
             the number of features
         """
-        prior_stat_keys = self.return_indices(features)
+        if features is not None:
+            prior_stat_keys = self.master_description_tuples[
+                                    self.return_indices(features)
+                                    ]
+        else:
+            prior_stat_keys = self.master_description_tuples
         prior_stat_array = np.vstack([
             np.concatenate([self._stats_dict[key][stat]
                             for key in self.order])
@@ -440,21 +447,21 @@ class GeometryStatistics():
                     )
             if features in ["Distances", "Angles"]:
                 return [ind for ind, feat in
-                        enumerate(self.master_description_inds)
+                        enumerate(self.master_description_tuples)
                         if feat in self.descriptions[features]] 
             elif features == "Dihedral_cosines":
                 return [ind for ind, feat in
-                        enumerate(self.master_description_inds)
+                        enumerate(self.master_description_tuples)
                         if feat[:-1] in self.descriptions[features]
                         and feat[-1] == 'cos'] 
             elif features == "Dihedral_sines":
                 return [ind for ind, feat in
-                        enumerate(self.master_description_inds)
+                        enumerate(self.master_description_tuples)
                         if feat[:-1] in self.descriptions[features]
                         and feat[-1] == 'sin'] 
             elif features == 'Bonds':
                 return [ind for ind, feat in
-                        enumerate(self.master_description_inds)
+                        enumerate(self.master_description_tuples)
                         if feat in self.bond_pairs] 
 
         elif isinstance(features, list):
@@ -467,7 +474,7 @@ class GeometryStatistics():
                     "Custom features must be tuples of length 2, 3, or 4."
                 )
             return [ind for ind, feat in 
-                    enumerate(self.master_description_inds)
+                    enumerate(self.master_description_tuples)
                     if feat in features]
 
         else:
