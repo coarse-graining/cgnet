@@ -193,18 +193,28 @@ class GeometryStatistics():
 
         self.feature_tuples = []
         self.master_description_tuples = []
+        self._master_stat_array = [[] for _ in range(3)]
 
         for feature_type in self.order:
             if feature_type not in ['Dihedral_cosines', 'Dihedral_sines']: 
                 self.feature_tuples.extend(self.descriptions[feature_type])
                 self.master_description_tuples.extend(self.descriptions[feature_type])
+                self._master_stat_array[0].extend(self._stats_dict[feature_type]['mean'])
+                self._master_stat_array[1].extend(self._stats_dict[feature_type]['std'])
+                self._master_stat_array[2].extend(self._stats_dict[feature_type]['k'])
+
             else:
                 self.master_description_tuples.extend(
                     [self._get_key(desc, feature_type)
                      for desc in self.descriptions[feature_type]])
+                self._master_stat_array[0].extend(self._stats_dict[feature_type]['mean'])
+                self._master_stat_array[1].extend(self._stats_dict[feature_type]['std'])
+                self._master_stat_array[2].extend(self._stats_dict[feature_type]['k'])
                 if feature_type == 'Dihedral_cosines':
-                    # because they have the same indices as dihedral sines, do only cosines
-                    self.feature_tuples.extend(self.descriptions[feature_type])    
+                    # because they have the same indices as dihedral sines,
+                    # do only cosines
+                    self.feature_tuples.extend(self.descriptions[feature_type])
+        self._master_stat_array = np.array(self._master_stat_array)
 
     def _process_custom_feature_tuples(self, custom_feature_tuples):
         """Helper function to sort custom features into distances, angles,
@@ -392,15 +402,16 @@ class GeometryStatistics():
             the number of features
         """
         if features is not None:
-            prior_stat_keys = [feat for ind, feat in
-                                enumerate(self.master_description_tuples)
-                                if ind in self.return_indices(features)]
+            stats_inds = self.return_indices(features)
         else:
-            prior_stat_keys = self.master_description_tuples
-        prior_stat_array = np.vstack([
-            np.concatenate([self._stats_dict[key][stat]
-                            for key in self.order])
-                            for stat in ['mean', 'std', 'k']])
+            stats_inds = np.arange(len(self.master_description_tuples))
+
+        prior_stat_keys = [feat for ind, feat in
+                            enumerate(self.master_description_tuples)
+                            if ind in stats_inds]
+
+        prior_stat_array = self._master_stat_array[:, stats_inds]
+
         if tensor:
             prior_stat_array = torch.from_numpy(prior_stat_array).float()
         self.prior_statistics_keys = prior_stat_keys
