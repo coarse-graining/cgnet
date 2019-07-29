@@ -154,6 +154,27 @@ def test_prior_statistics_2():
         assert len(zscore_dict[k]) == n_keys
 
 
+def test_prior_statistics_3():
+    # Make sure distance means and stds are returned correctly
+    bond_starts = [np.random.randint(beads-4) for _ in range(4)]
+    bond_starts = np.unique(bond_starts)
+    custom_bond_pairs = [(bs, bs+np.random.randint(1,5)) for bs in bond_starts]
+    pair_means = []
+    pair_stds = []
+    for pair in sorted(custom_bond_pairs):
+        pair_means.append(np.mean(np.linalg.norm(x[:,pair[1],:]
+                                        - x[:,pair[0],:], axis=1)))
+        pair_stds.append(np.std(np.linalg.norm(x[:,pair[1],:]
+                                        - x[:,pair[0],:], axis=1)))
+    stats_dict = stats.get_prior_statistics(custom_bond_pairs, tensor=False)
+    np.testing.assert_allclose(pair_means, [stats_dict[k]['mean']
+                               for k in sorted(stats_dict.keys())],
+                               rtol=1e-6)
+    np.testing.assert_allclose(pair_stds, [stats_dict[k]['std']
+                               for k in sorted(stats_dict.keys())],
+                               rtol=1e-5)
+
+
 def test_return_indices_1():
     # Test proper retrieval of feature indices for sizes
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]

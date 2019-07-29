@@ -419,7 +419,7 @@ class GeometryStatistics():
 
         if as_dict:
             prior_statistics_dict = {}
-            for i, stat in enumerate(['mean', 'std']):
+            for i, stat in enumerate(['mean', 'std', 'k']):
                 prior_statistics_dict[stat] = dict(zip(prior_stat_keys,
                                                        prior_stat_array[i, :]))
             if flip_dict:
