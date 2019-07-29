@@ -239,7 +239,7 @@ def test_return_indices_3():
     np.testing.assert_array_equal(sorted(custom_bond_pairs),
                                   sorted(bond_pairs))
 
-def test_return_indices_4():
+def test_return_indices_and_prior_stats():
     # Test passing random tuples return_indices for size only
     all_beads = np.arange(beads)
 
@@ -249,6 +249,9 @@ def test_return_indices_4():
     distance_pairs = [(all_beads[i], all_beads[i+1]) for i in pairs]
     dist_idx = stats.return_indices(distance_pairs)
     assert len(dist_idx) == len(distance_pairs)
+    np.testing.assert_array_equal(sorted(distance_pairs),
+                                  list(stats.get_prior_statistics(
+                                    distance_pairs).keys()))
 
     # angles
     angle_start_list = np.arange(beads-2)
@@ -258,6 +261,9 @@ def test_return_indices_4():
     angle_trips = [(all_beads[i], all_beads[i+1], all_beads[i+2]) for i in trips]
     angle_idx = stats.return_indices(angle_trips)
     assert len(angle_idx) == len(angle_trips)
+    np.testing.assert_array_equal(sorted(angle_trips),
+                                  list(stats.get_prior_statistics(
+                                    angle_trips).keys()))
 
     # dihedrals
     quads = np.random.choice(all_beads[:-3],
@@ -267,6 +273,9 @@ def test_return_indices_4():
                     all_beads[i+2], all_beads[i+3], 'cos') for i in quads]
     dihed_idx = stats.return_indices(dihed_quads)
     assert len(dihed_idx) == len(dihed_quads)
+    np.testing.assert_array_equal(sorted(dihed_quads),
+                                  list(stats.get_prior_statistics(
+                                    dihed_quads).keys()))
 
 def test_redundant_distance_mapping_shape():
     # Test to see if the redundant distance index matrix is formed properly
