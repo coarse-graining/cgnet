@@ -401,10 +401,9 @@ class GeometryStatistics():
             stats_inds = self.return_indices(features)
         else:
             stats_inds = np.arange(len(self.master_description_tuples))
-
-        prior_stat_keys = [self.master_description_tuples[i] for i in stats_inds]
         self._stats_inds = stats_inds
 
+        prior_stat_keys = [self.master_description_tuples[i] for i in stats_inds]
         prior_stat_array = self._master_stat_array[:, stats_inds]
 
         if tensor:

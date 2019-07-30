@@ -21,6 +21,7 @@ stats = GeometryStatistics(xt)
 
 def test_manual_backbone_calculations():
     # Make sure angle statistics work for manually specified backbone
+
     backbone_inds = [i for i in range(beads) if i % 2 == 0]
     xt_bb_only = xt[:, backbone_inds]
 
@@ -39,6 +40,7 @@ def test_manual_backbone_calculations():
 
 def test_manual_backbone_descriptions():
     # Make sure angle statistics work for manually specified backbone
+
     backbone_inds = [i for i in range(beads) if i % 2 == 0]
     xt_bb_only = xt[:, backbone_inds]
 
@@ -73,6 +75,7 @@ def test_manual_backbone_descriptions():
 
 def test_backbone_distance_statistics():
     # Make sure distance statistics are consistent with numpy
+
     feature_dist_mean = np.mean(f.distances.numpy(), axis=0)
     feature_dist_std = np.std(f.distances.numpy(), axis=0)
 
@@ -121,6 +124,7 @@ def test_backbone_dihedral_statistics():
 
 def test_prior_statistics_shape_1():
     # Make sure the "flipped" prior statistics dict has the right structure
+
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
@@ -138,6 +142,7 @@ def test_prior_statistics_shape_1():
 
 def test_prior_statistics_shape_2():
     # Make sure the prior statistics dict has the right structure
+
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
@@ -156,6 +161,7 @@ def test_prior_statistics_shape_2():
 
 def test_prior_statistics():
     # Make sure distance means and stds are returned correctly
+
     bond_starts = [np.random.randint(beads-4) for _ in range(4)]
     bond_starts = np.unique(bond_starts)
     custom_bond_pairs = [(bs, bs+np.random.randint(1,5)) for bs in bond_starts]
@@ -175,8 +181,28 @@ def test_prior_statistics():
                                rtol=1e-5)
 
 
+def test_prior_statistics_2():
+    # Make sure that prior statistics shuffle correctly
+    all_possible_features = stats.master_description_tuples
+    my_inds = np.arange(len(all_possible_features))
+    np.random.shuffle(my_inds)
+
+    cutoff = np.random.randint(1, len(my_inds))
+    my_inds = my_inds[:cutoff]
+
+    all_stats = stats.get_prior_statistics()
+    some_stats = stats.get_prior_statistics([all_possible_features[i]
+                                                for i in my_inds])
+
+    some_keys = [some_stats[k] for k in some_stats.keys()]
+    all_corresponding_keys = [all_stats[k] for k in some_stats.keys()]
+
+    np.testing.assert_array_equal(some_keys, all_corresponding_keys)
+
+
 def test_return_indices_shape_1():
     # Test proper retrieval of feature indices for sizes
+
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
@@ -206,6 +232,7 @@ def test_return_indices_shape_1():
 
 def test_return_indices_1():
     # Test proper retrieval of feature indices for specific indices
+
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
@@ -247,6 +274,7 @@ def test_return_indices_1():
 
 def test_return_indices_2():
     # Test retrival of custom bonds
+
     bond_starts = [np.random.randint(beads-4) for _ in range(4)]
     bond_starts = np.unique(bond_starts)
     custom_bond_pairs = [(bs, bs+np.random.randint(2,5)) for bs in bond_starts]
@@ -262,6 +290,7 @@ def test_return_indices_2():
 
 def test_return_indices_and_prior_stats():
     # Test passing random tuples return_indices for size only
+
     all_beads = np.arange(beads)
 
     pairs = np.random.choice(all_beads[:-1],
@@ -270,7 +299,7 @@ def test_return_indices_and_prior_stats():
     distance_pairs = [(all_beads[i], all_beads[i+1]) for i in pairs]
     dist_idx = stats.return_indices(distance_pairs)
     assert len(dist_idx) == len(distance_pairs)
-    np.testing.assert_array_equal(sorted(distance_pairs),
+    np.testing.assert_array_equal(distance_pairs,
                                   list(stats.get_prior_statistics(
                                     distance_pairs).keys()))
 
@@ -282,7 +311,7 @@ def test_return_indices_and_prior_stats():
     angle_trips = [(all_beads[i], all_beads[i+1], all_beads[i+2]) for i in trips]
     angle_idx = stats.return_indices(angle_trips)
     assert len(angle_idx) == len(angle_trips)
-    np.testing.assert_array_equal(sorted(angle_trips),
+    np.testing.assert_array_equal(angle_trips,
                                   list(stats.get_prior_statistics(
                                     angle_trips).keys()))
 
@@ -294,13 +323,14 @@ def test_return_indices_and_prior_stats():
                     all_beads[i+2], all_beads[i+3], 'cos') for i in quads]
     dihed_idx = stats.return_indices(dihed_quads)
     assert len(dihed_idx) == len(dihed_quads)
-    np.testing.assert_array_equal(sorted(dihed_quads),
+    np.testing.assert_array_equal(dihed_quads,
                                   list(stats.get_prior_statistics(
                                     dihed_quads).keys()))
 
 
 def test_redundant_distance_mapping_shape():
     # Test to see if the redundant distance index matrix is formed properly
+
     index_mapping = stats.redundant_distance_mapping
     assert index_mapping.shape == (beads, beads - 1)
     # mock distance data
@@ -311,6 +341,7 @@ def test_redundant_distance_mapping_shape():
 
 def test_redundant_distance_mapping_vals():
     # Test to see if the redundant distance index matrix has correct values
+
     mapping = np.zeros((stats.n_beads, stats.n_beads - 1), dtype='uint8')
     for bead in range(stats.n_beads):
         def neighbor_sequence(bead, n_beads):
