@@ -192,10 +192,29 @@ class GeometryStatistics():
             self._get_dihedrals()
 
         self.feature_tuples = []
+        self.master_description_tuples = []
+        self._master_stat_array = [[] for _ in range(3)]
+
         for feature_type in self.order:
-            # because they have the same indices as dihedral cosines:
-            if feature_type != 'Dihedral_sines': 
+            if feature_type not in ['Dihedral_cosines', 'Dihedral_sines']: 
                 self.feature_tuples.extend(self.descriptions[feature_type])
+                self.master_description_tuples.extend(self.descriptions[feature_type])
+                self._master_stat_array[0].extend(self._stats_dict[feature_type]['mean'])
+                self._master_stat_array[1].extend(self._stats_dict[feature_type]['std'])
+                self._master_stat_array[2].extend(self._stats_dict[feature_type]['k'])
+
+            else:
+                self.master_description_tuples.extend(
+                    [self._get_key(desc, feature_type)
+                     for desc in self.descriptions[feature_type]])
+                self._master_stat_array[0].extend(self._stats_dict[feature_type]['mean'])
+                self._master_stat_array[1].extend(self._stats_dict[feature_type]['std'])
+                self._master_stat_array[2].extend(self._stats_dict[feature_type]['k'])
+                if feature_type == 'Dihedral_cosines':
+                    # because they have the same indices as dihedral sines,
+                    # do only cosines
+                    self.feature_tuples.extend(self.descriptions[feature_type])
+        self._master_stat_array = np.array(self._master_stat_array)
 
     def _process_custom_feature_tuples(self, custom_feature_tuples):
         """Helper function to sort custom features into distances, angles,
@@ -347,8 +366,7 @@ class GeometryStatistics():
                     newdict[i][stat] = mydict[stat][i]
         return newdict
 
-    def get_prior_statistics(self, tensor=True, features=None, as_dict=True,
-                             flip_dict=True):
+    def get_prior_statistics(self, features=None, tensor=True, flip_dict=True):
         """Obtain prior statistics (mean, standard deviation, and
         bond/angle/dihedral constants) for features
 
@@ -356,14 +374,11 @@ class GeometryStatistics():
         ----------
         tensor : Boolean (default=True)
             Returns (innermost data) of type torch.Tensor if True and np.array
-            if False
+             if False
         features : str or list of tuples (default=None)
             specifies which feature to form the prior statistics for. If list
             of tuples is provided, only those corresponding features will be
             processed. If None, all features will be processed.
-        as_dict : Boolean (default=True)
-            Returns a dictionary instead of an array (see "Returns"
-            documentation)
         flip_dict : Boolean (default=True)
             Returns a dictionary with outer keys as indices if True and
             outer keys as statistic string names if False
@@ -373,94 +388,37 @@ class GeometryStatistics():
         prior_statistics_dict : python dictionary (if as_dict=True)
             If flip_dict is True, the outer keys will be bead pairs, triples,
             or quadruples+phase, e.g. (1, 2) or (0, 1, 2, 3, 'cos'), and
-            the inner keys will be 'mean' and 'std' statistics.
+            the inner keys will be 'mean', 'std', and 'k' statistics.
             If flip_dict is False, the outer keys will be the 'mean' and 'std'
             statistics and the inner keys will be bead pairs, triples, or
             quadruples+phase
-        prior_statistics_array : torch.Tensor or np.array (if as_dict=False)
-            2 by n tensor/array with means in the first row and
-            standard deviations in the second row, where n is
-            the number of features
+
+        Notes
+        -----
+        Dihedral features must specify 'cos' or 'sin', e.g. (1, 2, 3, 4, 'sin')
         """
-
-        if features in self.order:
-            prior_stat_keys = [self._get_key(key, features)
-                         for key in self.descriptions[features]]
-            prior_stat_array = np.vstack([
-               np.concatenate([self._stats_dict[features][stat]])
-                            for stat in ['mean', 'std', 'k']])
-        if features == "Bonds":
-            prior_stat_keys = [self._get_key(key, 'Distances')
-                         for key in self.descriptions['Distances']
-                         if abs(key[1]-key[0]) == 1]
-            prior_stat_array = np.vstack([
-               np.concatenate([self._stats_dict['Distances'][stat]])
-                            for stat in ['mean', 'std', 'k']])
-        if features == None:
-            temp_keys = [[self._get_key(key,name)
-                          for key in self.descriptions[name]]
-                          for name in self.order]
-            prior_stat_keys = []
-            for sublist in temp_keys:
-                prior_stat_keys.extend(sublist)
-            prior_stat_array = np.vstack([
-                np.concatenate([self._stats_dict[key][stat]
-                                for key in self.order])
-                                for stat in ['mean', 'std', 'k']])
-        if isinstance(features, list):
-            if any(not isinstance(i, tuple) for i in features):
-                raise ValueError("Feature list must be list of tuples of beads")
-            for bead_tuple in features:
-                if any(bead > self.n_beads - 1 for bead in bead_tuple if isinstance(bead, int)):
-                    raise ValueError("Bead index larger than maximum detected")
-            prior_stat_keys = features
-            temp_keys = []
-            distances = [bead_tuple for bead_tuple in prior_stat_keys
-                         if len(bead_tuple) == 2]
-            if 'Distances' in self.order:
-                temp_keys.append(distances)
-            angles = [bead_tuple for bead_tuple in prior_stat_keys
-                         if len(bead_tuple) == 3]
-            if 'Angles' in self.order:
-                temp_keys.append(angles)
-            dihedral_cos = [bead_tuple for bead_tuple in prior_stat_keys
-                         if len(bead_tuple) == 5 and bead_tuple[-1] == 'cos']
-            if 'Dihedral_cosines' in self.order:
-                temp_keys.append(dihedral_cos)
-            dihedral_sin = [bead_tuple for bead_tuple in prior_stat_keys
-                         if len(bead_tuple) == 5 and bead_tuple[-1] == 'sin']
-            if 'Dihedral_cosines' in self.order:
-                temp_keys.append(dihedral_sin)
-            stats = ['mean', 'std', 'k']
-            prior_stat_array = np.array([]).reshape(len(stats), 0)
-            if any(len(bead_tuple) == 4 for bead_tuple in prior_stat_keys):
-                raise ValueError("Bead tuples of 4 beads need to specify "\
-                                 "\'cos\' or \'sin\' as 5th element")
-            for feat, keyset in zip(self.order, temp_keys):
-                if keyset == []:
-                    continue
-                stat_idx = self.return_indices(keyset)
-                zero = self.return_indices(feat)[0]
-                zeroed_idx = [i - zero for i in stat_idx]
-                stat_array = np.vstack([self._stats_dict[feat][s][[zeroed_idx]] for s in stats])
-                prior_stat_array = np.hstack((prior_stat_array, stat_array))
-        if (not isinstance(features, list) and features is not None
-            and features not in self.order and features is not 'Bonds'):
-            raise ValueError("{} is not a valid feature type or list of feature " \
-                             "tuples".format(features))
-
-        self.prior_statistics_keys = prior_stat_keys
-        self.prior_statistics_array = prior_stat_array
-        if as_dict:
-            prior_statistics_dict = {}
-            for i, stat in enumerate(['mean', 'std']):
-                prior_statistics_dict[stat] = dict(zip(prior_stat_keys,
-                                                       prior_stat_array[i, :]))
-            if flip_dict:
-                prior_statistics_dict = self._flip_dict(prior_statistics_dict)
-            return prior_statistics_dict
+        if features is not None:
+            stats_inds = self.return_indices(features)
         else:
-            return prior_stat_array
+            stats_inds = np.arange(len(self.master_description_tuples))
+        self._stats_inds = stats_inds
+
+        prior_stat_keys = [self.master_description_tuples[i] for i in stats_inds]
+        prior_stat_array = self._master_stat_array[:, stats_inds]
+
+        if tensor:
+            prior_stat_array = torch.from_numpy(prior_stat_array).float()
+        self._prior_statistics_keys = prior_stat_keys
+        self._prior_statistics_array = prior_stat_array
+
+        prior_statistics_dict = {}
+        for i, stat in enumerate(['mean', 'std', 'k']):
+            prior_statistics_dict[stat] = dict(zip(prior_stat_keys,
+                                                   prior_stat_array[i, :]))
+        if flip_dict:
+            prior_statistics_dict = self._flip_dict(prior_statistics_dict)
+
+        return prior_statistics_dict
 
     def return_indices(self, features):
         """Return all indices for specified feature type. Useful for
@@ -483,77 +441,49 @@ class GeometryStatistics():
             list of integers corresponding the indices of specified features
             output from a GeometryFeature() layer.
 
+        Notes
+        -----
+        Dihedral features must specify 'cos' or 'sin', e.g. (1, 2, 3, 4, 'sin')
+
         """
-<<<<<<< HEAD
         if isinstance(features, str):
             if features not in self.descriptions.keys() and features != 'Bonds':
                 raise RuntimeError(
-                    "Error: \'{}\' is not a valid backbone feature.".format(features))
-            nums = [len(self.descriptions[i]) for i in self.order]
-            start_idx = 0
-            for num, desc in zip(nums, self.order):
-                if features == desc or (features == 'Bonds'
-                                            and desc == 'Distances'):
-                    break
-                else:
-                    start_idx += num
-            if features == 'Bonds':  # TODO
-                indices = [self.descriptions['Distances'].index(pair)
-                           for pair in self._adj_backbone_pairs]
-            if features != 'Bonds':
-                indices = range(0, len(self.descriptions[features]))
-            indices = [idx + start_idx for idx in indices]
-            return indices
+                    "Error: \'{}\' is not a valid backbone feature.".format(features)
+                    )
+            if features in ["Distances", "Angles"]:
+                return [ind for ind, feat in
+                        enumerate(self.master_description_tuples)
+                        if feat in self.descriptions[features]] 
+            elif features == "Dihedral_cosines":
+                return [ind for ind, feat in
+                        enumerate(self.master_description_tuples)
+                        if feat[:-1] in self.descriptions[features]
+                        and feat[-1] == 'cos'] 
+            elif features == "Dihedral_sines":
+                return [ind for ind, feat in
+                        enumerate(self.master_description_tuples)
+                        if feat[:-1] in self.descriptions[features]
+                        and feat[-1] == 'sin'] 
+            elif features == 'Bonds':
+                return [ind for ind, feat in
+                        enumerate(self.master_description_tuples)
+                        if feat in self.bond_pairs] 
 
-        if isinstance(features, list) or isinstance(features, np.array):
-            indices = []
-            temp_keys = []
-            distances = [bead_tuple for bead_tuple in features
-                         if len(bead_tuple) == 2]
-            temp_keys.append(distances)
-            angles = [bead_tuple for bead_tuple in features
-                         if len(bead_tuple) == 3]
-            temp_keys.append(angles)
-            dihedrals = [bead_tuple for bead_tuple in features
-                         if len(bead_tuple) == 5]
-            temp_keys.append(dihedrals)
+        elif isinstance(features, list):
             if any(len(bead_tuple) == 4 for bead_tuple in features):
                 raise ValueError("Bead tuples of 4 beads need to specify "\
                                  "\'cos\' or \'sin\' as 5th element")
-            for keyset in temp_keys:
-                if keyset == []:
-                    continue
-                for feat in keyset:
-                    feature_found = False
-                    if feat[-1] == 'cos':
-                        desc = "Dihedral_cosines"
-                        sequence = self.descriptions[desc]
-                        if feat[:-1] in sequence:
-                            feature_found = True
-                            desc_idx = self.order.index(desc)
-                            start_idx = sum([len(self.descriptions[k])
-                                       for k in self.order[:desc_idx]])
-                            indices.append(start_idx + sequence.index(feat[:-1]))
-                    if feat[-1] == 'sin':
-                        desc = "Dihedral_sines"
-                        sequence = self.descriptions[desc]
-                        if feat[:-1] in sequence:
-                            feature_found = True
-                            desc_idx = self.order.index(desc)
-                            start_idx = sum([len(self.descriptions[k])
-                                       for k in self.order[:desc_idx]])
-                            indices.append(start_idx + sequence.index(feat[:-1]))
-                    else:
-                        for desc, sequence in self.descriptions.items():
-                            if feat in sequence:
-                                feature_found = True
-                                desc_idx = self.order.index(desc)
-                                start_idx = sum([len(self.descriptions[k])
-                                       for k in self.order[:desc_idx]])
-                                indices.append(start_idx + sequence.index(feat))
-                    if feature_found == False:
-                        raise RuntimeError("Feature {} not found in descriptions.".format(feat))
-            return indices
+            if (np.min([len(bead_tuple) for bead_tuple in features]) < 2 or
+                    np.max([len(bead_tuple) for bead_tuple in features]) > 5):
+                raise ValueError(
+                    "Features must be tuples of length 2, 3, or 5."
+                )
+
+            tupl_to_ind_dict = {tupl : i for i, tupl in
+                            enumerate(self.master_description_tuples)}
+            return [tupl_to_ind_dict[tupl] for tupl in features]
+
         else:
             raise ValueError("features must be description string or list of tuples.")
 
