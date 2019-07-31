@@ -4,7 +4,7 @@
 import torch
 import torch.nn as nn
 
-def assemble_harmonic_inputs(prior_dict, indices, beta=1.0):
+def assemble_harmonic_inputs(prior_dict, indices):
     """Function for assembling __init__ arguments for a HarmonicLayer
 
     Parameters
@@ -14,9 +14,6 @@ def assemble_harmonic_inputs(prior_dict, indices, beta=1.0):
         cgnet.feature.GeometryStatistics.get_prior_statistics()
     indices : list of int
         list of callback indices used to access a feature layer
-    beta : float (default=1.0)
-        thermodynamic inverse temperature 1 / k_bT, where k_b is
-        the Boltzman constant, and T is the system temperature
 
     Returns
     -------
@@ -27,8 +24,7 @@ def assemble_harmonic_inputs(prior_dict, indices, beta=1.0):
     feat_dict = {}
     for idx, beads, stats in zip(indices, prior_dict.keys(), prior_dict.values()):
         feat_dict[idx] = {'beads' : beads,
-                          'params' : {'k' : 1 / (beta * stats['std']),
-                                      'mean' : stats['mean']}}
+                          'params' : {'mean' : stats['mean'], 'k' : stats['k']}}
     return feat_dict
 
 
@@ -50,9 +46,10 @@ class _PriorLayer(nn.Module):
     To assemble the feat_dict input for a HarmonicLayer prior for bonds from an
     instance of a stats = GeometryStatistics():
 
-    features = stats.get_bond_constants(flip_dict=True, zscores=True)
-    bonds = dict((idx, k) for idx in bond_idx)
-    bond_layer = HarmonicLayer(bonds)
+    bonds_stats = stats.get_prior_statistics('Bonds')
+    bonds_idx = stats.return_indices('Bonds')
+    bonds_dict = assemble_harmonic_inputs(bonds_stats, bonds_idx)
+    bond_layer = HarmonicLayer(bonds_dict)
     """
 
     def __init__(self, feat_data):
@@ -88,20 +85,17 @@ class RepulsionLayer(_PriorLayer):
     feat_data: dict
         dictionary defining the CG beads and interaction parameters for
         computing the energy contributions of the residual prior energy. The
-        keys are tuples defining the CG beads involved in each pairwise
-        interaction, and the values are dictionaries of physical constants
-        involved in the corresponding repulsion interaction: The keys of this
-        subdictionary are \"ex_vol\", and \"exp\", which are the exlcuded volume
-        parameter (in length units) and the exponent (positive, dimensionless)
-        respectively. The corresponding values are the the numerical values of
-        each constant. For example, for one such feat_dict entry:
+        keys are integers used to call back to a GeometryFeature.forward()
+        output. The corresponding values are dictionaries that describe the
+        bead tuple involved in the interaction ('beads') and a parameter
+        dictionary that contains the constants that characterize the interaction
+        ('params'). The keys of this parameter dictionary are 'ex_vol', and
+        'exp', which are the exlcuded volume parameter (in length units) and the
+        exponent (positive, dimensionless) respectively. The corresponding
+        values are the the numerical values of each constant. For example, for
+        one such feat_dict entry:
 
-            { (3, 9) : {  \"ex_vol\" : 5.5, \"exp\" : 6.0 }}
-
-    feat_indices: list of int
-        list of callback indices that the prior layer can use to access specific
-        outputs of a feature layer in the beginning of a CGnet architecture
-        through a residual connection.
+        { 4 : { 'beads' : (0,2), 'params' : {  'ex_vol' : 5.5, 'exp' : 6.0 }}
 
     Notes
     -----
@@ -159,20 +153,17 @@ class HarmonicLayer(_PriorLayer):
     feat_data: dict
         dictionary defining the CG beads and interaction parameters for
         computing the energy contributions of the residual prior energy. The
-        keys are tuples defining the CG beads involved in each pairwise
-        interaction, and the values are dictionaries of physical constants
-        involved in the corresponding harmonic interaction: The keys of this
-        subdictionary are \"k\", and \"mean\", which are the harmonic spring
-        constant (in energy/length^2 for bonds or energy units for angles) and
-        the mean (in length units for bonds or dimensionless for angles)
-        respectively. The corresponding values are the the numerical values of
-        each constant. For example, for one such feat_dict entry:
+        keys are integers used to call back to a GeometryFeature.forward()
+        output. The corresponding values are dictionaries that describe the
+        bead tuple involved in the interaction ('beads') and a parameter
+        dictionary that contains the constants that characterize the interaction
+        ('params'). The keys of this parameter dictionary are 'mean', and
+        'k', which are the harmonic mean (in length units) and the harmonic
+        spring constant (positive, dimensionless) respectively. The corresponding
+        values are the the numerical values of each constant. For example, for
+        one such feat_dict entry:
 
-
-    feat_indices: list of int
-        list of callback indices that the prior layer can use to access specific
-        outputs of a feature layer in the beginning of a CGnet architecture
-        through a residual connection.
+        { 1 : { 'beads' : (0,1), 'params' : { 'mean' : 0.34, 'k' : 1.3 }}
 
     Notes
     -----
