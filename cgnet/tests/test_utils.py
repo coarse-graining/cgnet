@@ -3,6 +3,7 @@
 import torch.nn as nn
 import torch
 import numpy as np
+import random
 from torch.utils.data import SubsetRandomSampler, DataLoader
 from cgnet.network import lipschitz_projection, dataset_loss, Simulation
 from cgnet.network import CGnet, ForceLoss
@@ -23,45 +24,56 @@ arch = (LinearLayer(dims, dims, activation=nn.Tanh()) +
         LinearLayer(dims, 1, activation=None))
 
 model = CGnet(arch, ForceLoss()).float()
-
+lip_mask = [random.getrandbits(1) for _ in arch if isinstance(_, nn.Linear)]
 length = np.random.choice([2, 4])*2
 save = np.random.choice([2, 4])
 
 
 def test_lipschitz():
     # Test hard lipschitz projection
+    test_arch = (LinearLayer(dims, dims, activation=nn.Tanh()) +
+        LinearLayer(dims, 1, activation=None))
+    test_model = CGnet(test_arch, ForceLoss()).float()
     _lambda = float(1e-12)
-    pre_projection_weights = []
-    for layer in model.arch:
-        if isinstance(layer, nn.Linear):
-            pre_projection_weights.append(layer.weight.data)
-
-    lipschitz_projection(model, _lambda)
-
-    post_projection_weights = []
-    for layer in model.arch:
-        if isinstance(layer, nn.Linear):
-            post_projection_weights.append(layer.weight.data)
+    pre_projection_weights = [layer.weight.data for layer in test_model.arch
+                              if isinstance(layer, nn.Linear)]
+    lipschitz_projection(test_model, _lambda)
+    post_projection_weights = [layer.weight.data for layer in test_model.arch
+                              if isinstance(layer, nn.Linear)]
     for pre, post in zip(pre_projection_weights, post_projection_weights):
         np.testing.assert_raises(AssertionError,
                                  np.testing.assert_array_equal, pre, post)
 
     # Test soft lipschitz projection
     _lambda = float(1e12)
-    pre_projection_weights = []
-    for layer in model.arch:
-        if isinstance(layer, nn.Linear):
-            pre_projection_weights.append(layer.weight.data)
-
-    lipschitz_projection(model, _lambda)
-
-    post_projection_weights = []
-    for layer in model.arch:
-        if isinstance(layer, nn.Linear):
-            post_projection_weights.append(layer.weight.data)
+    pre_projection_weights = [layer.weight.data for layer in test_model.arch
+                              if isinstance(layer, nn.Linear)]
+    lipschitz_projection(test_model, _lambda)
+    post_projection_weights = [layer.weight.data for layer in test_model.arch
+                              if isinstance(layer, nn.Linear)]
     for pre, post in zip(pre_projection_weights, post_projection_weights):
         np.testing.assert_array_equal(pre, post)
 
+def test_lipschitz_mask():
+    # Test lipschitz mask functionality
+    # use strong lipschitz projection
+    test_arch = (LinearLayer(dims, dims, activation=nn.Tanh()) +
+        LinearLayer(dims, 1, activation=None))
+    test_model = CGnet(test_arch, ForceLoss()).float()
+    _lambda = float(1e-12)
+    pre_projection_weights = [layer.weight.data for layer in test_model.arch
+                              if isinstance(layer, nn.Linear)]
+
+    lipschitz_projection(test_model, _lambda, mask=lip_mask)
+    post_projection_weights = [layer.weight.data for layer in test_model.arch
+                              if isinstance(layer, nn.Linear)]
+    for mask_element, pre, post in zip(lip_mask, pre_projection_weights,
+                                       post_projection_weights):
+        if mask_element:
+           np.testing.assert_raises(AssertionError,
+                                    np.testing.assert_array_equal, pre, post)
+        if not mask_element:
+           np.testing.assert_array_equal(pre, post)
 
 def test_dataset_loss():
     # Test dataset loss by comparing results from different batch sizes

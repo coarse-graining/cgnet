@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, Dataset
 import numpy as np
 
 
-def lipschitz_projection(model, strength=10.0):
+def lipschitz_projection(model, strength=10.0, mask=None):
     """Performs L2 Lipschitz Projection via spectral normalization
 
     Parameters
@@ -18,6 +18,10 @@ def lipschitz_projection(model, strength=10.0):
         The magntitude of {dominant weight matrix eigenvalue / strength}
         is compared to unity, and the weight matrix is rescaled by the max
         of this comparison
+    mask : list of bool (default=None)
+        mask used to exclude certain layers from lipschitz projection. If
+        an element is False, the corresponding weight layer is exempt from
+        a lipschitz projection.
 
     Notes
     -----
@@ -40,8 +44,20 @@ def lipschitz_projection(model, strength=10.0):
     of Neural Networks by Enforcing Lipschitz Continuity. arXiv:1804.04368
     [Cs, Stat]. Retrieved from http://arxiv.org/abs/1804.04368
     """
-    for layer in model.arch:
-        if isinstance(layer, nn.Linear):
+
+    weight_layers = [layer for layer in model.arch
+                     if isinstance(layer, nn.Linear)]
+    if mask is not None:
+        if not isinstance(mask, list):
+            raise ValueError("Lipschitz mask must be list of booleans")
+        if len(weight_layers) != len(mask):
+           raise ValueError("Lipshitz mask must have the same number " \
+                            "of elements as the number of nn.Linear " \
+                            "modules in the model.")
+    if mask is None:
+        mask = [True for _ in weight_layers]
+    for mask_element, layer in zip(mask, weight_layers):
+        if mask_element:
             weight = layer.weight.data
             u, s, v = torch.svd(weight)
             if next(model.parameters()).is_cuda:
