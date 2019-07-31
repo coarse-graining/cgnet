@@ -31,9 +31,7 @@ stats = GeometryStatistics(coords.detach().numpy())
 full_prior_stats = stats.get_prior_statistics()
 bonds_stats = stats.get_prior_statistics(features='Bonds')
 bonds_idx = stats.return_indices('Bonds')
-bonds_dict = dict((idx, {'beads': beads, 'params' : {'mean': stats['mean'], 'k' : stats['k']}})
-                   for idx, beads, stats
-                   in zip(bonds_idx, bonds_stats.keys(), bonds_stats.values()))
+bonds_dict = assemble_harmonic_inputs(bonds_stats, bonds_idx)
 
 repul_distances = [i for i in stats.descriptions['Distances']
                    if abs(i[0]-i[1]) > 2]
@@ -41,7 +39,8 @@ repul_idx = stats.return_indices(repul_distances)
 
 ex_vols = np.random.uniform(2, 8, len(repul_distances))
 exps = np.random.randint(1, 6, len(repul_distances))
-repul_dict = dict((idx, {'beads' : beads, 'params' : {'ex_vol': ex_vol, 'exp': exp}})
+repul_dict = dict((idx, {'beads': beads,
+                         'params': {'ex_vol': ex_vol, 'exp': exp}})
                   for idx, beads, ex_vol, exp
                   in zip(repul_idx, repul_distances, ex_vols, exps))
 
@@ -50,8 +49,9 @@ order = stats.order
 nums = [len(descriptions[desc]) for desc in order]
 zscores = torch.zeros((2, len(full_prior_stats)))
 for i, key in enumerate(full_prior_stats.keys()):
-    zscores[0,i] = full_prior_stats[key]['mean']
-    zscores[1,i] = full_prior_stats[key]['std']
+    zscores[0, i] = full_prior_stats[key]['mean']
+    zscores[1, i] = full_prior_stats[key]['std']
+
 
 def test_linear_layer():
     # Tests LinearLayer function for bias logic and input/output size
@@ -165,13 +165,11 @@ def test_prior_callback_order():
     feat_layer = GeometryFeature(n_beads=beads)
     feat = feat_layer(coords)
     bonds_tuples = [beads for beads in stats.master_description_tuples
-                   if len(beads) == 2 and abs(beads[0] - beads[1]) == 1]
+                    if len(beads) == 2 and abs(beads[0] - beads[1]) == 1]
     np.random.shuffle(bonds_tuples)
     bonds_idx = stats.return_indices(bonds_tuples)
     bonds_stats = stats.get_prior_statistics(features=list(bonds_tuples))
-    bonds_dict = dict((idx, {'beads': beads, 'params' : {'mean': stats['mean'], 'k' : stats['k']}})
-                       for idx, beads, stats
-                       in zip(bonds_idx, bonds_stats.keys(), bonds_stats.values()))
+    bonds_dict = assemble_harmonic_inputs(bonds_stats, bonds_idx)
 
     harmonic_potential = HarmonicLayer(bonds_dict)
     np.testing.assert_array_equal(bonds_idx, harmonic_potential.feat_idx)
@@ -193,6 +191,7 @@ def test_prior_callback_order():
     np.testing.assert_allclose(np.sum(energy.detach().numpy()),
                                np.sum(energy_check.detach().numpy()), rtol=1e-4)
 
+
 def test_prior_with_stats_dropout():
     # Test the order of prior callbacks when the statistices are missing one
     # of the four default backbone features: 'Distances', 'Angles',
@@ -202,9 +201,9 @@ def test_prior_with_stats_dropout():
     feature_bools = [1] + [np.random.randint(0, high=1) for _ in range(2)]
     np.random.shuffle(feature_bools)
     stats = GeometryStatistics(coords,
-                                      get_all_distances=feature_bools[0],
-                                      get_backbone_angles=feature_bools[1],
-                                      get_backbone_dihedrals=feature_bools[2])
+                               get_all_distances=feature_bools[0],
+                               get_backbone_angles=feature_bools[1],
+                               get_backbone_dihedrals=feature_bools[2])
 
     feat_layer = GeometryFeature(feature_tuples=stats.get_unique_tuples())
     if 'Distances' in stats.descriptions:
@@ -220,8 +219,8 @@ def test_prior_with_stats_dropout():
         dist_idx = stats.return_indices('Distances')
         ex_vols = np.random.uniform(2, 8, len(repul_distances))
         exps = np.random.randint(1, 6, len(repul_distances))
-        repul_dict = dict((index, {'beads' : beads,
-                                   'params' : {'ex_vol': ex_vol, 'exp': exp}})
+        repul_dict = dict((index, {'beads': beads,
+                                   'params': {'ex_vol': ex_vol, 'exp': exp}})
                           for index, beads, ex_vol, exp
                           in zip(dist_idx, repul_distances, ex_vols, exps))
         repulsion_potential = RepulsionLayer(repul_dict)
@@ -235,18 +234,24 @@ def test_prior_with_stats_dropout():
         np.testing.assert_array_equal(angles_idx, harmonic_potential.feat_idx)
     if 'Dihedral_cosines' in stats.descriptions:
         # HarmonicLayer dihedrals test with random constants & means
-        dihedral_cos_stats = stats.get_prior_statistics(features='Dihedral_cosines')
+        dihedral_cos_stats = stats.get_prior_statistics(
+            features='Dihedral_cosines')
         dihedral_cos_idx = stats.return_indices('Dihedral_cosines')
-        dihedral_cos_dict = assemble_harmonic_inputs(dihedral_cos_stats, dihedral_cos_idx)
+        dihedral_cos_dict = assemble_harmonic_inputs(
+            dihedral_cos_stats, dihedral_cos_idx)
         harmonic_potential = HarmonicLayer(dihedral_cos_dict)
-        np.testing.assert_array_equal(dihedral_cos_idx, harmonic_potential.feat_idx)
+        np.testing.assert_array_equal(
+            dihedral_cos_idx, harmonic_potential.feat_idx)
     if 'Dihedral_sines' in stats.descriptions:
         # HarmonicLayer dihedrals test with random constants & mean
-        dihedral_sin_stats = stats.get_prior_statistics(features='Dihedral_sines')
+        dihedral_sin_stats = stats.get_prior_statistics(
+            features='Dihedral_sines')
         dihedral_sin_idx = stats.return_indices('Dihedral_sines')
-        dihedral_sin_dict = assemble_harmonic_inputs(dihedral_sin_stats, dihedral_sin_idx)
+        dihedral_sin_dict = assemble_harmonic_inputs(
+            dihedral_sin_stats, dihedral_sin_idx)
         harmonic_potential = HarmonicLayer(dihedral_sin_dict)
-        np.testing.assert_array_equal(dihedral_sin_idx, harmonic_potential.feat_idx)
+        np.testing.assert_array_equal(
+            dihedral_sin_idx, harmonic_potential.feat_idx)
 
 
 def test_cgnet():
@@ -353,4 +358,3 @@ def test_linear_regression():
     y_pred = reg.predict(x)
 
     np.testing.assert_almost_equal(mse(y, y_pred), loss, decimal=1)
-

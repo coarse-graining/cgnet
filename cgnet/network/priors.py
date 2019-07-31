@@ -4,6 +4,7 @@
 import torch
 import torch.nn as nn
 
+
 def assemble_harmonic_inputs(prior_dict, indices):
     """Function for assembling __init__ arguments for a HarmonicLayer
 
@@ -22,9 +23,10 @@ def assemble_harmonic_inputs(prior_dict, indices):
 
     """
     feat_dict = {}
-    for idx, beads, stats in zip(indices, prior_dict.keys(), prior_dict.values()):
-        feat_dict[idx] = {'beads' : beads,
-                          'params' : {'mean' : stats['mean'], 'k' : stats['k']}}
+    for idx, beads, stats in zip(indices, prior_dict.keys(),
+                                 prior_dict.values()):
+        feat_dict[idx] = {'beads': beads,
+                          'params': {'mean': stats['mean'], 'k': stats['k']}}
     return feat_dict
 
 
@@ -187,8 +189,8 @@ class HarmonicLayer(_PriorLayer):
         self.harmonic_parameters = torch.tensor([])
         for param_dict in self.params:
             self.harmonic_parameters = torch.cat((self.harmonic_parameters,
-                                                  torch.tensor([[param_dict['k']],
-                                                  [param_dict['mean']]])), dim=1)
+                                       torch.tensor([[param_dict['k']],
+                                       [param_dict['mean']]])), dim=1)
 
     def forward(self, in_feat):
         """Calculates harmonic contribution of bond/angle interactions to energy
