@@ -205,7 +205,7 @@ def test_prior_with_stats_dropout():
                                get_backbone_angles=feature_bools[1],
                                get_backbone_dihedrals=feature_bools[2])
 
-    feat_layer = GeometryFeature(feature_tuples=stats.get_unique_tuples())
+    feat_layer = GeometryFeature(feature_tuples=stats.feature_tuples)
     if 'Distances' in stats.descriptions:
         # HarmonicLayer bonds test with random constants & means
         bonds_stats = stats.get_prior_statistics(features='Bonds')
@@ -225,34 +225,13 @@ def test_prior_with_stats_dropout():
                           in zip(dist_idx, repul_distances, ex_vols, exps))
         repulsion_potential = RepulsionLayer(repul_dict)
         np.testing.assert_array_equal(dist_idx, repulsion_potential.feat_idx)
-    if 'Angles' in stats.descriptions:
-        # HarmonicLayer angles test with random constants & means
-        angles_stats = stats.get_prior_statistics(features='Angles')
-        angles_idx = stats.return_indices('Angles')
-        angles_dict = assemble_harmonic_inputs(angles_stats, angles_idx)
-        harmonic_potential = HarmonicLayer(angles_dict)
-        np.testing.assert_array_equal(angles_idx, harmonic_potential.feat_idx)
-    if 'Dihedral_cosines' in stats.descriptions:
-        # HarmonicLayer dihedrals test with random constants & means
-        dihedral_cos_stats = stats.get_prior_statistics(
-            features='Dihedral_cosines')
-        dihedral_cos_idx = stats.return_indices('Dihedral_cosines')
-        dihedral_cos_dict = assemble_harmonic_inputs(
-            dihedral_cos_stats, dihedral_cos_idx)
-        harmonic_potential = HarmonicLayer(dihedral_cos_dict)
-        np.testing.assert_array_equal(
-            dihedral_cos_idx, harmonic_potential.feat_idx)
-    if 'Dihedral_sines' in stats.descriptions:
-        # HarmonicLayer dihedrals test with random constants & mean
-        dihedral_sin_stats = stats.get_prior_statistics(
-            features='Dihedral_sines')
-        dihedral_sin_idx = stats.return_indices('Dihedral_sines')
-        dihedral_sin_dict = assemble_harmonic_inputs(
-            dihedral_sin_stats, dihedral_sin_idx)
-        harmonic_potential = HarmonicLayer(dihedral_sin_dict)
-        np.testing.assert_array_equal(
-            dihedral_sin_idx, harmonic_potential.feat_idx)
-
+        for name in ['Angles', 'Dihedral_cosines', 'Dihedral_sines']:
+            if name in stats.descriptions:
+                feat_stats = stats.get_prior_statistics(features=name)
+                feat_idx = stats.return_indices(name)
+                feat_dict = assemble_harmonic_inputs(feat_stats, feat_idx)
+                harmonic_potential = HarmonicLayer(feat_dict)
+                np.testing.assert_array_equal(feat_idx, harmonic_potential.feat_idx)
 
 def test_cgnet():
     # Tests CGnet class criterion attribute, architecture size, and network
