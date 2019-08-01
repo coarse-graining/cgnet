@@ -228,26 +228,6 @@ class GeometryStatistics():
                     self.feature_tuples.extend(self.descriptions[feature_type])
         self._master_stat_array = np.array(self._master_stat_array)
 
-    def get_unique_tuples(self):
-        """Returns unique tuples from self.master_description_tuples and
-        removes phase information from quad bead tuples
-
-        Returns
-        -------
-        unique_tuples : list of tuples
-            list of unique bead tuples for use in forming custom features for
-            a GeometryFeature() instance. All quad bead tuples return do not
-            contain dihedral phase information, i.e. 'sin' or 'cos', as the
-            terminal tuple element
-        """
-
-        unique_tuples = []
-        for desc in self.order:
-            sub_list = self.descriptions[desc]
-            for bead_tuple in sub_list:
-                if bead_tuple not in unique_tuples:
-                    unique_tuples.append(bead_tuple)
-        return unique_tuples
 
     def _process_custom_feature_tuples(self, custom_feature_tuples):
         """Helper function to sort custom features into distances, angles,
