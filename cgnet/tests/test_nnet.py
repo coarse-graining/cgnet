@@ -108,7 +108,7 @@ def test_repulsion_layer():
     repulsion_potential = RepulsionLayer(repul_dict)
     feat_layer = GeometryFeature(n_beads=beads)
     feat = feat_layer(coords)
-    energy = repulsion_potential(feat[:, repulsion_potential.feat_idx])
+    energy = repulsion_potential(feat[:, repulsion_potential.callback_indices])
 
     np.testing.assert_equal(energy.size(), (frames, 1))
     start_idx = 0
@@ -135,14 +135,14 @@ def test_harmonic_layer():
     harmonic_potential = HarmonicLayer(bonds_dict)
     feat_layer = GeometryFeature(n_beads=beads)
     feat = feat_layer(coords)
-    energy = harmonic_potential(feat[:, harmonic_potential.feat_idx])
+    energy = harmonic_potential(feat[:, harmonic_potential.callback_indices])
 
     np.testing.assert_equal(energy.size(), (frames, 1))
     start_idx = 0
     feat_idx = stats.return_indices('Bonds')
     features = [stats.master_description_tuples[i] for i in feat_idx]
     assert features == harmonic_potential.features
-    assert feat_idx == harmonic_potential.feat_idx
+    assert feat_idx == harmonic_potential.callback_indices
 
     feature_stats = stats.get_prior_statistics('Bonds')
     harmonic_parameters = torch.tensor([])
@@ -172,9 +172,9 @@ def test_prior_callback_order():
     bonds_dict = assemble_harmonic_inputs(bonds_stats, bonds_idx)
 
     harmonic_potential = HarmonicLayer(bonds_dict)
-    np.testing.assert_array_equal(bonds_idx, harmonic_potential.feat_idx)
+    np.testing.assert_array_equal(bonds_idx, harmonic_potential.callback_indices)
 
-    energy = harmonic_potential(feat[:, harmonic_potential.feat_idx])
+    energy = harmonic_potential(feat[:, harmonic_potential.callback_indices])
     feature_stats = stats.get_prior_statistics('Bonds')
     feat_idx = stats.return_indices('Bonds')
     harmonic_parameters = torch.tensor([])
@@ -212,7 +212,7 @@ def test_prior_with_stats_dropout():
         bonds_idx = stats.return_indices('Bonds')
         bonds_dict = assemble_harmonic_inputs(bonds_stats, bonds_idx)
         harmonic_potential = HarmonicLayer(bonds_dict)
-        np.testing.assert_array_equal(bonds_idx, harmonic_potential.feat_idx)
+        np.testing.assert_array_equal(bonds_idx, harmonic_potential.callback_indices)
 
         # RepulsionLayer test with random exculsion vols & exps
         repul_distances = stats.descriptions['Distances']
@@ -224,14 +224,14 @@ def test_prior_with_stats_dropout():
                           for index, beads, ex_vol, exp
                           in zip(dist_idx, repul_distances, ex_vols, exps))
         repulsion_potential = RepulsionLayer(repul_dict)
-        np.testing.assert_array_equal(dist_idx, repulsion_potential.feat_idx)
+        np.testing.assert_array_equal(dist_idx, repulsion_potential.callback_indices)
         for name in ['Angles', 'Dihedral_cosines', 'Dihedral_sines']:
             if name in stats.descriptions:
                 feat_stats = stats.get_prior_statistics(features=name)
                 feat_idx = stats.return_indices(name)
                 feat_dict = assemble_harmonic_inputs(feat_stats, feat_idx)
                 harmonic_potential = HarmonicLayer(feat_dict)
-                np.testing.assert_array_equal(feat_idx, harmonic_potential.feat_idx)
+                np.testing.assert_array_equal(feat_idx, harmonic_potential.callback_indices)
 
 def test_cgnet():
     # Tests CGnet class criterion attribute, architecture size, and network

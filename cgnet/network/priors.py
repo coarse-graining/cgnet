@@ -56,13 +56,13 @@ class _PriorLayer(nn.Module):
 
     def __init__(self, feat_data):
         super(_PriorLayer, self).__init__()
-        self.params = []
+        self.interaction_parameters = []
         self.features = []
-        self.feat_idx = []
+        self.callback_indices = []
         for idx, par in feat_data.items():
-            self.feat_idx.append(idx)
+            self.callback_indices.append(idx)
             self.features.append(par['beads'])
-            self.params.append(par['params'])
+            self.interaction_parameters.append(par['params'])
 
     def forward(self, in_feat):
         """Forward method to compute the prior energy contribution.
@@ -112,7 +112,7 @@ class RepulsionLayer(_PriorLayer):
 
     def __init__(self, feat_data):
         super(RepulsionLayer, self).__init__(feat_data)
-        for param_dict in self.params:
+        for param_dict in self.interaction_parameters:
             if (key in param_dict for key in ('ex_vol', 'exp')):
                 pass
             else:
@@ -120,7 +120,7 @@ class RepulsionLayer(_PriorLayer):
                     'Missing or incorrect key for repulsion parameters'
                 )
         self.repulsion_parameters = torch.tensor([])
-        for param_dict in self.params:
+        for param_dict in self.interaction_parameters:
             self.repulsion_parameters = torch.cat((
                 self.repulsion_parameters,
                 torch.tensor([[param_dict['ex_vol']],
@@ -181,13 +181,13 @@ class HarmonicLayer(_PriorLayer):
 
     def __init__(self, feat_data):
         super(HarmonicLayer, self).__init__(feat_data)
-        for param_dict in self.params:
+        for param_dict in self.interaction_parameters:
             if (key in param_dict for key in ('k', 'mean')):
                 pass
             else:
                 KeyError('Missing or incorrect key for harmonic parameters')
         self.harmonic_parameters = torch.tensor([])
-        for param_dict in self.params:
+        for param_dict in self.interaction_parameters:
             self.harmonic_parameters = torch.cat((self.harmonic_parameters,
                                        torch.tensor([[param_dict['k']],
                                        [param_dict['mean']]])), dim=1)
