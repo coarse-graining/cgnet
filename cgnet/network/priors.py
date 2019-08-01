@@ -43,6 +43,19 @@ class _PriorLayer(nn.Module):
 
             { idx : {'beads' : (b1, b2,...), 'parameters' : dict } }
 
+    Attributes
+    ----------
+    interaction_parameters: list of dict
+        each list element contains a dictionary of physical parameters that
+        characterizxe the interaction of the associated beads. The order of
+        this list proceeds in the same order as self.callback_indices
+    callback_indices: list of int
+        indices used to access a specified subset of outputs from the feature
+        layer through a residual connection
+    features: list of tuples
+        list of bead tuples that denote which beads are involved in the
+        iteraction. Ordering is the same as self.callback_indices
+
     Examples
     --------
     To assemble the feat_dict input for a HarmonicLayer prior for bonds from an
@@ -98,6 +111,14 @@ class RepulsionLayer(_PriorLayer):
         one such feat_dict entry:
 
         { 4 : { 'beads' : (0,2), 'params' : {  'ex_vol' : 5.5, 'exp' : 6.0 }}
+
+    Attributes
+    ----------
+    repulsion_parameters : torch.Tensor
+        tensor of shape [2, num_interactions]. The first row contains the
+        excluded volumes, the second row contains the exponents, and each
+        column corresponds to a single interaction in the order determined
+        by self.callback_indices
 
     Notes
     -----
@@ -166,6 +187,14 @@ class HarmonicLayer(_PriorLayer):
         one such feat_dict entry:
 
         { 1 : { 'beads' : (0,1), 'params' : { 'mean' : 0.34, 'k' : 1.3 }}
+
+    Attributes
+    ----------
+    harmonic_parameters : torch.Tensor
+        tensor of shape [2, num_interactions]. The first row contains the
+        harmonic spring constants, the second row contains the mean positions,
+        and each column corresponds to a single interaction in the order
+        determined by self.callback_indices
 
     Notes
     -----
@@ -257,4 +286,4 @@ class ZscoreLayer(nn.Module):
 
         """
         rescaled_feat = (in_feat - self.zscores[0, :])/self.zscores[1, :]
-        return rescaled_feat
+        rturn rescaled_feat
