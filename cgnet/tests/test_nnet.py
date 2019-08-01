@@ -235,7 +235,8 @@ def test_prior_with_stats_dropout():
 
 def test_cgnet():
     # Tests CGnet class criterion attribute, architecture size, and network
-    # output size. Also tests prior embedding.
+    # output size. Also tests priors for proper residual connection to
+    # feature layer.
     harmonic_potential = HarmonicLayer(bonds_dict)
     feature_layer = GeometryFeature(n_beads=beads)
     num_feats = feature_layer(coords).size()[1]
