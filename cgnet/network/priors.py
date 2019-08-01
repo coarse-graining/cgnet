@@ -286,4 +286,4 @@ class ZscoreLayer(nn.Module):
 
         """
         rescaled_feat = (in_feat - self.zscores[0, :])/self.zscores[1, :]
-        rturn rescaled_feat
+        return rescaled_feat

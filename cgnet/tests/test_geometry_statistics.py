@@ -19,6 +19,16 @@ out = f.forward(xt)
 
 stats = GeometryStatistics(xt)
 
+def test_feature_tuples():
+    # Tests to see if the feature_tuples attribute is assembled correctly
+	unique_tuples = []
+	for desc in stats.order:
+		sub_list = stats.descriptions[desc]
+		for bead_tuple in sub_list:
+			if bead_tuple not in unique_tuples:
+				unique_tuples.append(bead_tuple)
+	assert unique_tuples == stats.feature_tuples
+
 def test_manual_backbone_calculations():
     # Make sure angle statistics work for manually specified backbone
 
