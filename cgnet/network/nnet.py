@@ -140,7 +140,7 @@ class CGnet(nn.Module):
         # addition of external priors to form total energy
         if self.priors:
             for prior in self.priors:
-                energy += prior(feat[:, prior.feat_idx])
+                energy += prior(feat[:, prior.callback_indices])
 
         # Perform autograd to learn potential of conservative force field
         force = torch.autograd.grad(-torch.sum(energy),

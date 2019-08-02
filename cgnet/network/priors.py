@@ -5,6 +5,31 @@ import torch
 import torch.nn as nn
 
 
+def assemble_harmonic_inputs(prior_dict, indices):
+    """Function for assembling __init__ arguments for a HarmonicLayer
+
+    Parameters
+    ----------
+    prior_dict : dict
+        output dictionary of
+        cgnet.feature.GeometryStatistics.get_prior_statistics()
+    indices : list of int
+        list of callback indices used to access a feature layer
+
+    Returns
+    -------
+    feat_dict : dict
+        feat_dict input for HarmonicLayer
+
+    """
+    feat_dict = {}
+    for idx, beads, stats in zip(indices, prior_dict.keys(),
+                                 prior_dict.values()):
+        feat_dict[idx] = {'beads': beads,
+                          'params': {'mean': stats['mean'], 'k': stats['k']}}
+    return feat_dict
+
+
 class _PriorLayer(nn.Module):
     """Layer for adding prior energy computations external to CGnet hidden
     output
@@ -12,57 +37,45 @@ class _PriorLayer(nn.Module):
     Parameters
     ----------
     feat_data: dict
-        dictionary defining the CG beads and interaction parameters for
-        computing the energy contributions of the residual prior energy. The
-        keys are tuples defining the CG beads involved in each interaction,
-        and the values are dictionaries of physical constants names/values
-        (keys: strings, values: float) involved in the interaction encompassed
-        by those CG beads
-    descriptions: dict
-        dictionary of CG bead indices as tuples, for feature keys. Possible
-        feature keys are those implemented in GeometryStatistics():
-        \"Distances\", \"Angles\", \"Dihedral_cosines\", and/or
-        \"Dihedral_sines\"
-    order : list of str
-        list of feature types that determines the order of features output
-        from a GeometryFeature() layer or ProteinBacboneStatistics
-        instance.
-    feature_type: str
-        features type from which to select coordinates.
+        dictionary defining feature layer callback indices, feature bead tuples,
+        and the phyiscal constants defining the prior energy interaction. This
+        input is organized into the following form:
+
+            { idx : {'beads' : (b1, b2,...), 'parameters' : dict } }
+
+    Attributes
+    ----------
+    interaction_parameters: list of dict
+        each list element contains a dictionary of physical parameters that
+        characterizxe the interaction of the associated beads. The order of
+        this list proceeds in the same order as self.callback_indices
+    callback_indices: list of int
+        indices used to access a specified subset of outputs from the feature
+        layer through a residual connection
+    features: list of tuples
+        list of bead tuples that denote which beads are involved in the
+        iteraction. Ordering is the same as self.callback_indices
 
     Examples
     --------
     To assemble the feat_dict input for a HarmonicLayer prior for bonds from an
     instance of a stats = GeometryStatistics():
 
-    features = stats.get_bond_constants(flip_dict=True, zscores=True)
-    bonds = dict((k, features[k]) for k in [(i, i+1) for i in
-                  range(stats.n_beads)])
-    bond_layer = HarmonicLayer(bonds, stats.descriptions, "Distances")
-
+    bonds_stats = stats.get_prior_statistics('Bonds')
+    bonds_idx = stats.return_indices('Bonds')
+    bonds_dict = assemble_harmonic_inputs(bonds_stats, bonds_idx)
+    bond_layer = HarmonicLayer(bonds_dict)
     """
 
-    def __init__(self, feat_data, descriptions, order, feature_type):
+    def __init__(self, feat_data):
         super(_PriorLayer, self).__init__()
-        if feature_type not in descriptions.keys():
-            raise ValueError('Feature type not found in descriptions')
-        self.params = []
-        self.feature_type = feature_type
-        self.features = [feat for feat in feat_data.keys()]
-        self.feat_idx = []
-        # get number of each feature to determine starting idx
-        nums = [len(descriptions[desc]) for desc in order]
-        self.start_idx = 0
-        for num, desc in zip(nums, order):
-            if self.feature_type == desc:
-                break
-            else:
-                self.start_idx += num
-        for key, par in feat_data.items():
-            self.features.append(key)
-            self.feat_idx.append(self.start_idx +
-                                 descriptions[self.feature_type].index(key))
-            self.params.append(par)
+        self.interaction_parameters = []
+        self.features = []
+        self.callback_indices = []
+        for idx, par in feat_data.items():
+            self.callback_indices.append(idx)
+            self.features.append(par['beads'])
+            self.interaction_parameters.append(par['params'])
 
     def forward(self, in_feat):
         """Forward method to compute the prior energy contribution.
@@ -87,27 +100,25 @@ class RepulsionLayer(_PriorLayer):
     feat_data: dict
         dictionary defining the CG beads and interaction parameters for
         computing the energy contributions of the residual prior energy. The
-        keys are tuples defining the CG beads involved in each pairwise
-        interaction, and the values are dictionaries of physical constants
-        involved in the corresponding repulsion interaction: The keys of this
-        subdictionary are \"ex_vol\", and \"exp\", which are the exlcuded volume
-        parameter (in length units) and the exponent (positive, dimensionless)
-        respectively. The corresponding values are the the numerical values of
-        each constant. For example, for one such feat_dict entry:
+        keys are integers used to call back to a GeometryFeature.forward()
+        output. The corresponding values are dictionaries that describe the
+        bead tuple involved in the interaction ('beads') and a parameter
+        dictionary that contains the constants that characterize the interaction
+        ('params'). The keys of this parameter dictionary are 'ex_vol', and
+        'exp', which are the exlcuded volume parameter (in length units) and the
+        exponent (positive, dimensionless) respectively. The corresponding
+        values are the the numerical values of each constant. For example, for
+        one such feat_dict entry:
 
-            { (3, 9) : {  \"ex_vol\" : 5.5, \"exp\" : 6.0 }}
+        { 4 : { 'beads' : (0,2), 'params' : {  'ex_vol' : 5.5, 'exp' : 6.0 }}
 
-    descriptions: dict
-        dictionary of CG bead indices as tuples, for feature keys. Possible
-        feature keys are those implemented in GeometryStatistics():
-        \"Distacnces\", \"Angles\", \"Dihedral_cosines\", and/or
-        \"Dihedral_sines\"
-    order : list of str
-        list of feature types that determines the order of features output
-        from a GeometryFeature() layer or ProteinBacboneStatistics
-        instance.
-    feature_type: str
-        features type from which to select coordinates.
+    Attributes
+    ----------
+    repulsion_parameters : torch.Tensor
+        tensor of shape [2, num_interactions]. The first row contains the
+        excluded volumes, the second row contains the exponents, and each
+        column corresponds to a single interaction in the order determined
+        by self.callback_indices
 
     Notes
     -----
@@ -120,10 +131,9 @@ class RepulsionLayer(_PriorLayer):
 
     """
 
-    def __init__(self, feat_data, descriptions, order, feature_type):
-        super(RepulsionLayer, self).__init__(feat_data, descriptions, order,
-                                             feature_type)
-        for param_dict in self.params:
+    def __init__(self, feat_data):
+        super(RepulsionLayer, self).__init__(feat_data)
+        for param_dict in self.interaction_parameters:
             if (key in param_dict for key in ('ex_vol', 'exp')):
                 pass
             else:
@@ -131,7 +141,7 @@ class RepulsionLayer(_PriorLayer):
                     'Missing or incorrect key for repulsion parameters'
                 )
         self.repulsion_parameters = torch.tensor([])
-        for param_dict in self.params:
+        for param_dict in self.interaction_parameters:
             self.repulsion_parameters = torch.cat((
                 self.repulsion_parameters,
                 torch.tensor([[param_dict['ex_vol']],
@@ -166,28 +176,25 @@ class HarmonicLayer(_PriorLayer):
     feat_data: dict
         dictionary defining the CG beads and interaction parameters for
         computing the energy contributions of the residual prior energy. The
-        keys are tuples defining the CG beads involved in each pairwise
-        interaction, and the values are dictionaries of physical constants
-        involved in the corresponding harmonic interaction: The keys of this
-        subdictionary are \"k\", and \"mean\", which are the harmonic spring
-        constant (in energy/length^2 for bonds or energy units for angles) and
-        the mean (in length units for bonds or dimensionless for angles)
-        respectively. The corresponding values are the the numerical values of
-        each constant. For example, for one such feat_dict entry:
+        keys are integers used to call back to a GeometryFeature.forward()
+        output. The corresponding values are dictionaries that describe the
+        bead tuple involved in the interaction ('beads') and a parameter
+        dictionary that contains the constants that characterize the interaction
+        ('params'). The keys of this parameter dictionary are 'mean', and
+        'k', which are the harmonic mean (in length units) and the harmonic
+        spring constant (positive, dimensionless) respectively. The corresponding
+        values are the the numerical values of each constant. For example, for
+        one such feat_dict entry:
 
-            { (3, 4) : {  \"k\" : 139.2, \"mean\" : 1.2 }}
+        { 1 : { 'beads' : (0,1), 'params' : { 'mean' : 0.34, 'k' : 1.3 }}
 
-    descriptions: dict
-        dictionary of CG bead indices as tuples, for feature keys. Possible
-        feature keys are those implemented in GeometryStatistics():
-        \"Distacnces\", \"Angles\", \"Dihedral_cosines\", and/or
-        \"Dihedral_sines\"
-    order : list of str
-        list of feature types that determines the order of features output
-        from a GeometryFeature() layer or ProteinBacboneStatistics
-        instance.
-    feature_type: str
-        features type from which to select coordinates.
+    Attributes
+    ----------
+    harmonic_parameters : torch.Tensor
+        tensor of shape [2, num_interactions]. The first row contains the
+        harmonic spring constants, the second row contains the mean positions,
+        and each column corresponds to a single interaction in the order
+        determined by self.callback_indices
 
     Notes
     -----
@@ -201,19 +208,18 @@ class HarmonicLayer(_PriorLayer):
 
     """
 
-    def __init__(self, feat_data, descriptions, order, feature_type):
-        super(HarmonicLayer, self).__init__(feat_data, descriptions, order,
-                                            feature_type)
-        for param_dict in self.params:
+    def __init__(self, feat_data):
+        super(HarmonicLayer, self).__init__(feat_data)
+        for param_dict in self.interaction_parameters:
             if (key in param_dict for key in ('k', 'mean')):
                 pass
             else:
                 KeyError('Missing or incorrect key for harmonic parameters')
         self.harmonic_parameters = torch.tensor([])
-        for param_dict in self.params:
+        for param_dict in self.interaction_parameters:
             self.harmonic_parameters = torch.cat((self.harmonic_parameters,
-                                                  torch.tensor([[param_dict['k']],
-                                                  [param_dict['mean']]])), dim=1)
+                                       torch.tensor([[param_dict['k']],
+                                       [param_dict['mean']]])), dim=1)
 
     def forward(self, in_feat):
         """Calculates harmonic contribution of bond/angle interactions to energy
