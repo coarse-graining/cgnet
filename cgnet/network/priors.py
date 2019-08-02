@@ -67,15 +67,10 @@ class _PriorLayer(nn.Module):
     bond_layer = HarmonicLayer(bonds_dict)
     """
 
-    def __init__(self, feat_data):
+    def __init__(self, callback_indices, interaction_parameters):
         super(_PriorLayer, self).__init__()
-        self.interaction_parameters = []
-        self.features = []
-        self.callback_indices = []
-        for idx, par in feat_data.items():
-            self.callback_indices.append(idx)
-            self.features.append(par['beads'])
-            self.interaction_parameters.append(par['params'])
+        self.interaction_parameters = interaction_parameters
+        self.callback_indices = callback_indices
 
     def forward(self, in_feat):
         """Forward method to compute the prior energy contribution.
@@ -131,8 +126,8 @@ class RepulsionLayer(_PriorLayer):
 
     """
 
-    def __init__(self, feat_data):
-        super(RepulsionLayer, self).__init__(feat_data)
+    def __init__(self, callback_indices, interaction_parameters):
+        super(RepulsionLayer, self).__init__(callback_indices, interaction_parameters)
         for param_dict in self.interaction_parameters:
             if (key in param_dict for key in ('ex_vol', 'exp')):
                 pass
@@ -208,8 +203,8 @@ class HarmonicLayer(_PriorLayer):
 
     """
 
-    def __init__(self, feat_data):
-        super(HarmonicLayer, self).__init__(feat_data)
+    def __init__(self, callback_indices, interaction_parameters):
+        super(HarmonicLayer, self).__init__(callback_indices, interaction_parameters)
         for param_dict in self.interaction_parameters:
             if (key in param_dict for key in ('k', 'mean')):
                 pass
