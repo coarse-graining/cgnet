@@ -3,7 +3,6 @@
 import torch.nn as nn
 import torch
 import numpy as np
-import random
 from torch.utils.data import SubsetRandomSampler, DataLoader
 from cgnet.network import lipschitz_projection, dataset_loss, Simulation
 from cgnet.network import CGnet, ForceLoss
@@ -24,7 +23,7 @@ arch = (LinearLayer(dims, dims, activation=nn.Tanh()) +
         LinearLayer(dims, 1, activation=None))
 
 model = CGnet(arch, ForceLoss()).float()
-lip_mask = [random.getrandbits(1) for _ in arch if isinstance(_, nn.Linear)]
+lip_mask = [np.random.randint(2) for _ in arch if isinstance(_, nn.Linear)]
 length = np.random.choice([2, 4])*2
 save = np.random.choice([2, 4])
 
