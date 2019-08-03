@@ -8,8 +8,7 @@ import torch.nn as nn
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
 from cgnet.network import (CGnet, ForceLoss, RepulsionLayer,
-                           HarmonicLayer, ZscoreLayer, Simulation,
-                           assemble_harmonic_inputs)
+                           HarmonicLayer, ZscoreLayer, Simulation)
 from cgnet.feature import (GeometryStatistics, GeometryFeature,
                            LinearLayer)
 
