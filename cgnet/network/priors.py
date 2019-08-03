@@ -65,7 +65,7 @@ class _PriorLayer(nn.Module):
 
     def __init__(self, callback_indices, interaction_parameters):
         super(_PriorLayer, self).__init__()
-        if len(callback_indices) != len(interaction_parameters:
+        if len(callback_indices) != len(interaction_parameters):
             raise ValueError("callback_indices and interaction parameters must have the same length")
         self.interaction_parameters = interaction_parameters
         self.callback_indices = callback_indices
