@@ -383,7 +383,8 @@ class GeometryStatistics():
                     newdict[i][stat] = mydict[stat][i]
         return newdict
 
-    def get_prior_statistics(self, features=None, tensor=True, flip_dict=True):
+    def get_prior_statistics(self, features=None, tensor=True,
+                             as_list=False, flip_dict=True):
         """Obtain prior statistics (mean, standard deviation, and
         bond/angle/dihedral constants) for features
 
@@ -396,6 +397,10 @@ class GeometryStatistics():
             specifies which feature to form the prior statistics for. If list
             of tuples is provided, only those corresponding features will be
             processed. If None, all features will be processed.
+        as_list : Boolean (default=True)
+            if True, a list of individual dictionaries is returned instead of
+            a nested dictionary. The ordering of the list is the same as the
+            ordering of input feature tuples.
         flip_dict : Boolean (default=True)
             Returns a dictionary with outer keys as indices if True and
             outer keys as statistic string names if False
@@ -409,6 +414,10 @@ class GeometryStatistics():
             If flip_dict is False, the outer keys will be the 'mean' and 'std'
             statistics and the inner keys will be bead pairs, triples, or
             quadruples+phase
+        prior_statistics_list : list of python dictionaries (if as_list=True)
+            Each element of the list is a dictionary containing the 'mean',
+            'std', and 'k' statistics. The list elements share teh same order
+            as the input feature tuples
 
         Notes
         -----
@@ -429,14 +438,22 @@ class GeometryStatistics():
         self._prior_statistics_keys = prior_stat_keys
         self._prior_statistics_array = prior_stat_array
 
-        prior_statistics_dict = {}
-        for i, stat in enumerate(['mean', 'std', 'k']):
-            prior_statistics_dict[stat] = dict(zip(prior_stat_keys,
-                                                   prior_stat_array[i, :]))
-        if flip_dict:
-            prior_statistics_dict = self._flip_dict(prior_statistics_dict)
+        if as_list == True:
+            prior_statistics_list = []
+            for i in range(prior_stat_array.shape[1]):
+                prior_statistics_list.append({'mean' : prior_stat_array[0, i],
+                                              'std' : prior_stat_array[1, i],
+                                              'k' : prior_stat_array[2, i]})
+            return prior_statistics_list
+        else:
+            prior_statistics_dict = {}
+            for i, stat in enumerate(['mean', 'std', 'k']):
+                prior_statistics_dict[stat] = dict(zip(prior_stat_keys,
+                                                       prior_stat_array[i, :]))
+            if flip_dict:
+                prior_statistics_dict = self._flip_dict(prior_statistics_dict)
 
-        return prior_statistics_dict
+            return prior_statistics_dict
 
     def return_indices(self, features):
         """Return all indices for specified feature type. Useful for

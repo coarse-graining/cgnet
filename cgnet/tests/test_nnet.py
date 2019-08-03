@@ -29,9 +29,8 @@ stats = GeometryStatistics(coords.detach().numpy())
 
 # Prior variables
 full_prior_stats = stats.get_prior_statistics()
-bonds_stats = stats.get_prior_statistics(features='Bonds')
 bonds_idx = stats.return_indices('Bonds')
-bonds_dict = assemble_harmonic_inputs(bonds_stats, bonds_idx)
+bonds_interactions = stats.get_prior_statistics(features='Bonds', as_list=True)
 
 repul_distances = [i for i in stats.descriptions['Distances']
                    if abs(i[0]-i[1]) > 2]
@@ -39,10 +38,8 @@ repul_idx = stats.return_indices(repul_distances)
 
 ex_vols = np.random.uniform(2, 8, len(repul_distances))
 exps = np.random.randint(1, 6, len(repul_distances))
-repul_dict = dict((idx, {'beads': beads,
-                         'params': {'ex_vol': ex_vol, 'exp': exp}})
-                  for idx, beads, ex_vol, exp
-                  in zip(repul_idx, repul_distances, ex_vols, exps))
+repul_interactions = [{'ex_vol' : ex_vol, "exp" : exp} for ex_vol, exp
+                      in zip(ex_vols, exps)]
 
 descriptions = stats.descriptions
 order = stats.order
@@ -105,7 +102,7 @@ def test_zscore_layer():
 def test_repulsion_layer():
     # Tests RepulsionLayer class for calculation and output size
 
-    repulsion_potential = RepulsionLayer(repul_dict)
+    repulsion_potential = RepulsionLayer(repul_idx, repul_interactions)
     feat_layer = GeometryFeature(n_beads=beads)
     feat = feat_layer(coords)
     energy = repulsion_potential(feat[:, repulsion_potential.callback_indices])
@@ -132,7 +129,7 @@ def test_repulsion_layer():
 def test_harmonic_layer():
     # Tests HarmonicLayer class for calculation and output size
 
-    harmonic_potential = HarmonicLayer(bonds_dict)
+    harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
     feat_layer = GeometryFeature(n_beads=beads)
     feat = feat_layer(coords)
     energy = harmonic_potential(feat[:, harmonic_potential.callback_indices])
@@ -141,7 +138,6 @@ def test_harmonic_layer():
     start_idx = 0
     feat_idx = stats.return_indices('Bonds')
     features = [stats.master_description_tuples[i] for i in feat_idx]
-    assert features == harmonic_potential.features
     assert feat_idx == harmonic_potential.callback_indices
 
     feature_stats = stats.get_prior_statistics('Bonds')
@@ -168,10 +164,9 @@ def test_prior_callback_order():
                     if len(beads) == 2 and abs(beads[0] - beads[1]) == 1]
     np.random.shuffle(bonds_tuples)
     bonds_idx = stats.return_indices(bonds_tuples)
-    bonds_stats = stats.get_prior_statistics(features=list(bonds_tuples))
-    bonds_dict = assemble_harmonic_inputs(bonds_stats, bonds_idx)
+    bonds_interactions = stats.get_prior_statistics(features=list(bonds_tuples), as_list=True)
 
-    harmonic_potential = HarmonicLayer(bonds_dict)
+    harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
     np.testing.assert_array_equal(bonds_idx, harmonic_potential.callback_indices)
 
     energy = harmonic_potential(feat[:, harmonic_potential.callback_indices])
@@ -208,10 +203,9 @@ def test_prior_with_stats_dropout():
     feat_layer = GeometryFeature(feature_tuples=stats.feature_tuples)
     if 'Distances' in stats.descriptions:
         # HarmonicLayer bonds test with random constants & means
-        bonds_stats = stats.get_prior_statistics(features='Bonds')
+        bonds_interactions = stats.get_prior_statistics(features='Bonds', as_list=True)
         bonds_idx = stats.return_indices('Bonds')
-        bonds_dict = assemble_harmonic_inputs(bonds_stats, bonds_idx)
-        harmonic_potential = HarmonicLayer(bonds_dict)
+        harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
         np.testing.assert_array_equal(bonds_idx, harmonic_potential.callback_indices)
 
         # RepulsionLayer test with random exculsion vols & exps
@@ -219,25 +213,22 @@ def test_prior_with_stats_dropout():
         dist_idx = stats.return_indices('Distances')
         ex_vols = np.random.uniform(2, 8, len(repul_distances))
         exps = np.random.randint(1, 6, len(repul_distances))
-        repul_dict = dict((index, {'beads': beads,
-                                   'params': {'ex_vol': ex_vol, 'exp': exp}})
-                          for index, beads, ex_vol, exp
-                          in zip(dist_idx, repul_distances, ex_vols, exps))
-        repulsion_potential = RepulsionLayer(repul_dict)
+        repul_interactions = [{'ex_vol' : ex_vol, "exp" : exp} for ex_vol, exp
+                      in zip(ex_vols, exps)]
+        repulsion_potential = RepulsionLayer(dist_idx, repul_interactions)
         np.testing.assert_array_equal(dist_idx, repulsion_potential.callback_indices)
         for name in ['Angles', 'Dihedral_cosines', 'Dihedral_sines']:
             if name in stats.descriptions:
-                feat_stats = stats.get_prior_statistics(features=name)
+                feat_interactions = stats.get_prior_statistics(features=name, as_list=True)
                 feat_idx = stats.return_indices(name)
-                feat_dict = assemble_harmonic_inputs(feat_stats, feat_idx)
-                harmonic_potential = HarmonicLayer(feat_dict)
+                harmonic_potential = HarmonicLayer(feat_idx, feat_interactions)
                 np.testing.assert_array_equal(feat_idx, harmonic_potential.callback_indices)
 
 def test_cgnet():
     # Tests CGnet class criterion attribute, architecture size, and network
     # output size. Also tests priors for proper residual connection to
     # feature layer.
-    harmonic_potential = HarmonicLayer(bonds_dict)
+    harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
     feature_layer = GeometryFeature(n_beads=beads)
     num_feats = feature_layer(coords).size()[1]
 
@@ -265,7 +256,7 @@ def test_cgnet_simulation():
     # Tests a simulation from a CGnet built with the GeometryFeature
     # for the shapes of its coordinate, force, and potential outputs
 
-    harmonic_potential = HarmonicLayer(bonds_dict)
+    harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
     feature_layer = GeometryFeature(n_beads=beads)
     num_feats = feature_layer(coords).size()[1]
 
