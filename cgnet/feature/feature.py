@@ -184,8 +184,8 @@ class ContinuousFilterConvolution(nn.Module):
         super(ContinuousFilterConvolution, self).__init__()
         filter_layers = LinearLayer(num_gaussians, num_filters, bias=True,
                                     activation=ShiftedSoftplus())
-        # No activation function here allows the filter generator to contain
-        # negative values.
+        # No activation function in the last layer allows the filter generator
+        # to contain negative values.
         filter_layers += LinearLayer(num_filters, num_filters, bias=True)
         self.filter_generator = nn.Sequential(*filter_layers)
 
