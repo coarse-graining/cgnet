@@ -32,7 +32,7 @@ class _PriorLayer(nn.Module):
               {'parameter_1' : 1.24, 'parameter_2' : 2.21, ... }]
 
         In this way, _PriorLayer may be subclassed to make arbitray prior
-        layers nased on arbitrary interactions between bead tuples.
+        layers based on arbitrary interactions between bead tuples.
 
     Attributes
     ----------
@@ -122,6 +122,12 @@ class RepulsionLayer(_PriorLayer):
     not respect proper physical pairwise repulsions. The interaction is modeled
     after the VDW interaction term from the classic Leonard Jones potential.
 
+    References
+    ----------
+    Wang, J., Olsson, S., Wehmeyer, C., Pérez, A., Charron, N. E.,
+        de Fabritiis, G., Noé, F., Clementi, C. (2019). Machine Learning
+        of Coarse-Grained Molecular Dynamics Force Fields. ACS Central Science.
+        https://doi.org/10.1021/acscentsci.8b00913
     """
 
     def __init__(self, callback_indices, interaction_parameters):
@@ -199,6 +205,12 @@ class HarmonicLayer(_PriorLayer):
     Gaussian structure, which is easily intepretable as a harmonic energy
     contribution via the Boltzmann distribution.
 
+    References
+    ----------
+    Wang, J., Olsson, S., Wehmeyer, C., Pérez, A., Charron, N. E.,
+        de Fabritiis, G., Noé, F., Clementi, C. (2019). Machine Learning
+        of Coarse-Grained Molecular Dynamics Force Fields. ACS Central Science.
+        https://doi.org/10.1021/acscentsci.8b00913
     """
 
     def __init__(self, callback_indices, interaction_parameters):
