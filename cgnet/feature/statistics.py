@@ -438,7 +438,7 @@ class GeometryStatistics():
         self._prior_statistics_keys = prior_stat_keys
         self._prior_statistics_array = prior_stat_array
 
-        if as_list == True:
+        if as_list::
             prior_statistics_list = []
             for i in range(prior_stat_array.shape[1]):
                 prior_statistics_list.append({'mean' : prior_stat_array[0, i],
