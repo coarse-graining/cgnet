@@ -182,7 +182,7 @@ class HarmonicLayer(_PriorLayer):
         interaction using a dictionary of parameters keyed to corresponding
         numerical values. The order of these dictionaries follows the same order
         as the callback indices specifying which outputs from the feature layer
-        should pass through the prior. The parameters for RepulsionLayer
+        should pass through the prior. The parameters for HarmonicLayer
         dictionaries are 'mean', the center of the harmonic interaction
         (in length or angle units), and 'k', the (positive) harmonic spring
         constant (in units of energy / length**2 or 1 / length**2).
@@ -199,9 +199,9 @@ class HarmonicLayer(_PriorLayer):
     -----
     This prior energy is useful for constraining the CGnet potential in regions
     of configuration space in which sampling is normally precluded by physical
-    harmonic constraints assocaited with the structural integrity of the protein
+    harmonic constraints associated with the structural integrity of the protein
     along its backbone. The harmonic parameters are also easily estimated from
-    all atom simluation data because bond and angle distributions typically have
+    all atom simulation data because bond and angle distributions typically have
     Gaussian structure, which is easily intepretable as a harmonic energy
     contribution via the Boltzmann distribution.
 
