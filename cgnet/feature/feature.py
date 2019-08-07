@@ -150,6 +150,7 @@ class ContinuousFilterConvolution(nn.Module):
            (already precomputed so will be parsed as arguments)
         2. Atom-wise/Linear layer with shifted-softplus activation function
         3. Atom-wise/Linear layer with shifted-softplus activation function
+           (see Notes)
 
     The filter generator output is then multiplied element-wise with the
     continuous convolution filter as part of the interaction block.
@@ -164,6 +165,12 @@ class ContinuousFilterConvolution(nn.Module):
         Needs to be the same size as the features of the residual connection in
         the interaction block.
 
+    Notes
+    -----
+    Following the current implementation in SchNetPack, the last linear layer of
+    the filter generator does not contain an activation function.
+    This allows the filter generator to contain negative values.
+
     References
     ----------
     K.T. Schütt. P.-J. Kindermans, H. E. Sauceda, S. Chmiela,
@@ -177,10 +184,9 @@ class ContinuousFilterConvolution(nn.Module):
         super(ContinuousFilterConvolution, self).__init__()
         filter_layers = LinearLayer(num_gaussians, num_filters, bias=True,
                                     activation=ShiftedSoftplus())
-        # In SchNetPack they don't use any activation here, but in the
-        # publication figures there is.
-        filter_layers += LinearLayer(num_filters, num_filters, bias=True,
-                                     activation=ShiftedSoftplus())
+        # No activation function in the last layer allows the filter generator
+        # to contain negative values.
+        filter_layers += LinearLayer(num_filters, num_filters, bias=True)
         self.filter_generator = nn.Sequential(*filter_layers)
 
     def forward(self, features, rbf_expansion, neighbor_list):
