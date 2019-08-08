@@ -122,8 +122,8 @@ class GeometryStatistics():
         if get_all_distances:
             (self._pair_order,
              self._adj_backbone_pairs) = g.get_distance_indices(self.n_beads,
-                                                          self.backbone_inds,
-                                                          self._backbone_map)
+                                                                self.backbone_inds,
+                                                                self._backbone_map)
             if len(self._custom_distance_pairs) > 0:
                 warnings.warn(
                     "All distances are already being calculated, so custom " \
@@ -227,7 +227,6 @@ class GeometryStatistics():
                     # do only cosines
                     self.feature_tuples.extend(self.descriptions[feature_type])
         self._master_stat_array = np.array(self._master_stat_array)
-
 
     def _process_custom_feature_tuples(self, custom_feature_tuples):
         """Helper function to sort custom features into distances, angles,
@@ -418,7 +417,7 @@ class GeometryStatistics():
             Each element of the list is a dictionary containing the 'mean',
             'std', and 'k' statistics. The list elements share teh same order
             as the input feature tuples
-        prior_stat_keys: dict_keys (tuples of beads)
+        prior_statistics_keys: dict_keys (tuples of beads)
             If as_list=True, the prior statistics dictionary keys are returned ,
 
         Notes
@@ -431,26 +430,29 @@ class GeometryStatistics():
             stats_inds = np.arange(len(self.master_description_tuples))
         self._stats_inds = stats_inds
 
-        prior_stat_keys = [self.master_description_tuples[i]
-                           for i in stats_inds]
-        prior_stat_array = self._master_stat_array[:, stats_inds]
+        prior_statistics_keys = [self.master_description_tuples[i]
+                                 for i in stats_inds]
+        prior_statistics_array = self._master_stat_array[:, stats_inds]
 
         if tensor:
-            prior_stat_array = torch.from_numpy(prior_stat_array).float()
-        self._prior_statistics_keys = prior_stat_keys
-        self._prior_statistics_array = prior_stat_array
+            prior_statistics_array = torch.from_numpy(
+                prior_statistics_array).float()
+        self.prior_statistics_keys = prior_statistics_keys
+        self._prior_statistics_array = prior_statistics_array
         prior_statistics_dict = {}
         for i, stat in enumerate(['mean', 'std', 'k']):
-            prior_statistics_dict[stat] = dict(zip(prior_stat_keys,
-                                                   prior_stat_array[i, :]))
+            prior_statistics_dict[stat] = dict(zip(prior_statistics_keys,
+                                                   prior_statistics_array[i, :]))
         if as_list:
             prior_statistics_list = []
-            for i in range(prior_stat_array.shape[1]):
-                prior_statistics_list.append({'mean' : prior_stat_array[0, i],
-                                              'std' : prior_stat_array[1, i],
-                                              'k' : prior_stat_array[2, i]})
+            for i in range(prior_statistics_array.shape[1]):
+                prior_statistics_list.append(
+                    {'mean': prior_statistics_array[0, i],
+                     'std': prior_statistics_array[1, i],
+                     'k': prior_statistics_array[2, i]}
+                )
             prior_statistics_dict = self._flip_dict(prior_statistics_dict)
-            return prior_statistics_list, prior_stat_keys
+            return prior_statistics_list, prior_statistics_keys
         else:
             if flip_dict:
                 prior_statistics_dict = self._flip_dict(prior_statistics_dict)
@@ -509,8 +511,8 @@ class GeometryStatistics():
 
         elif isinstance(features, list):
             if any(len(bead_tuple) == 4 for bead_tuple in features):
-                raise ValueError("Bead tuples of 4 beads need to specify "
-                                 "\'cos\' or \'sin\' as 5th element")
+                raise ValueError("Bead tuples of 4 beads need to specify " \
+                                 "'cos' or 'sin' as 5th element")
             if (np.min([len(bead_tuple) for bead_tuple in features]) < 2 or
                     np.max([len(bead_tuple) for bead_tuple in features]) > 5):
                 raise ValueError(
