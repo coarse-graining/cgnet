@@ -29,7 +29,7 @@ stats = GeometryStatistics(coords.detach().numpy())
 # Prior variables
 full_prior_stats = stats.get_prior_statistics()
 bonds_idx = stats.return_indices('Bonds')
-bonds_interactions = stats.get_prior_statistics(features='Bonds', as_list=True)
+bonds_interactions, _ = stats.get_prior_statistics(features='Bonds', as_list=True)
 
 repul_distances = [i for i in stats.descriptions['Distances']
                    if abs(i[0]-i[1]) > 2]
@@ -163,7 +163,7 @@ def test_prior_callback_order():
                     if len(beads) == 2 and abs(beads[0] - beads[1]) == 1]
     np.random.shuffle(bonds_tuples)
     bonds_idx = stats.return_indices(bonds_tuples)
-    bonds_interactions = stats.get_prior_statistics(features=list(bonds_tuples), as_list=True)
+    bonds_interactions, _ = stats.get_prior_statistics(features=list(bonds_tuples), as_list=True)
 
     harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
     np.testing.assert_array_equal(bonds_idx, harmonic_potential.callback_indices)
@@ -202,7 +202,7 @@ def test_prior_with_stats_dropout():
     feat_layer = GeometryFeature(feature_tuples=stats.feature_tuples)
     if 'Distances' in stats.descriptions:
         # HarmonicLayer bonds test with random constants & means
-        bonds_interactions = stats.get_prior_statistics(features='Bonds', as_list=True)
+        bonds_interactions, _ = stats.get_prior_statistics(features='Bonds', as_list=True)
         bonds_idx = stats.return_indices('Bonds')
         harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
         np.testing.assert_array_equal(bonds_idx, harmonic_potential.callback_indices)
@@ -218,7 +218,7 @@ def test_prior_with_stats_dropout():
         np.testing.assert_array_equal(dist_idx, repulsion_potential.callback_indices)
         for name in ['Angles', 'Dihedral_cosines', 'Dihedral_sines']:
             if name in stats.descriptions:
-                feat_interactions = stats.get_prior_statistics(features=name, as_list=True)
+                feat_interactions, _ = stats.get_prior_statistics(features=name, as_list=True)
                 feat_idx = stats.return_indices(name)
                 harmonic_potential = HarmonicLayer(feat_idx, feat_interactions)
                 np.testing.assert_array_equal(feat_idx, harmonic_potential.callback_indices)

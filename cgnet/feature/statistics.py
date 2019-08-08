@@ -418,6 +418,8 @@ class GeometryStatistics():
             Each element of the list is a dictionary containing the 'mean',
             'std', and 'k' statistics. The list elements share teh same order
             as the input feature tuples
+        prior_stat_keys: dict_keys (tuples of beads)
+            If as_list=True, the prior statistics dictionary keys are returned ,
 
         Notes
         -----
@@ -437,22 +439,21 @@ class GeometryStatistics():
             prior_stat_array = torch.from_numpy(prior_stat_array).float()
         self._prior_statistics_keys = prior_stat_keys
         self._prior_statistics_array = prior_stat_array
-
-        if as_list::
+        prior_statistics_dict = {}
+        for i, stat in enumerate(['mean', 'std', 'k']):
+            prior_statistics_dict[stat] = dict(zip(prior_stat_keys,
+                                                   prior_stat_array[i, :]))
+        if as_list:
             prior_statistics_list = []
             for i in range(prior_stat_array.shape[1]):
                 prior_statistics_list.append({'mean' : prior_stat_array[0, i],
                                               'std' : prior_stat_array[1, i],
                                               'k' : prior_stat_array[2, i]})
-            return prior_statistics_list
+            prior_statistics_dict = self._flip_dict(prior_statistics_dict)
+            return prior_statistics_list, prior_stat_keys
         else:
-            prior_statistics_dict = {}
-            for i, stat in enumerate(['mean', 'std', 'k']):
-                prior_statistics_dict[stat] = dict(zip(prior_stat_keys,
-                                                       prior_stat_array[i, :]))
             if flip_dict:
                 prior_statistics_dict = self._flip_dict(prior_statistics_dict)
-
             return prior_statistics_dict
 
     def return_indices(self, features):
