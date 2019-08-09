@@ -5,43 +5,34 @@ import torch
 import torch.nn as nn
 
 
-def assemble_harmonic_inputs(prior_dict, indices):
-    """Function for assembling __init__ arguments for a HarmonicLayer
-
-    Parameters
-    ----------
-    prior_dict : dict
-        output dictionary of
-        cgnet.feature.GeometryStatistics.get_prior_statistics()
-    indices : list of int
-        list of callback indices used to access a feature layer
-
-    Returns
-    -------
-    feat_dict : dict
-        feat_dict input for HarmonicLayer
-
-    """
-    feat_dict = {}
-    for idx, beads, stats in zip(indices, prior_dict.keys(),
-                                 prior_dict.values()):
-        feat_dict[idx] = {'beads': beads,
-                          'params': {'mean': stats['mean'], 'k': stats['k']}}
-    return feat_dict
-
-
 class _PriorLayer(nn.Module):
     """Layer for adding prior energy computations external to CGnet hidden
     output
 
     Parameters
     ----------
-    feat_data: dict
-        dictionary defining feature layer callback indices, feature bead tuples,
-        and the phyiscal constants defining the prior energy interaction. This
-        input is organized into the following form:
+    callback_indices: list of int
+        indices used to access a specified subset of outputs from the feature
+        layer through a residual connection
 
-            { idx : {'beads' : (b1, b2,...), 'parameters' : dict } }
+    interaction_parameters : list of python dictionaries
+        list of dictionaries that specify the constants characterizing
+        interactions between beads. Each list element corresponds to a single
+        interaction using a dictionary of parameters keyed to corresponding
+        numerical values. The order of these dictionaries follows the same order
+        as the callback indices specifying which outputs from the feature layer
+        should pass through the prior. The strucutre of interaction_parameters
+        is the following:
+
+            [ {'parameter_1' : 1.24, 'parameter_2' : 2.21, ... },
+              {'parameter_1' : 1.24, 'parameter_2' : 2.21, ... },
+                                     .
+                                     .
+                                     .
+              {'parameter_1' : 1.24, 'parameter_2' : 2.21, ... }]
+
+        In this way, _PriorLayer may be subclassed to make arbitray prior
+        layers based on arbitrary interactions between bead tuples.
 
     Attributes
     ----------
@@ -52,30 +43,32 @@ class _PriorLayer(nn.Module):
     callback_indices: list of int
         indices used to access a specified subset of outputs from the feature
         layer through a residual connection
-    features: list of tuples
-        list of bead tuples that denote which beads are involved in the
-        iteraction. Ordering is the same as self.callback_indices
 
     Examples
     --------
     To assemble the feat_dict input for a HarmonicLayer prior for bonds from an
     instance of a stats = GeometryStatistics():
 
-    bonds_stats = stats.get_prior_statistics('Bonds')
+    bonds_interactions = stats.get_prior_statistics('Bonds', as_list=True)
     bonds_idx = stats.return_indices('Bonds')
-    bonds_dict = assemble_harmonic_inputs(bonds_stats, bonds_idx)
-    bond_layer = HarmonicLayer(bonds_dict)
+    bond_layer = HarmonicLayer(bonds_idx, bonds_interactions)
+
+    Notes
+    -----
+    callback_indices and interaction_parameters MUST share the same order for
+    the prior layer to produce correct energies. Using
+    GeometryStatistics.get_prior_statistics() with as_list=True together with
+    GeometryStatistics.return_indices() will ensure this is True for the same
+    list of features.
+
     """
 
-    def __init__(self, feat_data):
+    def __init__(self, callback_indices, interaction_parameters):
         super(_PriorLayer, self).__init__()
-        self.interaction_parameters = []
-        self.features = []
-        self.callback_indices = []
-        for idx, par in feat_data.items():
-            self.callback_indices.append(idx)
-            self.features.append(par['beads'])
-            self.interaction_parameters.append(par['params'])
+        if len(callback_indices) != len(interaction_parameters):
+            raise ValueError("callback_indices and interaction parameters must have the same length")
+        self.interaction_parameters = interaction_parameters
+        self.callback_indices = callback_indices
 
     def forward(self, in_feat):
         """Forward method to compute the prior energy contribution.
@@ -97,20 +90,20 @@ class RepulsionLayer(_PriorLayer):
 
     Parameters
     ----------
-    feat_data: dict
-        dictionary defining the CG beads and interaction parameters for
-        computing the energy contributions of the residual prior energy. The
-        keys are integers used to call back to a GeometryFeature.forward()
-        output. The corresponding values are dictionaries that describe the
-        bead tuple involved in the interaction ('beads') and a parameter
-        dictionary that contains the constants that characterize the interaction
-        ('params'). The keys of this parameter dictionary are 'ex_vol', and
-        'exp', which are the exlcuded volume parameter (in length units) and the
-        exponent (positive, dimensionless) respectively. The corresponding
-        values are the the numerical values of each constant. For example, for
-        one such feat_dict entry:
+    callback_indices: list of int
+        indices used to access a specified subset of outputs from the feature
+        layer through a residual connection
 
-        { 4 : { 'beads' : (0,2), 'params' : {  'ex_vol' : 5.5, 'exp' : 6.0 }}
+    interaction_parameters : list of python dictionaries
+        list of dictionaries that specify the constants characterizing
+        interactions between beads. Each list element corresponds to a single
+        interaction using a dictionary of parameters keyed to corresponding
+        numerical values. The order of these dictionaries follows the same order
+        as the callback indices specifying which outputs from the feature layer
+        should pass through the prior. The parameters for RepulsionLayer
+        dictionaries are 'ex_vol', the excluded volume (in length units), and
+        'exp', the (positive) exponent characterizing the repulsion strength
+        decay with distance.
 
     Attributes
     ----------
@@ -129,10 +122,16 @@ class RepulsionLayer(_PriorLayer):
     not respect proper physical pairwise repulsions. The interaction is modeled
     after the VDW interaction term from the classic Leonard Jones potential.
 
+    References
+    ----------
+    Wang, J., Olsson, S., Wehmeyer, C., Pérez, A., Charron, N. E.,
+        de Fabritiis, G., Noé, F., Clementi, C. (2019). Machine Learning
+        of Coarse-Grained Molecular Dynamics Force Fields. ACS Central Science.
+        https://doi.org/10.1021/acscentsci.8b00913
     """
 
-    def __init__(self, feat_data):
-        super(RepulsionLayer, self).__init__(feat_data)
+    def __init__(self, callback_indices, interaction_parameters):
+        super(RepulsionLayer, self).__init__(callback_indices, interaction_parameters)
         for param_dict in self.interaction_parameters:
             if (key in param_dict for key in ('ex_vol', 'exp')):
                 pass
@@ -173,20 +172,20 @@ class HarmonicLayer(_PriorLayer):
 
     Parameters
     ----------
-    feat_data: dict
-        dictionary defining the CG beads and interaction parameters for
-        computing the energy contributions of the residual prior energy. The
-        keys are integers used to call back to a GeometryFeature.forward()
-        output. The corresponding values are dictionaries that describe the
-        bead tuple involved in the interaction ('beads') and a parameter
-        dictionary that contains the constants that characterize the interaction
-        ('params'). The keys of this parameter dictionary are 'mean', and
-        'k', which are the harmonic mean (in length units) and the harmonic
-        spring constant (positive, dimensionless) respectively. The corresponding
-        values are the the numerical values of each constant. For example, for
-        one such feat_dict entry:
+    callback_indices: list of int
+        indices used to access a specified subset of outputs from the feature
+        layer through a residual connection
 
-        { 1 : { 'beads' : (0,1), 'params' : { 'mean' : 0.34, 'k' : 1.3 }}
+    interaction_parameters : list of python dictionaries
+        list of dictionaries that specify the constants characterizing
+        interactions between beads. Each list element corresponds to a single
+        interaction using a dictionary of parameters keyed to corresponding
+        numerical values. The order of these dictionaries follows the same order
+        as the callback indices specifying which outputs from the feature layer
+        should pass through the prior. The parameters for HarmonicLayer
+        dictionaries are 'mean', the center of the harmonic interaction
+        (in length or angle units), and 'k', the (positive) harmonic spring
+        constant (in units of energy / length**2 or 1 / length**2).
 
     Attributes
     ----------
@@ -200,16 +199,22 @@ class HarmonicLayer(_PriorLayer):
     -----
     This prior energy is useful for constraining the CGnet potential in regions
     of configuration space in which sampling is normally precluded by physical
-    harmonic constraints assocaited with the structural integrity of the protein
+    harmonic constraints associated with the structural integrity of the protein
     along its backbone. The harmonic parameters are also easily estimated from
-    all atom simluation data because bond and angle distributions typically have
+    all atom simulation data because bond and angle distributions typically have
     Gaussian structure, which is easily intepretable as a harmonic energy
     contribution via the Boltzmann distribution.
 
+    References
+    ----------
+    Wang, J., Olsson, S., Wehmeyer, C., Pérez, A., Charron, N. E.,
+        de Fabritiis, G., Noé, F., Clementi, C. (2019). Machine Learning
+        of Coarse-Grained Molecular Dynamics Force Fields. ACS Central Science.
+        https://doi.org/10.1021/acscentsci.8b00913
     """
 
-    def __init__(self, feat_data):
-        super(HarmonicLayer, self).__init__(feat_data)
+    def __init__(self, callback_indices, interaction_parameters):
+        super(HarmonicLayer, self).__init__(callback_indices, interaction_parameters)
         for param_dict in self.interaction_parameters:
             if (key in param_dict for key in ('k', 'mean')):
                 pass

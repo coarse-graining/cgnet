@@ -337,6 +337,22 @@ def test_return_indices_and_prior_stats():
                                   list(stats.get_prior_statistics(
                                     dihed_quads).keys()))
 
+def test_prior_stats_list():
+    # Tests as_list=True option in get_prior_statistics()
+    # Tests to see if the proper statistics are returned for proper keys
+    features = stats.master_description_tuples
+    indices = stats.return_indices(features)
+    zipped = list(zip(features, indices))
+    np.random.shuffle(zipped)
+    features[:], indices[:] = zip(*zipped)
+    random_indices = stats.return_indices(features)
+    prior_stats_dict = stats.get_prior_statistics(features=features)
+    prior_stats_list, keys = stats.get_prior_statistics(features=features,
+                                                        as_list=True)
+    assert list(keys) == [stats.master_description_tuples[i]
+                          for i in random_indices]
+    for stat_dict, key in zip(prior_stats_list, keys):
+        assert stat_dict == prior_stats_dict[key]
 
 def test_redundant_distance_mapping_shape():
     # Test to see if the redundant distance index matrix is formed properly

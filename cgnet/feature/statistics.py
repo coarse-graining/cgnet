@@ -122,8 +122,8 @@ class GeometryStatistics():
         if get_all_distances:
             (self._pair_order,
              self._adj_backbone_pairs) = g.get_distance_indices(self.n_beads,
-                                                          self.backbone_inds,
-                                                          self._backbone_map)
+                                                                self.backbone_inds,
+                                                                self._backbone_map)
             if len(self._custom_distance_pairs) > 0:
                 warnings.warn(
                     "All distances are already being calculated, so custom " \
@@ -227,7 +227,6 @@ class GeometryStatistics():
                     # do only cosines
                     self.feature_tuples.extend(self.descriptions[feature_type])
         self._master_stat_array = np.array(self._master_stat_array)
-
 
     def _process_custom_feature_tuples(self, custom_feature_tuples):
         """Helper function to sort custom features into distances, angles,
@@ -383,7 +382,8 @@ class GeometryStatistics():
                     newdict[i][stat] = mydict[stat][i]
         return newdict
 
-    def get_prior_statistics(self, features=None, tensor=True, flip_dict=True):
+    def get_prior_statistics(self, features=None, tensor=True,
+                             as_list=False, flip_dict=True):
         """Obtain prior statistics (mean, standard deviation, and
         bond/angle/dihedral constants) for features
 
@@ -396,6 +396,10 @@ class GeometryStatistics():
             specifies which feature to form the prior statistics for. If list
             of tuples is provided, only those corresponding features will be
             processed. If None, all features will be processed.
+        as_list : Boolean (default=True)
+            if True, a list of individual dictionaries is returned instead of
+            a nested dictionary. The ordering of the list is the same as the
+            ordering of input feature tuples.
         flip_dict : Boolean (default=True)
             Returns a dictionary with outer keys as indices if True and
             outer keys as statistic string names if False
@@ -409,6 +413,12 @@ class GeometryStatistics():
             If flip_dict is False, the outer keys will be the 'mean' and 'std'
             statistics and the inner keys will be bead pairs, triples, or
             quadruples+phase
+        prior_statistics_list : list of python dictionaries (if as_list=True)
+            Each element of the list is a dictionary containing the 'mean',
+            'std', and 'k' statistics. The list elements share teh same order
+            as the input feature tuples
+        prior_statistics_keys: dict_keys (tuples of beads)
+            If as_list=True, the prior statistics dictionary keys are returned ,
 
         Notes
         -----
@@ -420,23 +430,33 @@ class GeometryStatistics():
             stats_inds = np.arange(len(self.master_description_tuples))
         self._stats_inds = stats_inds
 
-        prior_stat_keys = [self.master_description_tuples[i]
-                           for i in stats_inds]
-        prior_stat_array = self._master_stat_array[:, stats_inds]
+        prior_statistics_keys = [self.master_description_tuples[i]
+                                 for i in stats_inds]
+        prior_statistics_array = self._master_stat_array[:, stats_inds]
 
         if tensor:
-            prior_stat_array = torch.from_numpy(prior_stat_array).float()
-        self._prior_statistics_keys = prior_stat_keys
-        self._prior_statistics_array = prior_stat_array
-
+            prior_statistics_array = torch.from_numpy(
+                prior_statistics_array).float()
+        self.prior_statistics_keys = prior_statistics_keys
+        self._prior_statistics_array = prior_statistics_array
         prior_statistics_dict = {}
         for i, stat in enumerate(['mean', 'std', 'k']):
-            prior_statistics_dict[stat] = dict(zip(prior_stat_keys,
-                                                   prior_stat_array[i, :]))
-        if flip_dict:
+            prior_statistics_dict[stat] = dict(zip(prior_statistics_keys,
+                                                   prior_statistics_array[i, :]))
+        if as_list:
+            prior_statistics_list = []
+            for i in range(prior_statistics_array.shape[1]):
+                prior_statistics_list.append(
+                    {'mean': prior_statistics_array[0, i],
+                     'std': prior_statistics_array[1, i],
+                     'k': prior_statistics_array[2, i]}
+                )
             prior_statistics_dict = self._flip_dict(prior_statistics_dict)
-
-        return prior_statistics_dict
+            return prior_statistics_list, prior_statistics_keys
+        else:
+            if flip_dict:
+                prior_statistics_dict = self._flip_dict(prior_statistics_dict)
+            return prior_statistics_dict
 
     def return_indices(self, features):
         """Return all indices for specified feature type. Useful for
@@ -491,8 +511,8 @@ class GeometryStatistics():
 
         elif isinstance(features, list):
             if any(len(bead_tuple) == 4 for bead_tuple in features):
-                raise ValueError("Bead tuples of 4 beads need to specify "
-                                 "\'cos\' or \'sin\' as 5th element")
+                raise ValueError("Bead tuples of 4 beads need to specify " \
+                                 "'cos' or 'sin' as 5th element")
             if (np.min([len(bead_tuple) for bead_tuple in features]) < 2 or
                     np.max([len(bead_tuple) for bead_tuple in features]) > 5):
                 raise ValueError(
