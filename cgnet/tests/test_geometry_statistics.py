@@ -349,10 +349,34 @@ def test_prior_stats_list():
     prior_stats_dict = stats.get_prior_statistics(features=features)
     prior_stats_list, keys = stats.get_prior_statistics(features=features,
                                                         as_list=True)
-    assert list(keys) == [stats.master_description_tuples[i]
-                          for i in random_indices]
+    np.testing.assert_array_equal(list(keys),
+                                  [stats.master_description_tuples[i]
+                                   for i in random_indices])
     for stat_dict, key in zip(prior_stats_list, keys):
         assert stat_dict == prior_stats_dict[key]
+
+
+def test_zscore_array_equivalence_to_prior_stats():
+    # Tests to make sure keys are preserved from get_prior_statistics()
+    # to get_zscore_array()
+    features = stats.master_description_tuples
+    indices = stats.return_indices(features)
+    zipped = list(zip(features, indices))
+    np.random.shuffle(zipped)
+    features[:], indices[:] = zip(*zipped)
+    random_indices = stats.return_indices(features)
+    prior_stats_list, prior_keys = stats.get_prior_statistics(features=features,
+                                                              as_list=True)
+    zscore_array, zscore_keys = stats.get_zscore_array(features=features)
+    np.testing.assert_array_equal(prior_keys, zscore_keys)
+
+    prior_means = [prior_stats_list[i]['mean']
+                   for i in range(len(prior_stats_list))]
+    prior_stds = [prior_stats_list[i]['std']
+                  for i in range(len(prior_stats_list))]
+    np.testing.assert_array_equal(prior_means, zscore_array[0])
+    np.testing.assert_array_equal(prior_stds, zscore_array[1])
+
 
 def test_redundant_distance_mapping_shape():
     # Test to see if the redundant distance index matrix is formed properly
