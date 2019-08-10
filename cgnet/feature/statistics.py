@@ -389,20 +389,20 @@ class GeometryStatistics():
 
         Parameters
         ----------
-        tensor : Boolean (default=True)
-            Returns (innermost data) of type torch.Tensor if True and np.array
-             if False
         features : str or list of tuples (default=None)
             specifies which feature to form the prior statistics for. If list
             of tuples is provided, only those corresponding features will be
             processed. If None, all features will be processed.
+        tensor : Boolean (default=True)
+            Returns (innermost data) of type torch.Tensor if True and np.array
+             if False
         as_list : Boolean (default=True)
             if True, a list of individual dictionaries is returned instead of
             a nested dictionary. The ordering of the list is the same as the
             ordering of input feature tuples.
         flip_dict : Boolean (default=True)
-            Returns a dictionary with outer keys as indices if True and
-            outer keys as statistic string names if False
+            If as_list is False, returns a dictionary with outer keys as
+            indices if True and outer keys as statistic string names if False
 
         Returns
         -------
@@ -415,10 +415,11 @@ class GeometryStatistics():
             quadruples+phase
         prior_statistics_list : list of python dictionaries (if as_list=True)
             Each element of the list is a dictionary containing the 'mean',
-            'std', and 'k' statistics. The list elements share teh same order
+            'std', and 'k' statistics. The list elements share the same order
             as the input feature tuples
         prior_statistics_keys: dict_keys (tuples of beads)
-            If as_list=True, the prior statistics dictionary keys are returned ,
+            If as_list=True, the prior statistics dictionary keys are returned
+            which correspond to the ordering of the prior_statistiscs_list
 
         Notes
         -----
@@ -459,7 +460,35 @@ class GeometryStatistics():
             return prior_statistics_dict
 
     def get_zscore_array(self, features=None, tensor=True):
-        all_stat_values, all_stat_keys = self.get_prior_statistics(
+        """Obtain a 2 x n array of means and standard deviations, respectively,
+        for n features.
+
+        Parameters
+        ----------
+        features : str or list of tuples (default=None)
+            specifies which feature to form the prior statistics for. If list
+            of tuples is provided, only those corresponding features will be
+            processed. If None, all features will be processed.
+        tensor : Boolean (default=True)
+            Returns (innermost data) of type torch.Tensor if True and np.array
+             if False
+
+        Returns
+        -------
+        zscore_array : np.ndarray
+            Array of shape [2, n_features] containing the means in the first
+            row and the standard deviations in the second row. The elements of
+            the array second dimension share the same order as the input
+            feature tuples
+        zscore_keys: dict_keys (tuples of beads)
+            The features corresponding to the indices of the second dimension
+            of the zscore_array
+
+        Notes
+        -----
+        Dihedral features must specify 'cos' or 'sin', e.g. (1, 2, 3, 4, 'sin')
+        """
+        all_stat_values, zscore_keys = self.get_prior_statistics(
                                                              features=features,
                                                              tensor=False,
                                                              as_list=True
@@ -472,7 +501,7 @@ class GeometryStatistics():
         if tensor:
             zscore_array = torch.tensor(zscore_array).float()
 
-        return zscore_array, all_stat_keys
+        return zscore_array, zscore_keys
 
 
     def return_indices(self, features):
