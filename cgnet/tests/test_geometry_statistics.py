@@ -19,15 +19,17 @@ out = f.forward(xt)
 
 stats = GeometryStatistics(xt)
 
+
 def test_feature_tuples():
     # Tests to see if the feature_tuples attribute is assembled correctly
-	unique_tuples = []
-	for desc in stats.order:
-		sub_list = stats.descriptions[desc]
-		for bead_tuple in sub_list:
-			if bead_tuple not in unique_tuples:
-				unique_tuples.append(bead_tuple)
-	assert unique_tuples == stats.feature_tuples
+    unique_tuples = []
+    for desc in stats.order:
+        sub_list = stats.descriptions[desc]
+        for bead_tuple in sub_list:
+            if bead_tuple not in unique_tuples:
+                unique_tuples.append(bead_tuple)
+    assert unique_tuples == stats.feature_tuples
+
 
 def test_manual_backbone_calculations():
     # Make sure angle statistics work for manually specified backbone
@@ -139,9 +141,9 @@ def test_prior_statistics_shape_1():
     np.random.shuffle(bool_list)
 
     stats_ = GeometryStatistics(xt,
-                               get_all_distances=bool_list[0],
-                               get_backbone_angles=bool_list[1],
-                               get_backbone_dihedrals=bool_list[2])
+                                get_all_distances=bool_list[0],
+                                get_backbone_angles=bool_list[1],
+                                get_backbone_dihedrals=bool_list[2])
 
     zscore_dict = stats_.get_prior_statistics(flip_dict=True)
     n_keys = (bool_list[0]*beads*(beads-1)/2 + bool_list[1]*(beads-2)
@@ -157,9 +159,9 @@ def test_prior_statistics_shape_2():
     np.random.shuffle(bool_list)
 
     stats_ = GeometryStatistics(xt,
-                               get_all_distances=bool_list[0],
-                               get_backbone_angles=bool_list[1],
-                               get_backbone_dihedrals=bool_list[2])
+                                get_all_distances=bool_list[0],
+                                get_backbone_angles=bool_list[1],
+                                get_backbone_dihedrals=bool_list[2])
 
     zscore_dict = stats_.get_prior_statistics(flip_dict=False)
     n_keys = (bool_list[0]*beads*(beads-1)/2 + bool_list[1]*(beads-2)
@@ -174,20 +176,21 @@ def test_prior_statistics():
 
     bond_starts = [np.random.randint(beads-4) for _ in range(4)]
     bond_starts = np.unique(bond_starts)
-    custom_bond_pairs = [(bs, bs+np.random.randint(1,5)) for bs in bond_starts]
+    custom_bond_pairs = [(bs, bs+np.random.randint(1, 5))
+                         for bs in bond_starts]
     pair_means = []
     pair_stds = []
     for pair in sorted(custom_bond_pairs):
-        pair_means.append(np.mean(np.linalg.norm(x[:,pair[1],:]
-                                        - x[:,pair[0],:], axis=1)))
-        pair_stds.append(np.std(np.linalg.norm(x[:,pair[1],:]
-                                        - x[:,pair[0],:], axis=1)))
+        pair_means.append(np.mean(np.linalg.norm(x[:, pair[1], :]
+                                                 - x[:, pair[0], :], axis=1)))
+        pair_stds.append(np.std(np.linalg.norm(x[:, pair[1], :]
+                                               - x[:, pair[0], :], axis=1)))
     stats_dict = stats.get_prior_statistics(custom_bond_pairs, tensor=False)
     np.testing.assert_allclose(pair_means, [stats_dict[k]['mean']
-                               for k in sorted(stats_dict.keys())],
+                                            for k in sorted(stats_dict.keys())],
                                rtol=1e-6)
     np.testing.assert_allclose(pair_stds, [stats_dict[k]['std']
-                               for k in sorted(stats_dict.keys())],
+                                           for k in sorted(stats_dict.keys())],
                                rtol=1e-5)
 
 
@@ -202,7 +205,7 @@ def test_prior_statistics_2():
 
     all_stats = stats.get_prior_statistics()
     some_stats = stats.get_prior_statistics([all_possible_features[i]
-                                                for i in my_inds])
+                                             for i in my_inds])
 
     some_keys = [some_stats[k] for k in some_stats.keys()]
     all_corresponding_keys = [all_stats[k] for k in some_stats.keys()]
@@ -217,9 +220,9 @@ def test_return_indices_shape_1():
     np.random.shuffle(bool_list)
 
     stats_ = GeometryStatistics(xt,
-                               get_all_distances=bool_list[0],
-                               get_backbone_angles=bool_list[1],
-                               get_backbone_dihedrals=bool_list[2])
+                                get_all_distances=bool_list[0],
+                                get_backbone_angles=bool_list[1],
+                                get_backbone_dihedrals=bool_list[2])
 
     if bool_list[0]:
         assert len(stats_.return_indices('Distances')) == (
@@ -247,9 +250,9 @@ def test_return_indices_1():
     np.random.shuffle(bool_list)
 
     stats_ = GeometryStatistics(xt,
-                               get_all_distances=bool_list[0],
-                               get_backbone_angles=bool_list[1],
-                               get_backbone_dihedrals=bool_list[2])
+                                get_all_distances=bool_list[0],
+                                get_backbone_angles=bool_list[1],
+                                get_backbone_dihedrals=bool_list[2])
 
     num_dists = bool_list[0] * (beads) * (beads - 1) / 2
     num_angles = beads - 2
@@ -282,21 +285,24 @@ def test_return_indices_1():
                                                 num_diheds + dihedral_sin_start),
                                       stats_.return_indices('Dihedral_sines'))
 
+
 def test_return_indices_2():
     # Test retrival of custom bonds
 
     bond_starts = [np.random.randint(beads-4) for _ in range(4)]
     bond_starts = np.unique(bond_starts)
-    custom_bond_pairs = [(bs, bs+np.random.randint(2,5)) for bs in bond_starts]
+    custom_bond_pairs = [(bs, bs+np.random.randint(2, 5))
+                         for bs in bond_starts]
 
     stats_ = GeometryStatistics(xt, bond_pairs=custom_bond_pairs,
-                                adjacent_backbone_bonds = bool(np.random.randint(2)))
+                                adjacent_backbone_bonds=bool(np.random.randint(2)))
     returned_bond_inds = stats_.return_indices('Bonds')
     bond_pairs = np.array(stats_.descriptions['Distances'])[returned_bond_inds]
-    bond_pairs = [tuple(bp) for bp in bond_pairs if bp[1]-bp[0]>1]
+    bond_pairs = [tuple(bp) for bp in bond_pairs if bp[1]-bp[0] > 1]
 
     np.testing.assert_array_equal(sorted(custom_bond_pairs),
                                   sorted(bond_pairs))
+
 
 def test_return_indices_and_prior_stats():
     # Test passing random tuples return_indices for size only
@@ -311,19 +317,20 @@ def test_return_indices_and_prior_stats():
     assert len(dist_idx) == len(distance_pairs)
     np.testing.assert_array_equal(distance_pairs,
                                   list(stats.get_prior_statistics(
-                                    distance_pairs).keys()))
+                                      distance_pairs).keys()))
 
     # angles
     angle_start_list = np.arange(beads-2)
     trips = np.random.choice(all_beads[:-2],
                              size=np.random.randint(1, high=beads-2),
                              replace=False)
-    angle_trips = [(all_beads[i], all_beads[i+1], all_beads[i+2]) for i in trips]
+    angle_trips = [(all_beads[i], all_beads[i+1], all_beads[i+2])
+                   for i in trips]
     angle_idx = stats.return_indices(angle_trips)
     assert len(angle_idx) == len(angle_trips)
     np.testing.assert_array_equal(angle_trips,
                                   list(stats.get_prior_statistics(
-                                    angle_trips).keys()))
+                                      angle_trips).keys()))
 
     # dihedrals
     quads = np.random.choice(all_beads[:-3],
@@ -335,7 +342,8 @@ def test_return_indices_and_prior_stats():
     assert len(dihed_idx) == len(dihed_quads)
     np.testing.assert_array_equal(dihed_quads,
                                   list(stats.get_prior_statistics(
-                                    dihed_quads).keys()))
+                                      dihed_quads).keys()))
+
 
 def test_prior_stats_list():
     # Tests as_list=True option in get_prior_statistics()

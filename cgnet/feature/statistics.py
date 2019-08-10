@@ -90,7 +90,7 @@ class GeometryStatistics():
             if np.any([bond_ind not in custom_feature_tuples
                        for bond_ind in bond_pairs]):
                 raise ValueError(
-                    "All bond_pairs must be also in custom_feature_tuples " \
+                    "All bond_pairs must be also in custom_feature_tuples "
                     "if get_all_distances is False."
                 )
         if np.any([len(bond_ind) != 2 for bond_ind in bond_pairs]):
@@ -126,8 +126,7 @@ class GeometryStatistics():
                                                                 self._backbone_map)
             if len(self._custom_distance_pairs) > 0:
                 warnings.warn(
-                    "All distances are already being calculated, so custom " \
-                    "distances are meaningless."
+    "All distances are already being calculated, so custom distances are meaningless."
                 )
                 self._custom_distance_pairs = []
             self._distance_pairs = self._pair_order
@@ -162,8 +161,7 @@ class GeometryStatistics():
             if np.any([cust_angle in self._angle_trips
                        for cust_angle in self._custom_angle_trips]):
                 warnings.warn(
-                    "Some custom angles were on the backbone and will " \
-                    "not be re-calculated."
+    "Some custom angles were on the backbone and will not be re-calculated."
                 )
                 self._custom_angle_trips = [cust_angle for cust_angle
                                             in self._custom_angle_trips
@@ -184,8 +182,7 @@ class GeometryStatistics():
             if np.any([cust_dih in self._dihedral_quads
                        for cust_dih in self._custom_dihedral_quads]):
                 warnings.warn(
-                    "Some custom dihedrals were on the backbone and will not " \
-                    "be re-calculated."
+    "Some custom dihedrals were on the backbone and will not be re-calculated."
                 )
                 self._custom_dihedral_quads = [cust_dih for _custom_dihedral_quads
                                                in self._custom_dihedral_quads
@@ -293,8 +290,7 @@ class GeometryStatistics():
 
             if not np.all(np.sort(self.backbone_inds) == self.backbone_inds):
                 warnings.warn(
-                    "Your backbone indices aren't sorted. Make sure your " \
-                    "backbone indices are in consecutive order."
+    "Your backbone indices aren't sorted. Make sure your backbone indices are in consecutive order."
                 )
 
             self._backbone_map = self._get_backbone_map()
@@ -306,8 +302,7 @@ class GeometryStatistics():
             self._backbone_map = None
         else:
             raise RuntimeError(
-                "backbone_inds must be list or np.ndarray of indices, " \
-                "'all', or None"
+    "backbone_inds must be list or np.ndarray of indices, 'all', or None"
             )
         self.n_backbone_beads = len(self.backbone_inds)
 
@@ -489,20 +484,19 @@ class GeometryStatistics():
         Dihedral features must specify 'cos' or 'sin', e.g. (1, 2, 3, 4, 'sin')
         """
         all_stat_values, zscore_keys = self.get_prior_statistics(
-                                                             features=features,
-                                                             tensor=False,
-                                                             as_list=True
-                                                             )
+            features=features,
+            tensor=False,
+            as_list=True
+        )
 
         zscore_array = np.vstack([[all_stat_values[i][stat]
                                    for i in range(len(all_stat_values))]
-                                   for stat in ['mean', 'std']])
+                                  for stat in ['mean', 'std']])
 
         if tensor:
             zscore_array = torch.tensor(zscore_array).float()
 
         return zscore_array, zscore_keys
-
 
     def return_indices(self, features):
         """Return all indices for specified feature type. Useful for
@@ -557,7 +551,7 @@ class GeometryStatistics():
 
         elif isinstance(features, list):
             if any(len(bead_tuple) == 4 for bead_tuple in features):
-                raise ValueError("Bead tuples of 4 beads need to specify " \
+                raise ValueError("Bead tuples of 4 beads need to specify "
                                  "'cos' or 'sin' as 5th element")
             if (np.min([len(bead_tuple) for bead_tuple in features]) < 2 or
                     np.max([len(bead_tuple) for bead_tuple in features]) > 5):
