@@ -49,7 +49,7 @@ class _PriorLayer(nn.Module):
     To assemble the feat_dict input for a HarmonicLayer prior for bonds from an
     instance of a stats = GeometryStatistics():
 
-    bonds_interactions = stats.get_prior_statistics('Bonds', as_list=True)
+    bonds_interactions, _ = stats.get_prior_statistics('Bonds', as_list=True)
     bonds_idx = stats.return_indices('Bonds')
     bond_layer = HarmonicLayer(bonds_idx, bonds_interactions)
 

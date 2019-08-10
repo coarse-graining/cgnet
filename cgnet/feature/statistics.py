@@ -458,6 +458,23 @@ class GeometryStatistics():
                 prior_statistics_dict = self._flip_dict(prior_statistics_dict)
             return prior_statistics_dict
 
+    def get_zscore_array(self, features=None, tensor=True):
+        all_stat_values, all_stat_keys = self.get_prior_statistics(
+                                                             features=features,
+                                                             tensor=False,
+                                                             as_list=True
+                                                             )
+
+        zscore_array = np.vstack([[all_stat_values[i][stat]
+                                   for i in range(len(all_stat_values))]
+                                   for stat in ['mean', 'std']])
+
+        if tensor:
+            zscore_array = torch.tensor(zscore_array).float()
+
+        return zscore_array, all_stat_keys
+
+
     def return_indices(self, features):
         """Return all indices for specified feature type. Useful for
         constructing priors or other layers that make callbacks to
