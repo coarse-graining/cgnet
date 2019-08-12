@@ -5,101 +5,357 @@
 import numpy as np
 import torch
 import scipy.spatial
+import warnings
 
+from .geometry import Geometry
+g = Geometry(method='numpy')
 
 KBOLTZMANN = 1.38064852e-23
 AVOGADRO = 6.022140857e23
 JPERKCAL = 4184
 
 
-class ProteinBackboneStatistics():
-    """Calculation of statistics for protein backbone features; namely
+class GeometryStatistics():
+    """Calculation of statistics for geometric features; namely
    distances, angles, and dihedral cosines and sines.
 
     Parameters
     ----------
     data : torch.Tensor or np.array
         Coordinate data of dimension [n_frames, n_beads, n_dimensions]
-    get_distances : Boolean (default=True)
-        Whether to calculate distances
-    get_angles : Boolean (default=True)
-        Whether to calculate angles
-    get_dihedrals : Boolean (default=True)
-        Whether to calculate dihedral cosines and sines
-    temperature : float (default=300.0)
-        Temperature of system
+    custom_feature_tuples : list of tuples (default=[])
+        List of 2-, 3-, and 4-element tuples containing arbitrary distance,
+        angle, and dihedral features to be calculated.
+    backbone_inds : 'all', list or np.ndarray, or None (default='all')
+        Which bead indices correspond to consecutive beads along the backbone
+    get_all_distances : Boolean (default=True)
+        Whether to calculate all pairwise distances
+    get_backbone_angles : Boolean (default=True)
+        Whether to calculate angles among adjacent beads along the backbone
+    get_backbone_dihedrals : Boolean (default=True)
+        Whether to calculate dihedral cosines and sines among adjacent beads
+        along the backbone
+    temperature : float or None (default=300.0)
+        Temperature of system. Use None for dimensionless calculations.
     get_redundant_distance_mapping : Boolean (default=True)
         If true, creates a redundant_distance_mapping attribute
+    bond_pairs : list of tuples (default=[])
+        List of 2-element tuples containing bonded pairs
+    adjacent_backbone_bonds : Boolean, (default=True)
+        Whether adjacent beads along the backbone should be considered
+        as bonds
 
     Attributes
     ----------
-    stats_dict : dictionary
-        Stores 'mean' and 'std' for caluclated features
+    beta : float
+        1/(Boltzmann constant)/(temperature) if temperature is not None in
+        units of kcal per mole; otherwise 1.0
     descriptions : dictionary
         List of indices (value) for each feature type (key)
     redundant_distance_mapping
         Redundant square distance matrix
+    feature_tuples : list of tuples
+        List of tuples for non-redundant feature descriptions in order
 
     Example
     -------
-    ds = ProteinBackboneStatistics(data, n_beads = 10)
-    print(ds.stats_dict['Distances']['mean'])
+    stats = GeometryStatistics(data, n_beads = 10)
+    prior_stats_dict = ds.get_prior_statistics()
     """
 
-    def __init__(self, data,
-                 get_distances=True, get_angles=True,
-                 get_dihedrals=True, temperature=300.0,
-                 get_redundant_distance_mapping=True):
+    def __init__(self, data, custom_feature_tuples=[], backbone_inds='all',
+                 get_all_distances=True, get_backbone_angles=True,
+                 get_backbone_dihedrals=True, temperature=300.0,
+                 get_redundant_distance_mapping=True, bond_pairs=[],
+                 adjacent_backbone_bonds=True):
         if torch.is_tensor(data):
             self.data = data.detach().numpy()
         else:
             self.data = data
+
         self.n_frames = self.data.shape[0]
         self.n_beads = self.data.shape[1]
+        assert self.data.shape[2] == 3  # dimensions
         self.temperature = temperature
+        if self.temperature is not None:
+            self.beta = JPERKCAL/KBOLTZMANN/AVOGADRO/self.temperature
+        else:
+            self.beta = 1.0
 
-        self._get_distance_indices()
-        self.stats_dict = {}
+        self._process_backbone(backbone_inds)
+        self._process_custom_feature_tuples(custom_feature_tuples)
+        self.get_redundant_distance_mapping = get_redundant_distance_mapping
 
-        self.distances = None
-        self.angles = None
-        self.dihedral_cosines = None
-        self.dihedral_sines = None
-
-        self._name_dict = {
-            'Distances': self.distances,
-            'Angles': self.angles,
-            'Dihedral_cosines': self.dihedral_cosines,
-            'Dihedral_sines': self.dihedral_sines
-        }
-        self.descriptions = {}
+        if not get_all_distances:
+            if np.any([bond_ind not in custom_feature_tuples
+                       for bond_ind in bond_pairs]):
+                raise ValueError(
+                    "All bond_pairs must be also in custom_feature_tuples "
+                    "if get_all_distances is False."
+                )
+        if np.any([len(bond_ind) != 2 for bond_ind in bond_pairs]):
+            raise RuntimeError(
+                "All bonds must be of length 2."
+            )
+        self._bond_pairs = bond_pairs
+        self.adjacent_backbone_bonds = adjacent_backbone_bonds
 
         self.order = []
 
-        if get_distances:
-            self._get_pairwise_distances()
-            self._name_dict['Distances'] = self.distances
-            self._get_stats(self.distances, 'Distances')
-            self.order += ['Distances']
-            if get_redundant_distance_mapping:
-                self._get_redundant_distance_mapping()
+        self.distances = []
+        self.angles = []
+        self.dihedral_cosines = []
+        self.dihedral_sines = []
 
-        if get_angles:
+        self.descriptions = {
+            'Distances': [],
+            'Angles': [],
+            'Dihedral_cosines': [],
+            'Dihedral_sines': []
+        }
+
+        self._stats_dict = {}
+
+        # # # # # # #
+        # Distances #
+        # # # # # # #
+        if get_all_distances:
+            (self._pair_order,
+             self._adj_backbone_pairs) = g.get_distance_indices(self.n_beads,
+                                                                self.backbone_inds,
+                                                                self._backbone_map)
+            if len(self._custom_distance_pairs) > 0:
+                warnings.warn(
+    "All distances are already being calculated, so custom distances are meaningless."
+                )
+                self._custom_distance_pairs = []
+            self._distance_pairs = self._pair_order
+
+            if self.adjacent_backbone_bonds:
+                if np.any([bond_ind in self._adj_backbone_pairs
+                           for bond_ind in self._bond_pairs]):
+                    warnings.warn(
+                        "Some bond indices were already on the backbone."
+                    )
+                    self._bond_pairs = [bond_ind for bond_ind
+                                        in self._bond_pairs if bond_ind
+                                        not in self._adj_backbone_pairs]
+            self.bond_pairs = self._adj_backbone_pairs
+
+        else:
+            self._distance_pairs = []
+            self.bond_pairs = []
+        self._distance_pairs.extend(self._custom_distance_pairs)
+        self.bond_pairs.extend(self._bond_pairs)
+
+        if len(self._distance_pairs) > 0:
+            self._get_distances()
+
+        # # # # # #
+        # Angles  #
+        # # # # # #
+        if get_backbone_angles:
+            self._angle_trips = [(self.backbone_inds[i], self.backbone_inds[i+1],
+                                  self.backbone_inds[i+2])
+                                 for i in range(len(self.backbone_inds) - 2)]
+            if np.any([cust_angle in self._angle_trips
+                       for cust_angle in self._custom_angle_trips]):
+                warnings.warn(
+    "Some custom angles were on the backbone and will not be re-calculated."
+                )
+                self._custom_angle_trips = [cust_angle for cust_angle
+                                            in self._custom_angle_trips
+                                            if cust_angle not in self._angle_trips]
+        else:
+            self._angle_trips = []
+        self._angle_trips.extend(self._custom_angle_trips)
+        if len(self._angle_trips) > 0:
             self._get_angles()
-            self._name_dict['Angles'] = self.angles
-            self._get_stats(self.angles, 'Angles')
-            self.order += ['Angles']
 
-        if get_dihedrals:
+        # # # # # # #
+        # Dihedrals #
+        # # # # # # #
+        if get_backbone_dihedrals:
+            self._dihedral_quads = [(self.backbone_inds[i], self.backbone_inds[i+1],
+                                     self.backbone_inds[i+2], self.backbone_inds[i+3])
+                                    for i in range(len(self.backbone_inds) - 3)]
+            if np.any([cust_dih in self._dihedral_quads
+                       for cust_dih in self._custom_dihedral_quads]):
+                warnings.warn(
+    "Some custom dihedrals were on the backbone and will not be re-calculated."
+                )
+                self._custom_dihedral_quads = [cust_dih for _custom_dihedral_quads
+                                               in self._custom_dihedral_quads
+                                               if cust_dih not in self._dihedral_quads]
+        else:
+            self._dihedral_quads = []
+        self._dihedral_quads.extend(self._custom_dihedral_quads)
+        if len(self._dihedral_quads) > 0:
             self._get_dihedrals()
-            self._name_dict['Dihedral_cosines'] = self.dihedral_cosines
-            self._name_dict['Dihedral_sines'] = self.dihedral_sines
-            self._get_stats(self.dihedral_cosines, 'Dihedral_cosines')
-            self._get_stats(self.dihedral_sines, 'Dihedral_sines')
-            self.order += ['Dihedral_cosines']
-            self.order += ['Dihedral_sines']
+
+        self.feature_tuples = []
+        self.master_description_tuples = []
+        self._master_stat_array = [[] for _ in range(3)]
+
+        for feature_type in self.order:
+            if feature_type not in ['Dihedral_cosines', 'Dihedral_sines']:
+                self.feature_tuples.extend(self.descriptions[feature_type])
+                self.master_description_tuples.extend(
+                    self.descriptions[feature_type])
+                self._master_stat_array[0].extend(
+                    self._stats_dict[feature_type]['mean'])
+                self._master_stat_array[1].extend(
+                    self._stats_dict[feature_type]['std'])
+                self._master_stat_array[2].extend(
+                    self._stats_dict[feature_type]['k'])
+
+            else:
+                self.master_description_tuples.extend(
+                    [self._get_key(desc, feature_type)
+                     for desc in self.descriptions[feature_type]])
+                self._master_stat_array[0].extend(
+                    self._stats_dict[feature_type]['mean'])
+                self._master_stat_array[1].extend(
+                    self._stats_dict[feature_type]['std'])
+                self._master_stat_array[2].extend(
+                    self._stats_dict[feature_type]['k'])
+                if feature_type == 'Dihedral_cosines':
+                    # because they have the same indices as dihedral sines,
+                    # do only cosines
+                    self.feature_tuples.extend(self.descriptions[feature_type])
+        self._master_stat_array = np.array(self._master_stat_array)
+
+    def _process_custom_feature_tuples(self, custom_feature_tuples):
+        """Helper function to sort custom features into distances, angles,
+        and dihedrals.
+        """
+        if len(custom_feature_tuples) > 0:
+            if (np.min([len(feat) for feat in custom_feature_tuples]) < 2 or
+                    np.max([len(feat) for feat in custom_feature_tuples]) > 4):
+                raise ValueError(
+                    "Custom features must be tuples of length 2, 3, or 4."
+                )
+            if np.max([np.max(bead) for bead in custom_feature_tuples]) > self.n_beads - 1:
+                raise ValueError(
+                    "Bead index in at least one feature is out of range."
+                )
+
+            _temp_dict = dict(
+                zip(custom_feature_tuples, np.arange(len(custom_feature_tuples))))
+            if len(_temp_dict) < len(custom_feature_tuples):
+                custom_feature_tuples = list(_temp_dict.keys())
+                warnings.warn(
+                    "Some custom feature tuples are repeated and have been removed."
+                )
+
+            self._custom_distance_pairs = [
+                feat for feat in custom_feature_tuples if len(feat) == 2]
+            self._custom_angle_trips = [
+                feat for feat in custom_feature_tuples if len(feat) == 3]
+            self._custom_dihedral_quads = [
+                feat for feat in custom_feature_tuples if len(feat) == 4]
+        else:
+            self._custom_distance_pairs = []
+            self._custom_angle_trips = []
+            self._custom_dihedral_quads = []
+
+    def _get_backbone_map(self):
+        """Helper function that maps bead indices to indices along the backbone
+        only.
+
+        Returns
+        -------
+        backbone_map : dict
+            Dictionary with bead indices as keys and, as values, backbone
+            indices for beads along the backbone or np.nan otherwise.
+        """
+        backbone_map = {mol_ind: bb_ind for bb_ind, mol_ind
+                        in enumerate(self.backbone_inds)}
+        pad_map = {mol_ind: np.nan for mol_ind
+                   in range(self.n_beads) if mol_ind not in self.backbone_inds}
+        return {**backbone_map, **pad_map}
+
+    def _process_backbone(self, backbone_inds):
+        """Helper function to obtain attributes needed for backbone atoms.
+        """
+        if type(backbone_inds) is str:
+            if backbone_inds == 'all':
+                self.backbone_inds = np.arange(self.n_beads)
+                self._backbone_map = {ind: ind for ind in range(self.n_beads)}
+        elif type(backbone_inds) in [list, np.ndarray]:
+            if len(np.unique(backbone_inds)) != len(backbone_inds):
+                raise ValueError(
+                    'Backbone is not allowed to have repeat entries')
+            self.backbone_inds = np.array(backbone_inds)
+
+            if not np.all(np.sort(self.backbone_inds) == self.backbone_inds):
+                warnings.warn(
+    "Your backbone indices aren't sorted. Make sure your backbone indices are in consecutive order."
+                )
+
+            self._backbone_map = self._get_backbone_map()
+        elif backbone_inds is None:
+            if len(custom_feature_tuples) == 0:
+                raise RuntimeError(
+                    "Must have either backbone or custom features.")
+            self.backbone_inds = np.array([])
+            self._backbone_map = None
+        else:
+            raise RuntimeError(
+    "backbone_inds must be list or np.ndarray of indices, 'all', or None"
+            )
+        self.n_backbone_beads = len(self.backbone_inds)
+
+    def _get_distances(self):
+        """Obtains all pairwise distances for the two-bead indices provided.
+        """
+        self.distances = g.get_distances(
+            self._distance_pairs, self.data, norm=True)
+        self.descriptions['Distances'].extend(self._distance_pairs)
+        self._get_stats(self.distances, 'Distances')
+        self.order += ['Distances']
+        if self.get_redundant_distance_mapping:
+            self._get_redundant_distance_mapping()
+
+    def _get_angles(self):
+        """Obtains all planar angles for the three-bead indices provided.
+        """
+        self.angles = g.get_angles(self._angle_trips, self.data)
+
+        self.descriptions['Angles'].extend(self._angle_trips)
+        self._get_stats(self.angles, 'Angles')
+        self.order += ['Angles']
+
+    def _get_dihedrals(self):
+        """Obtains all dihedral angles for the four-bead indices provided.
+        """
+        (self.dihedral_cosines,
+            self.dihedral_sines) = g.get_dihedrals(self._dihedral_quads, self.data)
+
+        self.descriptions['Dihedral_cosines'].extend(self._dihedral_quads)
+        self.descriptions['Dihedral_sines'].extend(self._dihedral_quads)
+
+        self._get_stats(self.dihedral_cosines, 'Dihedral_cosines')
+        self._get_stats(self.dihedral_sines, 'Dihedral_sines')
+        self.order += ['Dihedral_cosines']
+        self.order += ['Dihedral_sines']
+
+    def _get_stats(self, X, key):
+        """Populates stats dictionary with mean and std of feature.
+        """
+        mean = np.mean(X, axis=0)
+        std = np.std(X, axis=0)
+        var = np.var(X, axis=0)
+        k = 1/var/self.beta
+        self._stats_dict[key] = {}
+        self._stats_dict[key]['mean'] = mean
+        self._stats_dict[key]['std'] = std
+        self._stats_dict[key]['k'] = k
 
     def _get_key(self, key, name):
+        """Returns keys for zscore and bond constant dictionaries based on
+        description names.
+        """
         if name == 'Dihedral_cosines':
             return tuple(list(key) + ['cos'])
         if name == 'Dihedral_sines':
@@ -108,8 +364,10 @@ class ProteinBackboneStatistics():
             return key
 
     def _flip_dict(self, mydict):
-        all_inds = np.unique(np.concatenate([list(mydict[stat].keys())
-                                             for stat in mydict.keys()]))
+        """Flips the dictionary; see documentation for get_zscores or
+        get_bond_constants.
+        """
+        all_inds = list(mydict['mean'].keys())
 
         newdict = {}
         for i in all_inds:
@@ -119,260 +377,195 @@ class ProteinBackboneStatistics():
                     newdict[i][stat] = mydict[stat][i]
         return newdict
 
-    def get_zscores(self, tensor=True, as_dict=True, flip_dict=True):
-        """Obtain zscores (mean and standard deviation) for features
+    def get_prior_statistics(self, features=None, tensor=True,
+                             as_list=False, flip_dict=True):
+        """Obtain prior statistics (mean, standard deviation, and
+        bond/angle/dihedral constants) for features
 
         Parameters
         ----------
+        features : str or list of tuples (default=None)
+            specifies which feature to form the prior statistics for. If list
+            of tuples is provided, only those corresponding features will be
+            processed. If None, all features will be processed.
         tensor : Boolean (default=True)
             Returns (innermost data) of type torch.Tensor if True and np.array
              if False
-        as_dict : Boolean (default=True)
-            Returns a dictionary instead of an array (see "Returns"
-            documentation)
+        as_list : Boolean (default=True)
+            if True, a list of individual dictionaries is returned instead of
+            a nested dictionary. The ordering of the list is the same as the
+            ordering of input feature tuples.
         flip_dict : Boolean (default=True)
-            Returns a dictionary with outer keys as indices if True and
-            outer keys as statistic string names if False
+            If as_list is False, returns a dictionary with outer keys as
+            indices if True and outer keys as statistic string names if False
 
         Returns
         -------
-        zscore_dict : python dictionary (if as_dict=True)
+        prior_statistics_dict : python dictionary (if as_dict=True)
             If flip_dict is True, the outer keys will be bead pairs, triples,
             or quadruples+phase, e.g. (1, 2) or (0, 1, 2, 3, 'cos'), and
-            the inner keys will be 'mean' and 'std' statistics.
+            the inner keys will be 'mean', 'std', and 'k' statistics.
             If flip_dict is False, the outer keys will be the 'mean' and 'std'
             statistics and the inner keys will be bead pairs, triples, or
             quadruples+phase
-        zscore_array : torch.Tensor or np.array (if as_dict=False)
-            2 by n tensor/array with means in the first row and
-            standard deviations in the second row, where n is
-            the number of features
+        prior_statistics_list : list of python dictionaries (if as_list=True)
+            Each element of the list is a dictionary containing the 'mean',
+            'std', and 'k' statistics. The list elements share the same order
+            as the input feature tuples
+        prior_statistics_keys: dict_keys (tuples of beads)
+            If as_list=True, the prior statistics dictionary keys are returned
+            which correspond to the ordering of the prior_statistiscs_list
+
+        Notes
+        -----
+        Dihedral features must specify 'cos' or 'sin', e.g. (1, 2, 3, 4, 'sin')
         """
-        for key in self.order:
-            if self._name_dict[key] is None:
-                raise ValueError("{} have not been calculated".format(key))
-
-        zscore_keys = np.sum([[self._get_key(key, name)
-                               for key in self.descriptions[name]]
-                              for name in self.order])
-        zscore_array = np.vstack([
-            np.concatenate([self.stats_dict[key][stat]
-                            for key in self.order]) for stat in ['mean', 'std']])
-        if tensor:
-            zscore_array = torch.from_numpy(zscore_array).float()
-
-        if as_dict:
-            zscore_dict = {}
-            for i, stat in enumerate(['mean', 'std']):
-                zscore_dict[stat] = dict(zip(zscore_keys, zscore_array[i, :]))
-            if flip_dict:
-                zscore_dict = self._flip_dict(zscore_dict)
-            return zscore_dict
+        if features is not None:
+            stats_inds = self.return_indices(features)
         else:
-            return zscore_array
+            stats_inds = np.arange(len(self.master_description_tuples))
+        self._stats_inds = stats_inds
 
-    def get_bond_constants(self, tensor=True, as_dict=True, zscores=True,
-                           flip_dict=True):
-        """Obtain bond constants (K values and means) for adjacent distance
-           and angle features. K values depend on the temperature.
+        prior_statistics_keys = [self.master_description_tuples[i]
+                                 for i in stats_inds]
+        prior_statistics_array = self._master_stat_array[:, stats_inds]
+
+        if tensor:
+            prior_statistics_array = torch.from_numpy(
+                prior_statistics_array).float()
+        self.prior_statistics_keys = prior_statistics_keys
+        self._prior_statistics_array = prior_statistics_array
+        prior_statistics_dict = {}
+        for i, stat in enumerate(['mean', 'std', 'k']):
+            prior_statistics_dict[stat] = dict(zip(prior_statistics_keys,
+                                                   prior_statistics_array[i, :]))
+        if as_list:
+            prior_statistics_list = []
+            for i in range(prior_statistics_array.shape[1]):
+                prior_statistics_list.append(
+                    {'mean': prior_statistics_array[0, i],
+                     'std': prior_statistics_array[1, i],
+                     'k': prior_statistics_array[2, i]}
+                )
+            prior_statistics_dict = self._flip_dict(prior_statistics_dict)
+            return prior_statistics_list, prior_statistics_keys
+        else:
+            if flip_dict:
+                prior_statistics_dict = self._flip_dict(prior_statistics_dict)
+            return prior_statistics_dict
+
+    def get_zscore_array(self, features=None, tensor=True):
+        """Obtain a 2 x n array of means and standard deviations, respectively,
+        for n features.
 
         Parameters
         ----------
+        features : str or list of tuples (default=None)
+            specifies which feature to form the prior statistics for. If list
+            of tuples is provided, only those corresponding features will be
+            processed. If None, all features will be processed.
         tensor : Boolean (default=True)
             Returns (innermost data) of type torch.Tensor if True and np.array
              if False
-        as_dict : Boolean (default=True)
-            Returns a dictionary instead of an array (see "Returns"
-            documentation)
-        zscores : Boolean (default=True)
-            Includes results from the get_zscores() method if True;
-            only allowed if as_dict is also True
-        flip_dict : Boolean (default=True)
-            Returns a dictionary with outer keys as indices if True and
-            outer keys as statistic string names if False
 
         Returns
         -------
-        bondconst_dict : python dictionary (if as_dict=True)
-            If flip_dict is True, the outer keys will be bead pairs, triples,
-            or quadruples+phase, e.g. (1, 2) or (0, 1, 2, 3, 'cos'), and
-            the inner keys will be 'mean', 'std', and 'k' statistics (only
-            'mean' and 'k', and no quadruples, if zscores is False)
-            If flip_dict is False, the outer keys will be the 'mean', 'std',
-            and 'k' statistics (only 'mean' and 'k' if zscores if False) and
-            the inner keys will be bead pairs, triples, or, unless zscores is
-            False, quadruples+phase
-        bondconst_array : torch.Tensor or np.array (if as_dict=False)
-            2 by n tensor/array with bond constants in the first row and
-            means in the second row, where n is the number of adjacent
-            pairwise distances plus the number of angles
+        zscore_array : np.ndarray
+            Array of shape [2, n_features] containing the means in the first
+            row and the standard deviations in the second row. The elements of
+            the array second dimension share the same order as the input
+            feature tuples
+        zscore_keys: dict_keys (tuples of beads)
+            The features corresponding to the indices of the second dimension
+            of the zscore_array
+
+        Notes
+        -----
+        Dihedral features must specify 'cos' or 'sin', e.g. (1, 2, 3, 4, 'sin')
         """
-        if zscores and not as_dict:
-            raise RuntimeError('zscores can only be True if as_dict is True')
+        all_stat_values, zscore_keys = self.get_prior_statistics(
+            features=features,
+            tensor=False,
+            as_list=True
+        )
 
-        if self.distances is None or self.angles is None:
-            raise RuntimeError(
-                'Must compute distances and angles in order to get bond constants'
-            )
+        zscore_array = np.vstack([[all_stat_values[i][stat]
+                                   for i in range(len(all_stat_values))]
+                                  for stat in ['mean', 'std']])
 
-        self.beta = JPERKCAL/KBOLTZMANN/AVOGADRO/self.temperature
+        if tensor:
+            zscore_array = torch.tensor(zscore_array).float()
 
-        bond_mean = self.stats_dict['Distances']['mean'][:self.n_beads-1]
-        angle_mean = self.stats_dict['Angles']['mean']
+        return zscore_array, zscore_keys
 
-        bond_var = self.stats_dict['Distances']['std'][:self.n_beads-1]**2
-        angle_var = self.stats_dict['Angles']['std']**2
-
-        bond_keys = self.descriptions['Distances'][:self.n_beads-1]
-        angle_keys = self.descriptions['Angles']
-
-        K_bond = 1/bond_var/self.beta
-        K_angle = 1/angle_var/self.beta
-
-        bondconst_keys = np.sum([bond_keys, angle_keys])
-        bondconst_array = np.vstack([np.concatenate([K_bond, K_angle]),
-                                     np.concatenate([bond_mean, angle_mean])])
-        if not tensor:
-            bondconst_array = torch.from_numpy(bondconst_array)
-
-        if as_dict:
-            if zscores:
-                bondconst_dict = self.get_zscores(tensor=tensor, as_dict=True,
-                                                  flip_dict=False)
-                bondconst_dict['k'] = dict(zip(bondconst_keys,
-                                               bondconst_array[0, :]))
-            else:
-                bondconst_dict = {}
-                for i, stat in enumerate(['k', 'mean']):
-                    bondconst_dict[stat] = dict(zip(bondconst_keys,
-                                                    bondconst_array[i, :]))
-            if flip_dict:
-                bondconst_dict = self._flip_dict(bondconst_dict)
-            return bondconst_dict
-        else:
-            return bondconst_array
-
-    def _get_distance_indices(self):
-        """Determines indices of pairwise distance features
-        """
-        pair_order = []
-        adj_pairs = []
-        for increment in range(1, self.data.shape[1]):
-            for i in range(self.data.shape[1] - increment):
-                pair_order.append((i, i+increment))
-                if increment == 1:
-                    adj_pairs.append((i, i+increment))
-        self._pair_order = pair_order
-        self._adj_pairs = adj_pairs
-
-    def _get_stats(self, X, key):
-        """Populates stats dictionary with mean and std of feature
-        """
-        mean = np.mean(X, axis=0)
-        std = np.std(X, axis=0)
-        var = np.var(X, axis=0)
-        self.stats_dict[key] = {}
-        self.stats_dict[key]['mean'] = mean
-        self.stats_dict[key]['std'] = std
-
-    def _get_pairwise_distances(self):
-        """Obtain pairwise distances for all pairs of beads;
-           shape=(n_frames, n_beads-1)
-        """
-        dlist = np.empty([self.n_frames,
-                          len(self._pair_order)])
-        for frame in range(self.n_frames):
-            dmat = scipy.spatial.distance.squareform(
-                scipy.spatial.distance.pdist(self.data[frame]))
-            frame_dists = [dmat[self._pair_order[i]]
-                           for i in range(len(self._pair_order))]
-            dlist[frame, :] = frame_dists
-        self.distances = dlist
-        self.descriptions['Distances'] = self._pair_order
-
-    def _get_adjacent_distances(self):
-        """Obtain adjacent distances; shape=(n_frames, n_beads-1, 3)
-        """
-        self.adj_dists = self.data[:][:, 1:] - \
-            self.data[:][:, :(self.n_beads-1)]
-
-    def _get_angles(self):
-        """Obtain angles of all adjacent triplets; shape=(n_frames, n_beads-2)
-        """
-        self._get_adjacent_distances()
-        base = self.adj_dists[:, 0:(self.n_beads-2), :]
-        offset = self.adj_dists[:, 1:(self.n_beads-1), :]
-
-        descriptions = []
-        self.angles = np.arccos(np.sum(base*offset, axis=2)/np.linalg.norm(
-            base, axis=2)/np.linalg.norm(offset, axis=2))
-        descriptions.extend([(i, i+1, i+2) for i in range(self.n_beads-2)])
-        self.descriptions['Angles'] = descriptions
-
-    def _get_dihedrals(self):
-        """Obtain angles of all adjacent quartets; shape=(n_frames, n_beads-3)
-        """
-        self._get_adjacent_distances()
-
-        base = self.adj_dists[:, 0:(self.n_beads-2), :]
-        offset = self.adj_dists[:, 1:(self.n_beads-1), :]
-        offset_2 = self.adj_dists[:, 1:(self.n_beads-2), :]
-
-        cross_product_adj = np.cross(base, offset, axis=2)
-        cp_base = cross_product_adj[:, 0:(self.n_beads-3), :]
-        cp_offset = cross_product_adj[:, 1:(self.n_beads-2), :]
-
-        plane_vector = np.cross(cp_offset, offset_2, axis=2)
-        pv_base = plane_vector[:, 0:(self.n_beads-3), :]
-
-        descriptions = []
-        self.dihedral_cosines = np.sum(cp_base*cp_offset, axis=2)/np.linalg.norm(
-            cp_base, axis=2)/np.linalg.norm(cp_offset, axis=2)
-
-        self.dihedral_sines = np.sum(cp_base*pv_base, axis=2)/np.linalg.norm(
-            cp_base, axis=2)/np.linalg.norm(pv_base, axis=2)
-        descriptions.extend([(i, i+1, i+2, i+3)
-                             for i in range(self.n_beads-3)])
-        self.descriptions['Dihedral_cosines'] = descriptions
-        self.descriptions['Dihedral_sines'] = descriptions
-
-    def return_indices(self, feature_type):
+    def return_indices(self, features):
         """Return all indices for specified feature type. Useful for
         constructing priors or other layers that make callbacks to
-        a subset of features output from a ProteinBackboneFeature()
+        a subset of features output from a GeometryFeature()
         layer
 
         Parameters
         ----------
-        feature_type : str in {'Distances', 'Bonds', 'Angles',
+        features : str in {'Distances', 'Bonds', 'Angles',
                                'Dihedral_sines', 'Dihedral_cosines'}
-            specifies for which feature type the indices should be returned
+                   or list of tuples of integers
+            specifies for which feature type the indices should be returned.
+            If tuple input, the indices corresponding to those bead groups
+            will be returned instead.
 
         Returns
         -------
         indices : list(int)
             list of integers corresponding the indices of specified features
-            output from a ProteinBackboneFeature() layer.
+            output from a GeometryFeature() layer.
+
+        Notes
+        -----
+        Dihedral features must specify 'cos' or 'sin', e.g. (1, 2, 3, 4, 'sin')
 
         """
-        if feature_type not in self.descriptions.keys() and feature_type != 'Bonds':
-            raise RuntimeError(
-                "Error: \'{}\' is not a valid backbone feature.".format(feature_type))
-        nums = [len(self.descriptions[i]) for i in self.order]
-        start_idx = 0
-        for num, desc in zip(nums, self.order):
-            if feature_type == desc or (feature_type == 'Bonds'
-                                        and desc == 'Distances'):
-                break
-            else:
-                start_idx += num
-        if feature_type == 'Bonds':
-            indices = [self.descriptions['Distances'].index(pair)
-                       for pair in self._adj_pairs]
-        if feature_type != 'Bonds':
-            indices = range(0, len(self.descriptions[feature_type]))
-        indices = [idx + start_idx for idx in indices]
-        return indices
+        if isinstance(features, str):
+            if features not in self.descriptions.keys() and features != 'Bonds':
+                raise RuntimeError(
+                    "Error: \'{}\' is not a valid backbone feature.".format(
+                        features)
+                )
+            if features in ["Distances", "Angles"]:
+                return [ind for ind, feat in
+                        enumerate(self.master_description_tuples)
+                        if feat in self.descriptions[features]]
+            elif features == "Dihedral_cosines":
+                return [ind for ind, feat in
+                        enumerate(self.master_description_tuples)
+                        if feat[:-1] in self.descriptions[features]
+                        and feat[-1] == 'cos']
+            elif features == "Dihedral_sines":
+                return [ind for ind, feat in
+                        enumerate(self.master_description_tuples)
+                        if feat[:-1] in self.descriptions[features]
+                        and feat[-1] == 'sin']
+            elif features == 'Bonds':
+                return [ind for ind, feat in
+                        enumerate(self.master_description_tuples)
+                        if feat in self.bond_pairs]
+
+        elif isinstance(features, list):
+            if any(len(bead_tuple) == 4 for bead_tuple in features):
+                raise ValueError("Bead tuples of 4 beads need to specify "
+                                 "'cos' or 'sin' as 5th element")
+            if (np.min([len(bead_tuple) for bead_tuple in features]) < 2 or
+                    np.max([len(bead_tuple) for bead_tuple in features]) > 5):
+                raise ValueError(
+                    "Features must be tuples of length 2, 3, or 5."
+                )
+
+            tupl_to_ind_dict = {tupl: i for i, tupl in
+                                enumerate(self.master_description_tuples)}
+            return [tupl_to_ind_dict[tupl] for tupl in features]
+
+        else:
+            raise ValueError(
+                "features must be description string or list of tuples.")
 
     def _get_redundant_distance_mapping(self):
         """Reformulates pairwise distances from shape [n_examples, n_dist]
@@ -386,10 +579,10 @@ class ProteinBackboneStatistics():
 
         """
         pairwise_dist_inds = [zipped_pair[1] for zipped_pair in sorted(
-                                [z for z in zip(self._pair_order,
-                                                np.arange(len(self._pair_order)))
-                                 ])
-                            ]
+            [z for z in zip(self._pair_order,
+                            np.arange(len(self._pair_order)))
+             ])
+        ]
         map_matrix = scipy.spatial.distance.squareform(pairwise_dist_inds)
         map_matrix = map_matrix[~np.eye(map_matrix.shape[0],
                                         dtype=bool)].reshape(
