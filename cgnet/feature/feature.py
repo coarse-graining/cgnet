@@ -5,8 +5,7 @@
 import torch
 import torch.nn as nn
 
-from cgnet.feature.utils import ShiftedSoftplus
-from cgnet.network.layers import LinearLayer
+from cgnet.feature.utils import ShiftedSoftplus, LinearLayer
 import numpy as np
 import warnings
 
@@ -382,7 +381,7 @@ class SchnetBlock(nn.Module):
         self.rbf_layer = rbf_layer
         self.residual_connect = residual_connect
 
-    def forward(self, features, rbf_expansion, neighbor_list)
+    def forward(self, features, rbf_expansion, neighbor_list):
         """Forward method through single Schnet block
 
         Parameters
