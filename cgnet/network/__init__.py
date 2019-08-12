@@ -1,3 +1,3 @@
 from .nnet import *
-from .layers import *
+from .priors import *
 from .utils import *

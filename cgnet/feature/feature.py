@@ -7,17 +7,27 @@ import torch.nn as nn
 
 from cgnet.feature.utils import ShiftedSoftplus
 from cgnet.network.layers import LinearLayer
+import numpy as np
+import warnings
+
+from .geometry import Geometry
+g = Geometry(method='torch')
 
 
-class ProteinBackboneFeature(nn.Module):
-    """Featurization of a protein backbone into pairwise distances,
+class GeometryFeature(nn.Module):
+    """Featurization of coarse-grained beads into pairwise distances,
     angles, and dihedrals.
+
+    Parameters
+    ----------
+    feature_tuples : list of tuples (default=[])
+        List of 2-, 3-, and 4-element tuples containing distance, angle, and
+        dihedral features to be calculated.
 
     Attributes
     ----------
     n_beads : int
-        Number of beads in the coarse-graining, assumed to be consecutive
-        along a protein backbone
+        Number of beads in the coarse-graining
     descriptions : dictionary
         List of indices (value) for each feature type (key)
     description_order : list
@@ -30,62 +40,66 @@ class ProteinBackboneFeature(nn.Module):
         List of four-bead torsions according to descriptions['Torsions']
     """
 
-    def __init__(self):
-        super(ProteinBackboneFeature, self).__init__()
+    def __init__(self, feature_tuples='all', n_beads=None):
+        super(GeometryFeature, self).__init__()
 
-    def compute_distances(self):
+        self._n_beads = n_beads
+        if feature_tuples is not 'all':
+            _temp_dict = dict(zip(feature_tuples, np.arange(len(feature_tuples))))
+            if len(_temp_dict) < len(feature_tuples):
+                feature_tuples = list(_temp_dict.keys())
+                warnings.warn(
+                    "Some feature tuples are repeated and have been removed."
+                    )
+
+            self.feature_tuples = feature_tuples
+            if (np.min([len(feat) for feat in feature_tuples]) < 2 or
+                    np.max([len(feat) for feat in feature_tuples]) > 4):
+                raise ValueError(
+                    "Custom features must be tuples of length 2, 3, or 4."
+                )
+
+            self._distance_pairs = [
+                feat for feat in feature_tuples if len(feat) == 2]
+            self._angle_trips = [
+                feat for feat in feature_tuples if len(feat) == 3]
+            self._dihedral_quads = [
+                feat for feat in feature_tuples if len(feat) == 4]
+        else:
+            if n_beads is None:
+                raise RuntimeError(
+                    "Must specify n_beads if feature_tuples is 'all'."
+                    )
+            self._distance_pairs, _ = g.get_distance_indices(n_beads)
+            if n_beads > 2:
+                self._angle_trips = [(i, i+1, i+2)
+                                    for i in range(n_beads-2)]
+            else:
+                self._angle_trips = []
+            if n_beads > 3:
+                self._dihedral_quads = [(i, i+1, i+2, i+3)
+                                       for i in range(n_beads-3)]
+            else:
+                self._dihedral_quads = []
+            self.feature_tuples = self._distance_pairs + \
+                self._angle_trips + self._dihedral_quads
+
+    def compute_distances(self, data):
         """Computes all pairwise distances."""
-        distances = []
-        descriptions = []
-        for j in range(self.n_beads-1):
-            new_distances = (self._coordinates[:, (j+1):self.n_beads, :]
-                             - self._coordinates[:, 0:(self.n_beads-(j+1)), :])
-            descriptions.extend([(0+i, j+1+i)
-                                 for i in range(self.n_beads - (j+1))])
-            distances.append(new_distances)
-            if j == 0:
-                self._adjacent_distances = new_distances
-        distances = torch.cat(distances, dim=1)
-        self.distances = torch.norm(distances, dim=2)
-        self.descriptions["Distances"] = descriptions
+        self.distances = g.get_distances(self._distance_pairs, data, norm=True)
+        self.descriptions["Distances"] = self._distance_pairs
 
-    def compute_angles(self):
-        """Computes all planar angles."""
-        descriptions = []
-        self.angles = torch.acos(torch.sum(
-            self._adjacent_distances[:, 0:(self.n_beads-2), :] *
-            self._adjacent_distances[:, 1:(self.n_beads-1), :], dim=2)/torch.norm(
-            self._adjacent_distances[:, 0:(self.n_beads-2), :], dim=2)/torch.norm(
-            self._adjacent_distances[:, 1:(self.n_beads-1), :], dim=2))
-        descriptions.extend([(i, i+1, i+2) for i in range(self.n_beads-2)])
-        self.descriptions["Angles"] = descriptions
+    def compute_angles(self, data):
+        """Computes planar angles."""
+        self.angles = g.get_angles(self._angle_trips, data)
+        self.descriptions["Angles"] = self._angle_trips
 
-    def compute_dihedrals(self):
-        """Computes all four-term dihedral (torsional) angles."""
-        descriptions = []
-        cross_product_adjacent = torch.cross(
-            self._adjacent_distances[:, 0:(self.n_beads-2), :],
-            self._adjacent_distances[:, 1:(self.n_beads-1), :],
-            dim=2)
-
-        plane_vector = torch.cross(
-            cross_product_adjacent[:, 1:(self.n_beads-2)],
-            self._adjacent_distances[:, 1:(self.n_beads-2), :], dim=2)
-
-        self.dihedral_cosines = torch.sum(
-            cross_product_adjacent[:, 0:(self.n_beads-3), :] *
-            cross_product_adjacent[:, 1:(self.n_beads-2), :], dim=2)/torch.norm(
-            cross_product_adjacent[:, 0:(self.n_beads-3), :], dim=2)/torch.norm(
-            cross_product_adjacent[:, 1:(self.n_beads-2), :], dim=2)
-
-        self.dihedral_sines = torch.sum(
-            cross_product_adjacent[:, 0:(self.n_beads-3), :] *
-            plane_vector[:, 0:(self.n_beads-3), :], dim=2)/torch.norm(
-            cross_product_adjacent[:, 0:(self.n_beads-3), :], dim=2)/torch.norm(
-            plane_vector[:, 0:(self.n_beads-3), :], dim=2)
-        descriptions.extend([(i, i+1, i+2, i+3)
-                             for i in range(self.n_beads-3)])
-        self.descriptions["Dihedrals"] = descriptions
+    def compute_dihedrals(self, data):
+        """Computes four-term dihedral (torsional) angles."""
+        (self.dihedral_cosines,
+         self.dihedral_sines) = g.get_dihedrals(self._dihedral_quads, data)
+        self.descriptions["Dihedral_cosines"] = self._dihedral_quads
+        self.descriptions["Dihedral_sines"] = self._dihedral_quads
 
     def forward(self, data):
         """Obtain differentiable feature
@@ -104,26 +118,43 @@ class ProteinBackboneFeature(nn.Module):
 
         self._coordinates = data
         self.n_beads = data.shape[1]
+        if self._n_beads is not None and self.n_beads != self._n_beads:
+            raise ValueError(
+                "n_beads passed to __init__ does not match n_beads in data."
+                )
+        if np.max([np.max(bead) for bead in self.feature_tuples]) > self.n_beads - 1:
+            raise ValueError(
+                "Bead index in at least one feature is out of range."
+            )
 
         self.descriptions = {}
         self.description_order = []
+        out = torch.Tensor([])
 
-        self.compute_distances()
-        out = self.distances
-        self.description_order.append('Distances')
+        if len(self._distance_pairs) > 0:
+            self.compute_distances(data)
+            out = torch.cat((out, self.distances), dim=1)
+            self.description_order.append('Distances')
+        else:
+            self.distances = torch.Tensor([])
 
-        if self.n_beads > 2:
-            self.compute_angles()
+        if len(self._angle_trips) > 0:
+            self.compute_angles(data)
             out = torch.cat((out, self.angles), dim=1)
             self.description_order.append('Angles')
+        else:
+            self.angles = torch.Tensor([])
 
-        if self.n_beads > 3:
-            self.compute_dihedrals()
+        if len(self._dihedral_quads) > 0:
+            self.compute_dihedrals(data)
             out = torch.cat((out,
                              self.dihedral_cosines,
                              self.dihedral_sines), dim=1)
             self.description_order.append('Dihedral_cosines')
             self.description_order.append('Dihedral_sines')
+        else:
+            self.dihedral_cosines = torch.Tensor([])
+            self.dihedral_sines = torch.Tensor([])
 
         return out
 

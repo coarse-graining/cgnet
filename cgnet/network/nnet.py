@@ -75,7 +75,7 @@ class CGnet(nn.Module):
     CGnet(
       (input): in_features=30
       (arch): Sequential(
-        (0): ProteinBackboneFeature(in_features=30, out_features=17)
+        (0): GeometryFeature(in_features=30, out_features=17)
         (1): Linear(in_features=17, out_features=160, bias=True)
         (2): Tanh()
         (3): Linear(in_features=160, out_features=160, bias=True)
@@ -159,7 +159,7 @@ class CGnet(nn.Module):
         # addition of external priors to form total energy
         if self.priors:
             for prior in self.priors:
-                energy += prior(feat[:, prior.feat_idx])
+                energy = energy + prior(feat[:, prior.callback_indices])
 
         # Perform autograd to learn potential of conservative force field
         force = torch.autograd.grad(-torch.sum(energy),

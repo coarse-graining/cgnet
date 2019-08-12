@@ -1,14 +1,16 @@
 # Author: Nick Charron
 # Contributors: Brooke Husic, Dominik Lemm
 
+import random
 import numpy as np
 import torch
 import torch.nn as nn
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
-from cgnet.network import (CGnet, LinearLayer, ForceLoss, RepulsionLayer,
+from cgnet.network import (CGnet, ForceLoss, RepulsionLayer,
                            HarmonicLayer, ZscoreLayer, Simulation)
-from cgnet.feature import ProteinBackboneStatistics, ProteinBackboneFeature
+from cgnet.feature import (GeometryStatistics, GeometryFeature,
+                           LinearLayer)
 
 # Random test data
 x0 = torch.rand((50, 1), requires_grad=True)
@@ -22,26 +24,29 @@ beads = np.random.randint(5, 10)
 dims = 3
 
 coords = torch.randn((frames, beads, 3), requires_grad=True)
-stats = ProteinBackboneStatistics(coords.detach().numpy())
+stats = GeometryStatistics(coords.detach().numpy())
 
 # Prior variables
-bondsdict = stats.get_bond_constants(flip_dict=True, zscores=True)
-bonds = dict((k, bondsdict[k]) for k in [(i, i+1) for i in range(beads-1)])
+full_prior_stats = stats.get_prior_statistics()
+bonds_idx = stats.return_indices('Bonds')
+bonds_interactions, _ = stats.get_prior_statistics(features='Bonds', as_list=True)
 
 repul_distances = [i for i in stats.descriptions['Distances']
                    if abs(i[0]-i[1]) > 2]
+repul_idx = stats.return_indices(repul_distances)
+
 ex_vols = np.random.uniform(2, 8, len(repul_distances))
 exps = np.random.randint(1, 6, len(repul_distances))
-repul_dict = dict((index, {'ex_vol': ex_vol, 'exp': exp})
-                  for index, ex_vol, exp
-                  in zip(repul_distances, ex_vols, exps))
+repul_interactions = [{'ex_vol' : ex_vol, "exp" : exp} for ex_vol, exp
+                      in zip(ex_vols, exps)]
 
 descriptions = stats.descriptions
-nums = [len(descriptions['Distances']), len(descriptions['Angles']),
-        len(descriptions['Dihedral_cosines']),
-        len(descriptions['Dihedral_sines'])]
-descs = [key for key in descriptions.keys()]
-zscores = stats.get_zscores(tensor=True, as_dict=False).float()
+order = stats.order
+nums = [len(descriptions[desc]) for desc in order]
+zscores = torch.zeros((2, len(full_prior_stats)))
+for i, key in enumerate(full_prior_stats.keys()):
+    zscores[0, i] = full_prior_stats[key]['mean']
+    zscores[1, i] = full_prior_stats[key]['std']
 
 
 def test_linear_layer():
@@ -82,7 +87,7 @@ def test_zscore_layer():
     #
     # However, the equality is only preserved with precision >= 1e-4.
 
-    feat_layer = ProteinBackboneFeature()
+    feat_layer = GeometryFeature(n_beads=beads)
     feat = feat_layer(coords)
     rescaled_feat_truth = (feat - zscores[0, :])/zscores[1, :]
 
@@ -96,17 +101,15 @@ def test_zscore_layer():
 def test_repulsion_layer():
     # Tests RepulsionLayer class for calculation and output size
 
-    repulsion_potential = RepulsionLayer(repul_dict,
-                                         descriptions=descriptions,
-                                         feature_type='Distances')
-    feat_layer = ProteinBackboneFeature()
+    repulsion_potential = RepulsionLayer(repul_idx, repul_interactions)
+    feat_layer = GeometryFeature(n_beads=beads)
     feat = feat_layer(coords)
-    energy = repulsion_potential(feat[:, repulsion_potential.feat_idx])
+    energy = repulsion_potential(feat[:, repulsion_potential.callback_indices])
 
     np.testing.assert_equal(energy.size(), (frames, 1))
     start_idx = 0
     feat_idx = []
-    for num, desc in zip(nums, descs):
+    for num, desc in zip(nums, order):
         if 'Distances' == desc:
             break
         else:
@@ -125,45 +128,107 @@ def test_repulsion_layer():
 def test_harmonic_layer():
     # Tests HarmonicLayer class for calculation and output size
 
-    harmonic_potential = HarmonicLayer(bonds, descriptions=descriptions,
-                                       feature_type='Distances')
-    feat_layer = ProteinBackboneFeature()
+    harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
+    feat_layer = GeometryFeature(n_beads=beads)
     feat = feat_layer(coords)
-    energy = harmonic_potential(feat[:, harmonic_potential.feat_idx])
+    energy = harmonic_potential(feat[:, harmonic_potential.callback_indices])
 
     np.testing.assert_equal(energy.size(), (frames, 1))
     start_idx = 0
-    feat_idx = []
-    features = []
+    feat_idx = stats.return_indices('Bonds')
+    features = [stats.master_description_tuples[i] for i in feat_idx]
+    assert feat_idx == harmonic_potential.callback_indices
+
+    feature_stats = stats.get_prior_statistics('Bonds')
     harmonic_parameters = torch.tensor([])
-    for num, desc in zip(nums, descs):
-        if 'Distances' == desc:
-            break
-        else:
-            start_idx += num
-    for key, params in bonds.items():
-        features.append(key)
-        feat_idx.append(start_idx +
-                        descriptions['Distances'].index(key))
+    for bead_tuple, stat in feature_stats.items():
         harmonic_parameters = torch.cat((
             harmonic_parameters,
-            torch.tensor([[params['k']],
-                          [params['mean']]])), dim=1)
+            torch.tensor([[stat['k']],
+                          [stat['mean']]])), dim=1)
     energy_check = torch.sum(harmonic_parameters[0, :] * (feat[:, feat_idx] -
-                                                          harmonic_parameters[1, :]) ** 2,
+                             harmonic_parameters[1, :]) ** 2,
                              1).reshape(len(feat), 1) / 2
 
     np.testing.assert_array_equal(energy.detach().numpy(),
                                   energy_check.detach().numpy())
 
 
+def test_prior_callback_order():
+    # Tests the order of prior callbacks with respect to feature layer output
+    stats = GeometryStatistics(coords)
+    feat_layer = GeometryFeature(n_beads=beads)
+    feat = feat_layer(coords)
+    bonds_tuples = [beads for beads in stats.master_description_tuples
+                    if len(beads) == 2 and abs(beads[0] - beads[1]) == 1]
+    np.random.shuffle(bonds_tuples)
+    bonds_idx = stats.return_indices(bonds_tuples)
+    bonds_interactions, _ = stats.get_prior_statistics(features=list(bonds_tuples), as_list=True)
+
+    harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
+    np.testing.assert_array_equal(bonds_idx, harmonic_potential.callback_indices)
+
+    energy = harmonic_potential(feat[:, harmonic_potential.callback_indices])
+    feature_stats = stats.get_prior_statistics('Bonds')
+    feat_idx = stats.return_indices('Bonds')
+    harmonic_parameters = torch.tensor([])
+    for bead_tuple, stat in feature_stats.items():
+        harmonic_parameters = torch.cat((
+            harmonic_parameters,
+            torch.tensor([[stat['k']],
+                          [stat['mean']]])), dim=1)
+    energy_check = torch.sum(harmonic_parameters[0, :] * (feat[:, feat_idx] -
+                             harmonic_parameters[1, :]) ** 2,
+                             1).reshape(len(feat), 1) / 2
+    np.testing.assert_allclose(energy.detach().numpy(),
+                               energy_check.detach().numpy(), rtol=1e-4)
+    np.testing.assert_allclose(np.sum(energy.detach().numpy()),
+                               np.sum(energy_check.detach().numpy()), rtol=1e-4)
+
+
+def test_prior_with_stats_dropout():
+    # Test the order of prior callbacks when the statistices are missing one
+    # of the four default backbone features: 'Distances', 'Angles',
+    # 'Dihedral_cosines', and 'Dihedral_sines,'
+
+    # determined by random.
+    feature_bools = [1] + [np.random.randint(0, high=1) for _ in range(2)]
+    np.random.shuffle(feature_bools)
+    stats = GeometryStatistics(coords,
+                               get_all_distances=feature_bools[0],
+                               get_backbone_angles=feature_bools[1],
+                               get_backbone_dihedrals=feature_bools[2])
+
+    feat_layer = GeometryFeature(feature_tuples=stats.feature_tuples)
+    if 'Distances' in stats.descriptions:
+        # HarmonicLayer bonds test with random constants & means
+        bonds_interactions, _ = stats.get_prior_statistics(features='Bonds', as_list=True)
+        bonds_idx = stats.return_indices('Bonds')
+        harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
+        np.testing.assert_array_equal(bonds_idx, harmonic_potential.callback_indices)
+
+        # RepulsionLayer test with random exculsion vols & exps
+        repul_distances = stats.descriptions['Distances']
+        dist_idx = stats.return_indices('Distances')
+        ex_vols = np.random.uniform(2, 8, len(repul_distances))
+        exps = np.random.randint(1, 6, len(repul_distances))
+        repul_interactions = [{'ex_vol' : ex_vol, "exp" : exp} for ex_vol, exp
+                      in zip(ex_vols, exps)]
+        repulsion_potential = RepulsionLayer(dist_idx, repul_interactions)
+        np.testing.assert_array_equal(dist_idx, repulsion_potential.callback_indices)
+        for name in ['Angles', 'Dihedral_cosines', 'Dihedral_sines']:
+            if name in stats.descriptions:
+                feat_interactions, _ = stats.get_prior_statistics(features=name, as_list=True)
+                feat_idx = stats.return_indices(name)
+                harmonic_potential = HarmonicLayer(feat_idx, feat_interactions)
+                np.testing.assert_array_equal(feat_idx, harmonic_potential.callback_indices)
+
 def test_cgnet():
     # Tests CGnet class criterion attribute, architecture size, and network
-    # output size. Also tests prior embedding.
-
-    harmonic_potential = HarmonicLayer(bonds, descriptions=stats.descriptions,
-                                       feature_type='Distances')
-    feature_layer = ProteinBackboneFeature()
+    # output size. Also tests priors for proper residual connection to
+    # feature layer.
+    harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
+    feature_layer = GeometryFeature(n_beads=beads)
     num_feats = feature_layer(coords).size()[1]
 
     rand = np.random.randint(1, 10)
@@ -173,7 +238,7 @@ def test_cgnet():
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, 1, bias=True, activation=None)\
 
-    model = CGnet(arch, ForceLoss(), feature=ProteinBackboneFeature(),
+    model = CGnet(arch, ForceLoss(), feature=feature_layer,
                   priors=[harmonic_potential])
     np.testing.assert_equal(True, model.priors is not None)
     np.testing.assert_equal(len(arch), model.arch.__len__())
@@ -187,12 +252,11 @@ def test_cgnet():
 
 
 def test_cgnet_simulation():
-    # Tests a simulation from a CGnet built with the ProteinBackboneFeature
+    # Tests a simulation from a CGnet built with the GeometryFeature
     # for the shapes of its coordinate, force, and potential outputs
 
-    harmonic_potential = HarmonicLayer(bonds, descriptions=stats.descriptions,
-                                       feature_type='Distances')
-    feature_layer = ProteinBackboneFeature()
+    harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
+    feature_layer = GeometryFeature(n_beads=beads)
     num_feats = feature_layer(coords).size()[1]
 
     rand = np.random.randint(1, 10)
@@ -202,7 +266,7 @@ def test_cgnet_simulation():
         + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
         + LinearLayer(rand, 1, bias=True, activation=None)\
 
-    model = CGnet(arch, ForceLoss(), feature=ProteinBackboneFeature(),
+    model = CGnet(arch, ForceLoss(), feature=feature_layer,
                   priors=[harmonic_potential])
 
     forces = torch.randn((frames, beads, 3), requires_grad=False)
