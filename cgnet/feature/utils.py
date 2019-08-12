@@ -185,7 +185,7 @@ class RadialBasisFunction(nn.Module):
         Parameters
         ----------
         distances : torch.Tensor
-            Interatomic distances of shape [n_examples, n_beads, n_neighbors]
+            Interatomic distances of shape [n_examples, n_distances]
 
         Returns
         -------
