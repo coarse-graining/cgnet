@@ -1,6 +1,7 @@
 # Authors: Nick Charron, Dominik Lemm
 # Contributors: Brooke Husic
 
+import numpy as np
 import torch
 from torch import nn as nn
 
