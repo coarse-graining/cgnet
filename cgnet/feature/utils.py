@@ -152,11 +152,14 @@ class RadialBasisFunction(nn.Module):
 
     Parameters
     ----------
-    feat_idx : list(int)
+    callback_indices : list(int)
         List of feature idices that serve as a callback to a previous
         featurization layer. For example, these indices could by the
         indices corresponding to all pairwise distances output from a
         ProteinBackboneFeature() layer
+    redundant_mapping : numpy.array or torch.Tensor
+        neighborlist redundant index mapping for distances. See
+        cgnet.feature.GeometryStatistics._get_redundant_distance_mapping
     cutoff : float (default=5.0)
         Distance cutoff for the Gaussian function. The cutoff represents the
         center of the last gaussian function in basis.
@@ -169,11 +172,12 @@ class RadialBasisFunction(nn.Module):
         The variance (standard deviation squared) of the Gaussian functions.
     """
 
-    def __init__(self, indices, cutoff=5.0, num_gaussians=50, variance=1.0):
+    def __init__(self, callback_indices, redundant_mapping, cutoff=5.0, num_gaussians=50, variance=1.0):
         super(RadialBasisFunction, self).__init__()
         self.centers = torch.linspace(0.0, cutoff, num_gaussians)
         self.variance = variance
-        self.feat_idx = indices
+        self.callback_indices = callback_indices
+        self.redundant_mapping = redundant_mapping
 
     def forward(self, distances):
         """Calculate Gaussian expansion
@@ -188,6 +192,7 @@ class RadialBasisFunction(nn.Module):
         gaussian_exp: torch.Tensor
             Gaussian expansions of shape [n_examples, n_beads, n_neighbors, n_gauss]
         """
+        distances = distances[:, self.redundant_mapping]
         dist_centered_squared = torch.pow(distances.unsqueeze(dim=3) -
                                           self.centers, 2)
         gaussian_exp = torch.exp(-(0.5 / self.variance)
