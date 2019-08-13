@@ -21,19 +21,17 @@ def test_radial_basis_function():
 
     # Get distances from feature output and use grab redundant distance mapping
     output = feat(torch.tensor(coords, requires_grad=True).float())
-    dist_idx = stats.return_indices('Distances')
-    distances = output[:, dist_idx]
     variance = np.random.random() + 1
     n_gaussians = np.random.randint(5, 10)
     cutoff = np.random.uniform(1.0, 5.0)
     # Calculate Gaussian expansion using the implemented layer
-    rbf = RadialBasisFunction(dist_idx, stats.redundant_distance_mapping,
+    rbf = RadialBasisFunction(stats.redundant_distance_mapping,
                               cutoff=cutoff, num_gaussians=n_gaussians,
                               variance=variance)
-    gauss_layer = rbf.forward(distances)
+    gauss_layer = rbf.forward(output[:, rbf.redundant_callback_mapping])
 
     # Manually calculate expansion
-    distances = distances[:, stats.redundant_distance_mapping]
+    distances = output[:, stats.redundant_distance_mapping]
     centers = torch.linspace(0.0, cutoff, n_gaussians)
     coefficient = -0.5 / variance
     magnitude_squared = torch.pow(distances.unsqueeze(dim=3) - centers, 2)

@@ -172,12 +172,11 @@ class RadialBasisFunction(nn.Module):
         The variance (standard deviation squared) of the Gaussian functions.
     """
 
-    def __init__(self, callback_indices, redundant_mapping, cutoff=5.0, num_gaussians=50, variance=1.0):
+    def __init__(self, redundant_callback_mapping, cutoff=5.0, num_gaussians=50, variance=1.0):
         super(RadialBasisFunction, self).__init__()
         self.centers = torch.linspace(0.0, cutoff, num_gaussians)
         self.variance = variance
-        self.callback_indices = callback_indices
-        self.redundant_mapping = redundant_mapping
+        self.redundant_callback_mapping = redundant_callback_mapping
 
     def forward(self, distances):
         """Calculate Gaussian expansion
@@ -185,14 +184,13 @@ class RadialBasisFunction(nn.Module):
         Parameters
         ----------
         distances : torch.Tensor
-            Interatomic distances of shape [n_examples, n_distances]
+            Interatomic distances of shape [n_examples, n_beads, n_distances]
 
         Returns
         -------
         gaussian_exp: torch.Tensor
             Gaussian expansions of shape [n_examples, n_beads, n_neighbors, n_gauss]
         """
-        distances = distances[:, self.redundant_mapping]
         dist_centered_squared = torch.pow(distances.unsqueeze(dim=3) -
                                           self.centers, 2)
         gaussian_exp = torch.exp(-(0.5 / self.variance)

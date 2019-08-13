@@ -200,8 +200,13 @@ class ContinuousFilterConvolution(nn.Module):
         https://doi.org/10.1063/1.5019779
     """
 
-    def __init__(self, num_gaussians, num_filters):
+    def __init__(self, neighbor_list, num_gaussians, num_filters):
         super(ContinuousFilterConvolution, self).__init__()
+        if not isinstance(neighbor_list, torch.Tensor):
+            self.neighbor_list = torch.tensor(neighbor_list)
+        else:
+            self.neighbor_list = neighbor_list
+        self.num_beads, self.num_neighbors = self.neighbor_list.size()
         filter_layers = LinearLayer(num_gaussians, num_filters, bias=True,
                                     activation=ShiftedSoftplus())
         # In SchNetPack they don't use any activation here, but in the
@@ -210,7 +215,7 @@ class ContinuousFilterConvolution(nn.Module):
                                      activation=ShiftedSoftplus())
         self.filter_generator = nn.Sequential(*filter_layers)
 
-    def forward(self, features, rbf_expansion, neighbor_list):
+    def forward(self, features, rbf_expansion):
         """ Compute convolutional block
 
         Parameters
@@ -241,29 +246,30 @@ class ContinuousFilterConvolution(nn.Module):
         # (n_batch, n_beads, n_neighbors, n_features)
         # This can be done by feeding the features of a respective bead into
         # its position in the neighbor_list.
-
-        num_batch, num_beads, num_neighbors = neighbor_list.size()
-        # Shape (n_batch, n_beads * n_neighbors, 1)
-        neighbor_list = neighbor_list.reshape(-1, num_beads * num_neighbors, 1)
-        # Shape (n_batch, n_beads * n_neighbors, n_features)
+        num_batch = rbf_expansion.size()[0]
+        neighbor_list = self.neighbor_list.unsqueeze(0).expand(num_batch,
+                                                               self.num_beads,
+                                                               self.num_neighbors)
+        # Shape (n_examples, n_beads * n_neighbors, 1)
+        neighbor_list = neighbor_list.reshape(-1, self.num_beads * self.num_neighbors, 1)
+        # Shape (n_examples, n_beads * n_neighbors, n_features)
         neighbor_list = neighbor_list.expand(-1, -1, features.size(2))
 
         # Gather the features into the respective places in the neighbor list
         neighbor_features = torch.gather(features, 1, neighbor_list)
-        # Reshape back to (n_batch, n_beads, n_neighbors, n_features) for
+        # Reshape back to (n_examples, n_beads, n_neighbors, n_features) for
         # element-wise multiplication with the filter
-        neighbor_features = neighbor_features.reshape(num_batch, num_beads,
-                                                      num_neighbors, -1)
+        neighbor_features = neighbor_features.reshape(num_batch, self.num_beads,
+                                                      self.num_neighbors, -1)
 
         # Element-wise multiplication of the features with
         # the convolutional filter
         conv_features = neighbor_features * conv_filter
 
-        # Aggregate/pool the features from (n_batch, n_beads, n_neighs, n_feats)
-        # to (n_batch, n_beads, n_features)
+        # Aggregate/pool the features from (n_examples, n_beads, n_neighs, n_feats)
+        # to (n_examples, n_beads, n_features)
         agg_features = torch.sum(conv_features, dim=2)
         return agg_features
-
 
 class InteractionBlock(nn.Module):
     """
@@ -309,13 +315,18 @@ class InteractionBlock(nn.Module):
         https://doi.org/10.1063/1.5019779
     """
 
-    def __init__(self, num_inputs, num_gaussians, num_filters):
+    def __init__(self, neighbor_list, num_inputs, num_gaussians, num_filters):
         super(InteractionBlock, self).__init__()
+        if not isinstance(neighbor_list, torch.Tensor):
+            self.neighbor_list = torch.tensor(neighbor_list)
+        else:
+            self.neighbor_list = neighbor_list
 
         self.inital_dense = nn.Sequential(
             *LinearLayer(num_inputs, num_filters, bias=False,
                          activation=None))
-        self.cfconv = ContinuousFilterConvolution(num_gaussians=num_gaussians,
+        self.cfconv = ContinuousFilterConvolution(self.neighbor_list,
+                                                  num_gaussians=num_gaussians,
                                                   num_filters=num_filters)
         output_layers = LinearLayer(num_filters, num_filters, bias=True,
                                     activation=ShiftedSoftplus())
@@ -323,7 +334,7 @@ class InteractionBlock(nn.Module):
                                      activation=None)
         self.output_dense = nn.Sequential(*output_layers)
 
-    def forward(self, features, rbf_expansion, neighbor_list):
+    def forward(self, features, rbf_expansion):
         """ Compute interaction block
 
         Parameters
@@ -334,9 +345,6 @@ class InteractionBlock(nn.Module):
         rbf_expansion: torch.Tensor
             Radial basis function expansion of interatomic distances.
             Shape [n_batch, n_beads, n_neighbors, n_gaussians]
-        neighbor_list: torch.Tensor
-            Indices of all neighbors of each bead.
-            Size [n_examples, n_beads, n_neighbors]
 
         Returns
         -------
@@ -348,15 +356,14 @@ class InteractionBlock(nn.Module):
 
         """
         init_feature_output = self.inital_dense(features)
-        conv_output = self.cfconv(init_feature_output, rbf_expansion,
-                                  neighbor_list)
+        conv_output = self.cfconv(init_feature_output, rbf_expansion)
         output_features = self.output_dense(conv_output)
         return output_features
 
 
 class SchnetBlock(nn.Module):
     """Wrapper class for RBF layer, continuous filter convolution, and
-    interaction block
+    interaction block connecting feature inputs and outputs residuallly
     """
 
     def __init__(self, interaction_block, rbf_layer, residual_connect=True):
@@ -381,7 +388,7 @@ class SchnetBlock(nn.Module):
         self.rbf_layer = rbf_layer
         self.residual_connect = residual_connect
 
-    def forward(self, features, rbf_expansion, neighbor_list):
+    def forward(self, features, distances):
         """Forward method through single Schnet block
 
         Parameters
@@ -389,12 +396,6 @@ class SchnetBlock(nn.Module):
         features : torch.Tensor
             input feature into the schnet block. Size
             [n_examples, n_beads, n_features]
-        rbf_expansion : torch.Tensor
-            output from radial basis function layer. Size
-            [n_examples, n_beads, n_neighbors, n_gaussians]
-        neighbor_list : torch.Tensor
-            Indices of all neighbors of each bead.
-            Size [n_examples, n_beads, n_neighbors]
 
         Returns
         -------
@@ -405,8 +406,8 @@ class SchnetBlock(nn.Module):
             Size [n_examples, n_beads, n_filters]
 
         """
-        output_features = self.interaction_block(features, rbf_expansion,
-                                                 neighbor_list)
+        rbf_expansion = self.rbf_layer(distances)
+        output_features = self.interaction_block(features, rbf_expansion)
         if self.residual_connect:
             output_features = output_features + features
         return output_features
