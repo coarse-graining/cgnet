@@ -26,7 +26,7 @@ def test_model_gpu_mount():
     forces = np.random.randn(num_examples, num_beads, 3).astype('float32')
     stats = GeometryStatistics(coords)
 
-    bonds_list = stats.get_prior_statistsics('Bonds')
+    bonds_list, _ = stats.get_prior_statistsics('Bonds')
     bonds_idx = stats.return_indices('Bonds')
 
     repul_distances = [i for i in stats.descriptions['Distances']
