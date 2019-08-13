@@ -8,11 +8,20 @@ import torch
 from cgnet.feature import GeometryFeature, GeometryStatistics
 
 # The following sets up our pseud-simulation data
-frames = np.random.randint(1, 10) # Number of frames
-beads = np.random.randint(8, 20) # Number of coarse-grained beads 
-dims = 3 # Number of dimensions; for now geometry only handles 3
 
-x = np.random.randn(frames, beads, dims) # Create a pseudo simulation
+# Number of frames
+frames = np.random.randint(1, 10)
+
+# Number of coarse-grained beads. We need at least 8 so we can do
+# dihedrals in the backbone tests (where every other atom is designated
+# as a backbone atom)
+beads = np.random.randint(8, 20) 
+
+# Number of dimensions; for now geometry only handles 3
+dims = 3 
+
+# Create a pseudo simulation dataset
+x = np.random.randn(frames, beads, dims)
 xt = torch.Tensor(x)
 
 f = GeometryFeature(n_beads=beads)
@@ -102,7 +111,7 @@ def test_manual_backbone_descriptions():
                            for i in range(len(backbone_inds)-3)]
 
     np.testing.assert_array_equal(stats_bb_inds.bond_pairs,
-                                  bb_ind_bond_descs)
+                                  bb_inds_bond_descs)
     np.testing.assert_array_equal(stats_bb_only.bond_pairs,
                                   bb_only_bond_descs)
 
@@ -265,7 +274,7 @@ def test_prior_statistics_2():
     some_dicts = [some_stats[k] for k in some_stats.keys()]
     all_corresponding_dicts = [all_stats[k] for k in some_stats.keys()]
 
-    np.testing.assert_array_equal(some_keys, all_corresponding_keys)
+    np.testing.assert_array_equal(some_dicts, all_corresponding_dicts)
 
 
 def test_return_indices_shape_1():
