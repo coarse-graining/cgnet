@@ -4,8 +4,7 @@
 
 import torch
 import torch.nn as nn
-from cgnet.feature.utils import ShiftedSoftplus
-from cgnet.network.layers import LinearLayer
+from cgnet.feature.utils import ShiftedSoftplus, LinearLayer
 import numpy as np
 import warnings
 
