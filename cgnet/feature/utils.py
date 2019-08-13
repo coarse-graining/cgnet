@@ -102,12 +102,6 @@ class RadialBasisFunction(nn.Module):
         gaussian_exp = torch.exp(-(0.5 / self.variance)
                                  * dist_centered_squared)
         return gaussian_exp
-=======
-# Author: Nick Charron
-# Contributors: Brooke Husic, Dominik Lemm
-
-import torch
-from torch import nn as nn
 
 
 def LinearLayer(
