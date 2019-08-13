@@ -44,12 +44,8 @@ def lipschitz_projection(model, strength=10.0):
         if isinstance(layer, nn.Linear):
             weight = layer.weight.data
             u, s, v = torch.svd(weight)
-            if next(model.parameters()).is_cuda:
-                lip_reg = torch.max(((s[0]) / strength),
-                                    torch.tensor([1.0]).cuda())
-            else:
-                lip_reg = torch.max(((s[0]) / strength),
-                                    torch.tensor([1.0]))
+            lip_reg = torch.max(((s[0]) / strength),
+                                torch.tensor([1.0], device=s[0].device))
             layer.weight.data = weight / (lip_reg)
 
 
