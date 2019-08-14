@@ -380,21 +380,27 @@ class SchnetBlock(nn.Module):
                  variance=1.0,
                  n_interaction_blocks=1,
                  share_weights=True):
-        """Initialization
+        """
 
         Parameters
         ----------
-        interaction_block : InteractionBlock
-            single schnet InteractionBlock, containing a
-            ContinuousFilterConvolution and surrounding LinearLayers
-        rbf_layer : RadialBasisFunction
-            radial basis function layer that provides feature expansion into
-            gaussian basis prior to elementwise multiplication with a
-            ContinuousFilterConvolution
-        residual_connect : bool (default=True)
-            specifies whether or not to additively combine the input and output
-            features of the interaction block through a residual connection
-
+        feature_size: int
+            Input size and number of filters for the InteractionBlock.
+            Needs to be clarified a bit better here.
+        embedding_layer: torch.nn.Module
+            Class that embeds a property into a feature vector.
+        geometry_calculator: something that lets us compute distances and neighbors
+        rbf_cutoff: float
+            Cutoff for the radial basis function.
+        num_gaussians: int
+            Number of gaussians for the gaussian expansion in the radial basis
+            function.
+        variance: float
+            The variance (standard deviation squared) of the Gaussian functions.
+        n_interaction_blocks: int
+            Number of interaction blocks.
+        share_weights: bool
+            If True, shares the weights between all interaction blocks.
         """
         super(SchnetBlock, self).__init__()
         self.embedding = embedding_layer
@@ -403,11 +409,13 @@ class SchnetBlock(nn.Module):
                                              num_gaussians=num_gaussians,
                                              variance=variance)
         if share_weights:
+            # Lets the interaction blocks share the weights
             self.interaction_blocks = nn.ModuleList(
                 [InteractionBlock(feature_size, num_gaussians, feature_size)]
                 * n_interaction_blocks
             )
         else:
+            # Every interaction block has their own weights
             self.interaction_blocks = nn.ModuleList(
                 [InteractionBlock(feature_size, num_gaussians, feature_size)
                  for _ in range(n_interaction_blocks)]
@@ -435,6 +443,7 @@ class SchnetBlock(nn.Module):
 
         """
         # TODO DOM: need to check out the new geometry stuff to do this step properly
+        # but you get the idea
         distances = self.geometry.compute_distances(coordinates)
         neighbors = self.geometry.compute_neighbors(coordinates)
 
