@@ -8,6 +8,7 @@ from cgnet.feature.utils import ShiftedSoftplus, LinearLayer
 import numpy as np
 import warnings
 
+from .utils import RadialBasisFunction
 from .geometry import Geometry
 g = Geometry(method='torch')
 
@@ -209,13 +210,8 @@ class ContinuousFilterConvolution(nn.Module):
         https://doi.org/10.1063/1.5019779
     """
 
-    def __init__(self, neighbor_list, num_gaussians, num_filters):
+    def __init__(self, num_gaussians, num_filters):
         super(ContinuousFilterConvolution, self).__init__()
-        if not isinstance(neighbor_list, torch.Tensor):
-            self.neighbor_list = torch.tensor(neighbor_list)
-        else:
-            self.neighbor_list = neighbor_list
-        self.num_beads, self.num_neighbors = self.neighbor_list.size()
         filter_layers = LinearLayer(num_gaussians, num_filters, bias=True,
                                     activation=ShiftedSoftplus())
         # No activation function in the last layer allows the filter generator
@@ -223,7 +219,7 @@ class ContinuousFilterConvolution(nn.Module):
         filter_layers += LinearLayer(num_filters, num_filters, bias=True)
         self.filter_generator = nn.Sequential(*filter_layers)
 
-    def forward(self, features, rbf_expansion):
+    def forward(self, features, rbf_expansion, neighbor_list):
         """ Compute convolutional block
 
         Parameters
@@ -255,11 +251,12 @@ class ContinuousFilterConvolution(nn.Module):
         # This can be done by feeding the features of a respective bead into
         # its position in the neighbor_list.
         num_batch = rbf_expansion.size()[0]
-        neighbor_list = self.neighbor_list.unsqueeze(0).expand(num_batch,
-                                                               self.num_beads,
-                                                               self.num_neighbors)
+        num_beads, num_neighbors = neighbor_list.size()
+        neighbor_list = neighbor_list.unsqueeze(0).expand(num_batch,
+                                                          num_beads,
+                                                          num_neighbors)
         # Shape (n_examples, n_beads * n_neighbors, 1)
-        neighbor_list = neighbor_list.reshape(-1, self.num_beads * self.num_neighbors, 1)
+        neighbor_list = neighbor_list.reshape(-1, num_beads * num_neighbors, 1)
         # Shape (n_examples, n_beads * n_neighbors, n_features)
         neighbor_list = neighbor_list.expand(-1, -1, features.size(2))
 
@@ -267,8 +264,8 @@ class ContinuousFilterConvolution(nn.Module):
         neighbor_features = torch.gather(features, 1, neighbor_list)
         # Reshape back to (n_examples, n_beads, n_neighbors, n_features) for
         # element-wise multiplication with the filter
-        neighbor_features = neighbor_features.reshape(num_batch, self.num_beads,
-                                                      self.num_neighbors, -1)
+        neighbor_features = neighbor_features.reshape(num_batch, num_beads,
+                                                      num_neighbors, -1)
 
         # Element-wise multiplication of the features with
         # the convolutional filter
@@ -278,6 +275,7 @@ class ContinuousFilterConvolution(nn.Module):
         # to (n_examples, n_beads, n_features)
         agg_features = torch.sum(conv_features, dim=2)
         return agg_features
+
 
 class InteractionBlock(nn.Module):
     """
@@ -323,18 +321,13 @@ class InteractionBlock(nn.Module):
         https://doi.org/10.1063/1.5019779
     """
 
-    def __init__(self, neighbor_list, num_inputs, num_gaussians, num_filters):
+    def __init__(self, num_inputs, num_gaussians, num_filters):
         super(InteractionBlock, self).__init__()
-        if not isinstance(neighbor_list, torch.Tensor):
-            self.neighbor_list = torch.tensor(neighbor_list)
-        else:
-            self.neighbor_list = neighbor_list
 
         self.inital_dense = nn.Sequential(
             *LinearLayer(num_inputs, num_filters, bias=False,
                          activation=None))
-        self.cfconv = ContinuousFilterConvolution(self.neighbor_list,
-                                                  num_gaussians=num_gaussians,
+        self.cfconv = ContinuousFilterConvolution(num_gaussians=num_gaussians,
                                                   num_filters=num_filters)
         output_layers = LinearLayer(num_filters, num_filters, bias=True,
                                     activation=ShiftedSoftplus())
@@ -342,7 +335,7 @@ class InteractionBlock(nn.Module):
                                      activation=None)
         self.output_dense = nn.Sequential(*output_layers)
 
-    def forward(self, features, rbf_expansion):
+    def forward(self, features, rbf_expansion, neighbor_list):
         """ Compute interaction block
 
         Parameters
@@ -353,6 +346,9 @@ class InteractionBlock(nn.Module):
         rbf_expansion: torch.Tensor
             Radial basis function expansion of interatomic distances.
             Shape [n_batch, n_beads, n_neighbors, n_gaussians]
+        neighbor_list: torch.Tensor
+            Indices of all neighbors of each bead.
+            Size [n_examples, n_beads, n_neighbors]
 
         Returns
         -------
@@ -364,7 +360,8 @@ class InteractionBlock(nn.Module):
 
         """
         init_feature_output = self.inital_dense(features)
-        conv_output = self.cfconv(init_feature_output, rbf_expansion)
+        conv_output = self.cfconv(init_feature_output, rbf_expansion,
+                                  neighbor_list)
         output_features = self.output_dense(conv_output)
         return output_features
 
@@ -374,7 +371,15 @@ class SchnetBlock(nn.Module):
     interaction block connecting feature inputs and outputs residuallly
     """
 
-    def __init__(self, interaction_block, rbf_layer, residual_connect=True):
+    def __init__(self,
+                 feature_size,
+                 embedding_layer,
+                 geometry_calculator,  # Maybe doesnt need to be passed at all
+                 rbf_cutoff=5.0,
+                 num_gaussians=50,
+                 variance=1.0,
+                 n_interaction_blocks=1,
+                 share_weights=True):
         """Initialization
 
         Parameters
@@ -392,11 +397,23 @@ class SchnetBlock(nn.Module):
 
         """
         super(SchnetBlock, self).__init__()
-        self.interaction_block = interaction_block
-        self.rbf_layer = rbf_layer
-        self.residual_connect = residual_connect
+        self.embedding = embedding_layer
+        self.geometry = geometry_calculator
+        self.rbf_layer = RadialBasisFunction(cutoff=rbf_cutoff,
+                                             num_gaussians=num_gaussians,
+                                             variance=variance)
+        if share_weights:
+            self.interaction_blocks = nn.ModuleList(
+                [InteractionBlock(feature_size, num_gaussians, feature_size)]
+                * n_interaction_blocks
+            )
+        else:
+            self.interaction_blocks = nn.ModuleList(
+                [InteractionBlock(feature_size, num_gaussians, feature_size)
+                 for _ in range(n_interaction_blocks)]
+            )
 
-    def forward(self, features, distances):
+    def forward(self, coordinates, embedding_property):
         """Forward method through single Schnet block
 
         Parameters
@@ -407,15 +424,24 @@ class SchnetBlock(nn.Module):
 
         Returns
         -------
-        output_features: torch.Tensor
+        features: torch.Tensor
             output of interaction block. If residual_connect = True, then
             this output is additively combined with interaction block input
             to produce: output_feature = (output_feature + features).
             Size [n_examples, n_beads, n_filters]
 
         """
-        rbf_expansion = self.rbf_layer(distances)
-        output_features = self.interaction_block(features, rbf_expansion)
-        if self.residual_connect:
-            output_features = output_features + features
-        return output_features
+        # TODO DOM: need to check out the new geometry stuff to do this step properly
+        distances = self.geometry.compute_distances(coordinates)
+        neighbors = self.geometry.compute_neighbors(coordinates)
+
+        features = self.embedding(embedding_property)
+        rbf_expansion = self.rbf_layer(distances=distances)
+
+        for interaction_block in self.interaction_blocks:
+            interaction_features = interaction_block(features=features,
+                                                     rbf_expansion=rbf_expansion,
+                                                     neighbor_list=neighbors)
+            features = features + interaction_features
+
+        return features
