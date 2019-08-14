@@ -4,7 +4,6 @@
 
 import torch
 import torch.nn as nn
-
 from cgnet.feature.utils import ShiftedSoftplus, LinearLayer
 import numpy as np
 import warnings
@@ -167,6 +166,9 @@ class ContinuousFilterConvolution(nn.Module):
     locations in space using continuous radial filters (Schütt et al. 2018).
 
         x_i^{l+i} = (X^i * W^l)_i = \sum_{j=0}^{n_{atoms}} x_j^l \circ W^l (r_j -r_i)
+        
+    with feature representation X^l=(x^l_1, ..., x^l_n), filter-generating 
+    network W^l, positions R=(r_1, ..., r_n) and the current layer l.
 
     A continuous-filter convolution block consists of a filter generating network
     as follows:
@@ -177,6 +179,7 @@ class ContinuousFilterConvolution(nn.Module):
            (already precomputed so will be parsed as arguments)
         2. Atom-wise/Linear layer with shifted-softplus activation function
         3. Atom-wise/Linear layer with shifted-softplus activation function
+           (see Notes)
 
     The filter generator output is then multiplied element-wise with the
     continuous convolution filter as part of the interaction block.
@@ -190,6 +193,12 @@ class ContinuousFilterConvolution(nn.Module):
         Number of filters that will be created. Also determines the output size.
         Needs to be the same size as the features of the residual connection in
         the interaction block.
+
+    Notes
+    -----
+    Following the current implementation in SchNetPack, the last linear layer of
+    the filter generator does not contain an activation function.
+    This allows the filter generator to contain negative values.
 
     References
     ----------
@@ -209,10 +218,9 @@ class ContinuousFilterConvolution(nn.Module):
         self.num_beads, self.num_neighbors = self.neighbor_list.size()
         filter_layers = LinearLayer(num_gaussians, num_filters, bias=True,
                                     activation=ShiftedSoftplus())
-        # In SchNetPack they don't use any activation here, but in the
-        # publication figures there is.
-        filter_layers += LinearLayer(num_filters, num_filters, bias=True,
-                                     activation=ShiftedSoftplus())
+        # No activation function in the last layer allows the filter generator
+        # to contain negative values.
+        filter_layers += LinearLayer(num_filters, num_filters, bias=True)
         self.filter_generator = nn.Sequential(*filter_layers)
 
     def forward(self, features, rbf_expansion):
@@ -223,7 +231,7 @@ class ContinuousFilterConvolution(nn.Module):
         features: torch.Tensor
             Feature vector of size [n_examples, n_beads, n_features].
         rbf_expansion: torch.Tensor
-            Gaussian expansion of atomic distances of size
+            Gaussian expansion of bead distances of size
             [n_examples, n_beads, n_neighbors, n_gaussians].
         neighbor_list: torch.Tensor
             Indices of all neighbors of each bead.
@@ -237,13 +245,13 @@ class ContinuousFilterConvolution(nn.Module):
         """
 
         # Generate the convolutional filter
-        # Shape (n_batch, n_beads, n_neighbors, n_features)
+        # Shape (n_examples, n_beads, n_neighbors, n_features)
         conv_filter = self.filter_generator(rbf_expansion)
 
         # Feature tensor needs to be transformed from
-        # (n_batch, n_beads, n_features)
+        # (n_examples, n_beads, n_features)
         # to
-        # (n_batch, n_beads, n_neighbors, n_features)
+        # (n_examples, n_beads, n_neighbors, n_features)
         # This can be done by feeding the features of a respective bead into
         # its position in the neighbor_list.
         num_batch = rbf_expansion.size()[0]
@@ -341,7 +349,7 @@ class InteractionBlock(nn.Module):
         ----------
         features: torch.Tensor
             Input features from an embedding or interaction layer.
-            Shape [n_batch, n_beads, n_features]
+            Shape [n_examples, n_beads, n_features]
         rbf_expansion: torch.Tensor
             Radial basis function expansion of interatomic distances.
             Shape [n_batch, n_beads, n_neighbors, n_gaussians]
@@ -352,7 +360,7 @@ class InteractionBlock(nn.Module):
             Output of an interaction block. This output can be used to form
             a residual connection with the output of a prior embedding/interaction
             layer.
-            Shape [n_batch, n_beads, n_filters]
+            Shape [n_examples, n_beads, n_filters]
 
         """
         init_feature_output = self.inital_dense(features)

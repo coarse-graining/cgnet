@@ -28,14 +28,14 @@ def test_model_gpu_mount():
     stats = GeometryStatistics(coords)
     feat_layer = GeometryFeature(feature_tuples=stats.feature_tuples)
 
+    bonds_list, _ = stats.get_prior_statistsics('Bonds')
     bonds_idx = stats.return_indices('Bonds')
-    bonds_list = stats.get_prior_statistics(features='Bonds', as_list=True)
 
     repul_tuples = [i for i in stats.descriptions['Distances']
                        if abs(i[0]-i[1]) > 2]
-    repul_idx = stats.return_indices(features=repul_tuples)
-    ex_vols = np.random.uniform(2, 8, len(repul_idx))
-    exps = np.random.randint(1, 6, len(repul_idx))
+    repul_idx = stats.return_indices(features=repul_distances)
+    ex_vols = np.random.uniform(2, 8, len(repul_distances))
+    exps = np.random.randint(1, 6, len(repul_distances))
     repul_list = [{'ex_vol' : ex_vol, 'exp' : exp}
                   for ex_vol, exp in zip(ex_vols, exps)]
 
@@ -45,13 +45,13 @@ def test_model_gpu_mount():
     dataset = MoleculeDataset(coords, forces, device=device)
     loader = DataLoader(dataset, batch_size=1)
     arch = [ZscoreLayer(zscores)]
-    arch += LinearLayer(sum(nums), width)
+    arch += LinearLayer(len(stats.master_description_tuples), width)
     arch += LinearLayer(width, 1)
 
     priors = [HarmonicLayer(bonds_list, bonds_idx)]
     priors += [RepulsionLayer(repul_list, repul_idx)]
 
-    model = CGnet(arch, ForceLoss(), feature=feat_layer,
+    model = CGnet(arch, ForceLoss(), feature=GeometryFeature(),
                   priors=priors).float().to(device)
     for _, batch in enumerate(loader):
         coords, forces = batch
