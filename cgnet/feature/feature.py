@@ -418,9 +418,12 @@ class SchnetBlock(nn.Module):
 
         Parameters
         ----------
-        features : torch.Tensor
-            input feature into the schnet block. Size
-            [n_examples, n_beads, n_features]
+        coordinates: torch.Tensor (grad enabled)
+            input trajectory/data of size [n_examples, n_degrees_of_freedom].
+        embedding_property: torch.Tensor
+            Some property that should be embedded. Can be nuclear charge
+            or maybe an arbitrary number assigned for amino-acids.
+            Size [n_examples] (not sure if it can have 2 dimensions?)
 
         Returns
         -------
@@ -445,3 +448,38 @@ class SchnetBlock(nn.Module):
             features = features + interaction_features
 
         return features
+
+
+class CGBeadEmbedding(torch.nn.Module):
+    def __init__(self, num_embeddings, embedding_dim):
+        """
+
+        Parameters
+        ----------
+        num_embeddings: int
+            Maximum number of different properties/amino_acids/elements,
+            basically the dictionary size.
+        embedding_dim: int
+            Size of the embedding vector.
+        """
+        super(CGBeadEmbedding, self).__init__()
+        self.embedding = nn.Embedding(num_embeddings=num_embeddings,
+                                      embedding_dim=embedding_dim,
+                                      padding_idx=0)
+
+    def forward(self, embedding_property):
+        """
+
+        Parameters
+        ----------
+        embedding_property: torch.Tensor
+            Some property that should be embedded. Can be nuclear charge
+            or maybe an arbitrary number assigned for amino-acids.
+            Size [n_examples] (not sure if it can have 2 dimensions?)
+
+        Returns
+        -------
+        embedding_vector: torch.Tensor
+        """
+        return self.embedding(embedding_property)
+
