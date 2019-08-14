@@ -445,13 +445,17 @@ def test_prior_stats_list():
     features[:], indices[:] = zip(*zipped)
     random_indices = stats.return_indices(features)
 
-    # NEC TODO
+    # Next, we get the statistics as a dictionary and as a list
+    # We also grab the keys (tuples of bead integers)
     prior_stats_dict = stats.get_prior_statistics(features=features)
     prior_stats_list, keys = stats.get_prior_statistics(features=features,
                                                         as_list=True)
+    # Next, we test to see if the shuffled keys were retrieved successfully
     np.testing.assert_array_equal(list(keys),
                                   [stats.master_description_tuples[i]
                                    for i in random_indices])
+    # Next, we check to see if the stats in the list are ordered properly
+    # and therefore correspond to the proper key/tuple of beads
     for stat_dict, key in zip(prior_stats_list, keys):
         assert stat_dict == prior_stats_dict[key]
 
@@ -508,7 +512,8 @@ def test_redundant_distance_mapping_shape():
 def test_redundant_distance_mapping_vals():
     # Test to see if the redundant distance index matrix has correct values
 
-    # NEC TODO
+    # Here, we form the redundant mapping matrix by using shifted sequences
+    # of triangle numbers (generated the neighbor_sequence function)
     mapping = np.zeros((stats.n_beads, stats.n_beads - 1), dtype='uint8')
     for bead in range(stats.n_beads):
         def neighbor_sequence(bead, n_beads):
@@ -525,5 +530,6 @@ def test_redundant_distance_mapping_vals():
         mapping[bead, (bead):] = index
         if bead < stats.n_beads - 1:
             mapping[(bead+1):, bead] = index
+    # We test the above form against the method provided by GeometryStatistics
     np.testing.assert_array_equal(stats.redundant_distance_mapping,
                                   mapping)
