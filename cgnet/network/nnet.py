@@ -4,7 +4,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from .layers import ZscoreLayer, HarmonicLayer, RepulsionLayer
+from .priors import ZscoreLayer, HarmonicLayer, RepulsionLayer
 
 
 class ForceLoss(torch.nn.Module):
