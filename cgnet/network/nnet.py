@@ -44,9 +44,13 @@ class CGnet(nn.Module):
         underlying sequential network architecture.
     criterion : nn.Module() instances
         loss function to be used for network.
-    feature : nn.Module() instance
+    geometry_feature : nn.Module() instance
         feature layer to transform cartesian coordinates into roto-
         translationally invariant features.
+    schnet_feature : nn.Module() instance
+        schnet block, which includes a coarse-grained embedding layer and
+        one or more interaction blocks. The SchNet architecture is described
+        in Schutt et al (2019).
     priors : list of nn.Module() instances (default=None)
         list of prior layers that provide energy contributions external to
         the hidden architecture of the CGnet.
@@ -104,7 +108,8 @@ class CGnet(nn.Module):
 
     """
 
-    def __init__(self, arch, criterion, feature=None, priors=None):
+    def __init__(self, arch, criterion, geometry_feature=None,
+                 schnet_feature=None priors=None):
         super(CGnet, self).__init__()
         # register parameters/buffers labeled by their order in arch
 
@@ -131,7 +136,8 @@ class CGnet(nn.Module):
         else:
             self.priors = None
         self.criterion = criterion
-        self.feature = feature
+        self.geometry_feature = geometry_feature
+        self.schnet_feature = schnet_feature
 
 
     def forward(self, coord):
@@ -154,8 +160,11 @@ class CGnet(nn.Module):
 
         """
         feat = coord
-        if self.feature:
+        if self.geometry_feature:
             feat = self.feature(feat)
+        if self.schnet_feature:
+            feat =  self.schnet_feature(feat[:,
+                        self.schnet_feature.rbf_layer.redundant_mapping])
         # forward pass through the hidden architecture of the CGnet
         energy = self.arch(feat)
         # addition of external priors to form total energy
@@ -192,85 +201,3 @@ class CGnet(nn.Module):
         loss = self.criterion.forward(force, force_labels)
         self.train()  # set model to train mode
         return loss.data
-
-
-#class CGschnet(CGnet):
-#    """CG Schnet neural network class"""
-#
-#    def __init__(self, _args, _kwargs):
-#        """Initialization
-#
-#        Parameters
-#        ----------
-#        see CGnet.__init__()
-#        """
-#
-#        super(CGschnet, self).__init__(*_args, **_kwargs)
-#
-#    def forward(self, coord, neighbor_list):
-#        """Forward pass through the network ending with autograd layer.
-#
-#        Parameters
-#        ----------
-#        coord : torch.Tensor (grad enabled)
-#            input trajectory/data of size [n_examples, n_degrees_of_freedom].
-#        neighbor_list : torch.Tensor
-#            Indices of all neighbors of each bead.
-#            Size [n_examples, n_beads, n_neighbors]
-#
-#        Returns
-#        -------
-#        energy : torch.Tensor
-#            scalar potential energy of size [n_examples, 1]. If priors are
-#            supplied to the CGnet, then this energy is the sum of network
-#            and prior energies.
-#        force  : torch.Tensor
-#            vector forces of size
-#            [n_examples, n_beads, n_cartesian_dims].
-#
-#        """
-#        feat = coord
-#        if self.feature:
-#            feat = self.feature(feat)
-#        energy = feat
-#        for block in self.arch:
-#            rbf_expansion = block.rbf_layer(feat[:, block.rbf_layer.feat_idx])
-#            energy += block(energy, rbf_expansion, neighbor_list)
-#        # addition of external priors to form total energy
-#        if self.priors:
-#            for prior in self.priors:
-#                energy += prior(feat[:, prior.feat_idx])
-#
-#        # Perform autograd to learn potential of conservative force field
-#        force = torch.autograd.grad(-torch.sum(energy),
-#                                    coord,
-#                                    create_graph=True,
-#                                    retain_graph=True)
-#        return energy, force[0]
-#
-#    def predict(self, coord, force_labels, neighbor_list):
-#        """Prediction over test/validation batch.
-#
-#        Parameters
-#        ----------
-#        coord: torch.Tensor (grad enabled)
-#            input trajectory/data of size
-#            [n_examples, n_beads, n_cartesian_dims]
-#        force_labels: torch.Tensor
-#            force labels of size
-#            [n_examples, n_beads, n_cartesian_dims]
-#        neighbor_list : torch.Tensor
-#            Indices of all neighbors of each bead.
-#            Size [n_examples, n_beads, n_neighbors]
-#
-#        Returns
-#        -------
-#        loss.data : torch.Tensor
-#            scalar loss over prediction inputs.
-#
-#        """
-#        self.eval()  # set model to eval mode
-#        energy, force = self.forward(coord)
-#        loss = self.criterion.forward(force, force_labels)
-#        self.train()  # set model to train mode
-#        return loss.data
