@@ -27,34 +27,6 @@ dims = 3  # Number of dimensions
 coords = torch.randn((frames, beads, 3), requires_grad=True)
 stats = GeometryStatistics(coords.detach().numpy())
 
-# The following sets up bond variables for HarmonicLayer tests
-full_prior_stats = stats.get_prior_statistics()  # Complete prior dictionary
-bonds_idx = stats.return_indices('Bonds')  # Bond indices
-# List of bond interaction dictionaries for assembling priors
-bonds_interactions, _ = stats.get_prior_statistics(
-    features='Bonds', as_list=True)
-
-# The following sets up distance variables
-# List of distances at least 2 beads apart for RepulsionLayer tests
-repul_distances = [i for i in stats.descriptions['Distances']
-                   if abs(i[0]-i[1]) > 2]
-repul_idx = stats.return_indices(repul_distances)  # Indices of above beads
-# Random excluded volumes
-ex_vols = np.random.uniform(2, 8, len(repul_distances))
-# Random interaction exponentials
-exps = np.random.randint(1, 6, len(repul_distances))
-# List of interaction dictionaries for forming RepulsionLayers
-repul_list = [{'ex_vol': ex_vol, "exp": exp}
-              for ex_vol, exp in zip(ex_vols, exps)]
-
-descriptions = stats.descriptions
-order = stats.order
-nums = [len(descriptions[desc]) for desc in order]
-zscores = torch.zeros((2, len(full_prior_stats)))
-for i, key in enumerate(full_prior_stats.keys()):
-    zscores[0, i] = full_prior_stats[key]['mean']
-    zscores[1, i] = full_prior_stats[key]['std']
-
 
 def test_linear_layer():
     # Tests LinearLayer function for bias logic and input/output size
@@ -96,13 +68,21 @@ def test_zscore_layer():
     #
     # However, the equality is only preserved with precision >= 1e-4.
 
-    # First, we create a feature layer, featurize our linear protein
-    # test data, and compute the reference zscore-rescaled features
+    # Complete prior dictionary
+    full_prior_stats = stats.get_prior_statistics()
+
+    # First compute the reference zscore-rescaled features
+    zscores = torch.zeros((2, len(full_prior_stats)))
+    for i, key in enumerate(full_prior_stats.keys()):
+        zscores[0, i] = full_prior_stats[key]['mean']
+        zscores[1, i] = full_prior_stats[key]['std']
+
+    # Then we create a feature layer and featurize our linear protein test data
     feat_layer = GeometryFeature(n_beads=beads)
     feat = feat_layer(coords)
     rescaled_feat_truth = (feat - zscores[0, :])/zscores[1, :]
 
-    # Next, we instance a ZscoreLayer and test to see if it's forward
+    # Next, we instance a ZscoreLayer and test to see if its forward
     # method matches the reference calculation above
     zlayer = ZscoreLayer(zscores)
     rescaled_feat = zlayer(feat)
@@ -117,6 +97,20 @@ def test_repulsion_layer():
     # First, we use the preamble repulsion variables to instance a
     # a RepulsionLayer. We pass the output of a feature layer to compare
     # RepulsionLayer forward method to manual energy calculation
+
+    # The following sets up distance variables
+    # List of distances at least 2 beads apart for RepulsionLayer tests
+    repul_distances = [i for i in stats.descriptions['Distances']
+                       if abs(i[0]-i[1]) > 2]
+    repul_idx = stats.return_indices(repul_distances)  # Indices of beads
+    # Random excluded volumes
+    ex_vols = np.random.uniform(2, 8, len(repul_distances))
+    # Random interaction exponentials
+    exps = np.random.randint(1, 6, len(repul_distances))
+    # List of interaction dictionaries for forming RepulsionLayers
+    repul_list = [{'ex_vol': ex_vol, "exp": exp}
+                  for ex_vol, exp in zip(ex_vols, exps)]
+
     repulsion_potential = RepulsionLayer(repul_idx, repul_list)
     feat_layer = GeometryFeature(n_beads=beads)
     feat = feat_layer(coords)
@@ -138,6 +132,12 @@ def test_repulsion_layer():
 
 def test_harmonic_layer():
     # Tests HarmonicLayer class for calculation and output size
+
+    # Set up bond indices (integers) and interactiosn
+    bonds_idx = stats.return_indices('Bonds')  # Bond indices
+    # List of bond interaction dictionaries for assembling priors
+    bonds_interactions, _ = stats.get_prior_statistics(
+        features='Bonds', as_list=True)
 
     # First, we use the preamble bond variable to instance a
     # HarmonicLayer. We pass the output of a feature layer to compare
@@ -176,17 +176,21 @@ def test_prior_callback_order():
     stats = GeometryStatistics(coords)
     feat_layer = GeometryFeature(n_beads=beads)
     feat = feat_layer(coords)
+
     # Next, we isolate the bonds from the distance feature tuples
     bonds_tuples = [beads for beads in stats.master_description_tuples
                     if len(beads) == 2 and abs(beads[0] - beads[1]) == 1]
+
     # Shuffle bonds and get shuffled indices
     np.random.shuffle(bonds_tuples)
     bonds_idx = stats.return_indices(bonds_tuples)
+
     # Next, we create a shuffled harmonic potential using shuffled statistics
     bonds_interactions, _ = stats.get_prior_statistics(features=list(bonds_tuples),
                                                        as_list=True)
 
     harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
+
     # Test to see if callback indices are correctly embedded
     np.testing.assert_array_equal(
         bonds_idx, harmonic_potential.callback_indices)
@@ -226,6 +230,7 @@ def test_prior_with_stats_dropout():
 
     # Next we create a GeometryFeature instance using the shuffled features
     feat_layer = GeometryFeature(feature_tuples=stats.feature_tuples)
+
     # Here we construct priors on available features and test the callback order
     if 'Distances' in stats.descriptions:
         # HarmonicLayer bonds test with random constants & means
@@ -264,6 +269,9 @@ def test_cgnet():
     # feature layer.
 
     # First, we set up a bond harmonic prior and a GeometryFeature layer
+    bonds_idx = stats.return_indices('Bonds')
+    bonds_interactions, _ = stats.get_prior_statistics(
+        features='Bonds', as_list=True)
     harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
     feature_layer = GeometryFeature(n_beads=beads)
     num_feats = feature_layer(coords).size()[1]
@@ -271,20 +279,23 @@ def test_cgnet():
     # Next, we create a 4 layer hidden architecture with a random width
     # and with a scalar output
     rand = np.random.randint(1, 10)
-    arch = LinearLayer(num_feats, rand, bias=True, activation=nn.Tanh())\
-        + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
-        + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
-        + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
-        + LinearLayer(rand, 1, bias=True, activation=None)\
+    arch = (LinearLayer(num_feats, rand, bias=True, activation=nn.Tanh())
+            + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())
+            + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())
+            + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())
+            + LinearLayer(rand, 1, bias=True, activation=None))
 
     # Next, we instance a CGnet model using the above objects
     # with force matching as a loss criterion
     model = CGnet(arch, ForceLoss(), feature=feature_layer,
                   priors=[harmonic_potential])
+
     # Test to see if the prior is embedded
     np.testing.assert_equal(True, model.priors is not None)
+
     # Test to see if the hidden architexture has the correct length
     np.testing.assert_equal(len(arch), model.arch.__len__())
+
     # Test to see if criterion is embedded correctly
     np.testing.assert_equal(True, isinstance(model.criterion, ForceLoss))
 
@@ -302,6 +313,9 @@ def test_cgnet_simulation():
     # for the shapes of its coordinate, force, and potential outputs
 
     # First, we set up a bond harmonic prior and a GeometryFeature layer
+    bonds_idx = stats.return_indices('Bonds')
+    bonds_interactions, _ = stats.get_prior_statistics(
+        features='Bonds', as_list=True)
     harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
     feature_layer = GeometryFeature(n_beads=beads)
     num_feats = feature_layer(coords).size()[1]
@@ -309,11 +323,11 @@ def test_cgnet_simulation():
     # Next, we create a 4 layer hidden architecture with a random width
     # and with a scalar output
     rand = np.random.randint(1, 10)
-    arch = LinearLayer(num_feats, rand, bias=True, activation=nn.Tanh())\
-        + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
-        + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
-        + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())\
-        + LinearLayer(rand, 1, bias=True, activation=None)\
+    arch = (LinearLayer(num_feats, rand, bias=True, activation=nn.Tanh())
+            + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())
+            + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())
+            + LinearLayer(rand, rand, bias=True, activation=nn.Tanh())
+            + LinearLayer(rand, 1, bias=True, activation=None))
 
     # Next, we instance a CGnet model using the above objects
     # with force matching as a loss criterion
@@ -333,15 +347,17 @@ def test_cgnet_simulation():
     optimizer.step()
 
     # Here, we define random simulation frame lengths
-    # as well as randomly choosing to save every 2 or four frames
+    # as well as randomly choosing to save every 2 or 4 frames
     length = np.random.choice([2, 4])*2
     save = np.random.choice([2, 4])
+
     # Here we instance a simulation class and produce a CG trajectory
     my_sim = Simulation(model, coords, beta=stats.beta, length=length,
                         save_interval=save, save_forces=True,
                         save_potential=True)
 
     traj = my_sim.simulate()
+
     # We test to see if the trajectory is the proper shape based on the above
     # choices for simulation length and frame saving
     assert traj.shape == (frames, length // save, beads, dims)

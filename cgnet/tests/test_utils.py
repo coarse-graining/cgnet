@@ -33,10 +33,10 @@ arch = (LinearLayer(dims, dims, activation=nn.Tanh()) +
 model = CGnet(arch, ForceLoss()).float()
 length = np.random.choice([2, 4])*2  # Number of frames to simulate
 save = np.random.choice([2, 4])  # Frequency with which to save simulation
-# frames (choice of 2 or 4)
+                                 # frames (choice of 2 or 4)
 
 
-def test_lipschitz():
+def test_lipschitz_weak_and_strong():
     # Test proper functioning of strong lipschitz projection ( _lambda << 1 )
     # Strongly projected weights should have greatly reduced magnitudes
 
@@ -131,8 +131,9 @@ def test_dataset_loss():
     np.testing.assert_allclose(loss, loss2, rtol=1e-5)
 
 
-def test_regular_simulation():
+def test_regular_simulation_shape():
     # Test shape of simulation without saving the forces or the potential
+
     # Grab intitial coordinates as a simulation starting configuration
     # from the moleular dataset
     initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
@@ -153,7 +154,7 @@ def test_regular_simulation():
     assert my_sim.simulated_potential is None
 
 
-def test_simulation_saved_forces():
+def test_simulation_saved_forces_shape():
     # Test shape of simulation with only forces saved
     # Grab intitial coordinates as a simulation starting configuration
     # from the moleular dataset
@@ -173,7 +174,7 @@ def test_simulation_saved_forces():
     assert my_sim.simulated_potential is None
 
 
-def test_simulation_saved_potential():
+def test_simulation_saved_potential_shape():
     # Test shape of simulation with both forces and potential saved
     # Grab intitial coordinates as a simulation starting configuration
     # from the moleular dataset
@@ -195,6 +196,7 @@ def test_simulation_seeding():
     # Test determinism of simulation with random seed
     # If the same seed is used for two separate simulations,
     # the results (trajectory, forces, potential) should be identical
+
     # Grab intitial coordinates as a simulation starting configuration
     # from the moleular dataset
     initial_coordinates = dataset[:][0].reshape(-1, beads, dims)

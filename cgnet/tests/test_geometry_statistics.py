@@ -448,16 +448,17 @@ def test_prior_stats_list():
     # Next, we get the statistics as a dictionary and as a list
     # We also grab the keys (tuples of bead integers)
     prior_stats_dict = stats.get_prior_statistics(features=features)
-    prior_stats_list, keys = stats.get_prior_statistics(features=features,
-                                                        as_list=True)
+    prior_stats_list, prior_stats_keys = stats.get_prior_statistics(
+                                                    features=features,
+                                                    as_list=True)
     # Next, we test to see if the shuffled keys were retrieved successfully
-    np.testing.assert_array_equal(list(keys),
+    np.testing.assert_array_equal(list(prior_stats_keys),
                                   [stats.master_description_tuples[i]
                                    for i in random_indices])
     # Next, we check to see if the stats in the list are ordered properly
     # and therefore correspond to the proper key/tuple of beads
-    for stat_dict, key in zip(prior_stats_list, keys):
-        assert stat_dict == prior_stats_dict[key]
+    for stat_dict, stat_key in zip(prior_stats_list, prior_stats_keys):
+        assert stat_dict == prior_stats_dict[stat_key]
 
 
 def test_zscore_array_equivalence_to_prior_stats():
