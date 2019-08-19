@@ -59,6 +59,15 @@ def test_distance_features():
 def test_backbone_angle_features():
     # Make sure backbone angle features are consistent with manual calculation
 
+    # For spatial coordinates a, b, c, the angle \theta describing a-b-c
+    # is calculated using the following formula:
+    #
+    # \overline{ba} = b - a
+    # \overline{cb} = c - a
+    # \cos(\theta) = (\frac{\overline{ba} \dot \overline{cb}}
+    #                      {||\overline{ba}|| ||\overline{cb}||}
+    # \theta = \arccos(\theta)
+
     geom_feature = GeometryFeature(n_beads=beads)
     # Forward pass calculates features (distances, angles, dihedrals)
     # and makes them accessible as attributes
@@ -88,6 +97,25 @@ def test_backbone_angle_features():
 def test_dihedral_features():
     # Make sure backbone dihedral features are consistent with manual calculation
 
+    # For spatial coordinates a, b, c, d, the dihedral \alpha describing
+    # a-b-c-d (i.e., the plane between angles a-b-c- and b-c-d-) is calculated
+    # using the following formula:
+    #
+    # \overline{ba} = b - a
+    # \overline{cb} = c - a
+    # \overline{dc} = d - c
+    #
+    # % normal vector with plane of first and second angles, respectively
+    # n_1 = \overline{ba} \times \overline{cb} 
+    # n_2 = \overline{cb} \ times \overline{dc}
+    #
+    # m_1 = n_2 \times n_1
+    # 
+    # \sin(\alpha) = \frac{m_1 \dot \overline{cb}}
+    #                     {\sqrt{\overline{cb} \dot \overline{cb}}}
+    # \cos(\alpha) = n_2 \dot n_1
+    # \alpha = \arctan{\frac{\sin(\alpha)}{\cos(\alpha)}}
+
     geom_feature = GeometryFeature(n_beads=beads)
     # Forward pass calculates features (distances, angles, dihedrals)
     # and makes them accessible as attributes
@@ -107,11 +135,11 @@ def test_dihedral_features():
             cb = c-b
             dc = d-c
 
-            c1 = np.cross(ba, cb)
-            c2 = np.cross(cb, dc)
-            temp = np.cross(c2, c1)
-            term1 = np.dot(temp, cb)/np.sqrt(np.dot(cb, cb))
-            term2 = np.dot(c2, c1)
+            n1 = np.cross(ba, cb)
+            n2 = np.cross(cb, dc)
+            m1 = np.cross(n2, n1)
+            term1 = np.dot(m1, cb)/np.sqrt(np.dot(cb, cb))
+            term2 = np.dot(n2, n1)
             dihed_list.append(np.arctan2(term1, term2))
         diheds.append(dihed_list)
 
