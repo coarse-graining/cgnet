@@ -1,4 +1,5 @@
 # Author: Brooke Husic
+# Contributors: Dominik Lemm
 
 import numpy as np
 import scipy.spatial
@@ -7,7 +8,7 @@ import torch
 from cgnet.feature import GeometryFeature, Geometry
 g = Geometry(method='torch')
 
-# The following sets up our pseud-simulation data
+# The following sets up our pseudo-simulation data
 
 # Number of frames
 frames = np.random.randint(1, 10)
@@ -19,8 +20,8 @@ beads = np.random.randint(8, 10)
 dims = 3
 
 # Create a pseudo simulation dataset
-x = np.random.randn(frames, beads, dims)
-xt = torch.Tensor(x)
+random_pseudo_dataset = np.random.randn(frames, beads, dims)
+random_pseudo_dataset_tensor = torch.Tensor(random_pseudo_dataset)
 
 # Note: currently get_distance_indices is not directly tested.
 # Possibly add a test here?
@@ -34,12 +35,14 @@ def test_distance_features():
     # Make sure pairwise distance features are consistent with scipy
 
     f = GeometryFeature(n_beads=beads)
-    out = f.forward(xt)
+    # Forward pass calculates features (distances, angles, dihedrals)
+    # and makes them accessible as attributes
+    _ = f.forward(random_pseudo_dataset_tensor)
 
     # Test each frame x_i
     for frame_ind in range(frames):
         Dmat_xi = scipy.spatial.distance.squareform(
-            scipy.spatial.distance.pdist(x[frame_ind]))
+            scipy.spatial.distance.pdist(random_pseudo_dataset[frame_ind]))
 
         xi_feature_distances = list(f.distances[frame_ind].numpy())
         feature_descriptions = f.descriptions['Distances']
@@ -57,13 +60,15 @@ def test_backbone_angle_features():
     # Make sure backbone angle features are consistent with manual calculation
 
     f = GeometryFeature(n_beads=beads)
-    out = f.forward(xt)
+    # Forward pass calculates features (distances, angles, dihedrals)
+    # and makes them accessible as attributes
+    _ = f.forward(random_pseudo_dataset_tensor)
 
     # Manually calculate the angles one frame at a time
     angles = []
-    for frame_data in x:
+    for frame_data in random_pseudo_dataset:
         angle_list = []
-        for i in range(x.shape[1]-2):
+        for i in range(random_pseudo_dataset.shape[1] - 2):
             a = frame_data[i]
             b = frame_data[i+1]
             c = frame_data[i+2]
@@ -84,13 +89,15 @@ def test_dihedral_features():
     # Make sure backbone dihedral features are consistent with manual calculation
 
     f = GeometryFeature(n_beads=beads)
-    out = f.forward(xt)
+    # Forward pass calculates features (distances, angles, dihedrals)
+    # and makes them accessible as attributes
+    _ = f.forward(random_pseudo_dataset_tensor)
 
     # Manually calculate the dihedrals one frame at a time
     diheds = []
-    for frame_data in x:
+    for frame_data in random_pseudo_dataset:
         dihed_list = []
-        for i in range(x.shape[1]-3):
+        for i in range(random_pseudo_dataset.shape[1] - 3):
             a = frame_data[i]
             b = frame_data[i+1]
             c = frame_data[i+2]
@@ -120,13 +127,15 @@ def test_distance_index_shuffling():
     # Make sure shuffled distances return the right results
 
     # Create a dataset with one frame, 10 beads, 3 dimensions
-    y = np.random.randn(1, 10, 3)
-    yt = torch.Tensor(y)
+    pseudo_dataset = np.random.randn(1, 10, 3)
+    pseudo_dataset_tensor = torch.Tensor(pseudo_dataset)
 
     y_dist_inds, _ = g.get_distance_indices(10)
 
     f = GeometryFeature(feature_tuples=y_dist_inds)
-    out = f.forward(yt)
+    # Forward pass calculates features (distances, angles, dihedrals)
+    # and makes them accessible as attributes
+    _ = f.forward(pseudo_dataset_tensor)
 
     # Shuffle the distances indices
     inds = np.arange(len(y_dist_inds))
@@ -134,7 +143,7 @@ def test_distance_index_shuffling():
 
     shuffled_inds = [tuple(i) for i in np.array(y_dist_inds)[inds]]
     f_shuffle = GeometryFeature(feature_tuples=shuffled_inds)
-    out_shuffle = f_shuffle.forward(yt)
+    _ = f_shuffle.forward(pseudo_dataset_tensor)
 
     # See if the non-shuffled distances are the same when indexexed according
     # to the shuffling
@@ -145,13 +154,15 @@ def test_angle_index_shuffling():
     # Make sure shuffled angles return the right results
 
     # Create a dataset with one frame, 100 beads, 3 dimensions
-    y = np.random.randn(1, 100, 3)
-    yt = torch.Tensor(y)
+    pseudo_dataset = np.random.randn(1, 100, 3)
+    pseudo_dataset_tensor = torch.Tensor(pseudo_dataset)
 
     y_angle_inds = [(i, i+1, i+2) for i in range(100-2)]
 
     f = GeometryFeature(feature_tuples=y_angle_inds)
-    out = f.forward(yt)
+    # Forward pass calculates features (distances, angles, dihedrals)
+    # and makes them accessible as attributes
+    _ = f.forward(pseudo_dataset_tensor)
 
     # Shuffle all the inds that can serve as an angle start
     inds = np.arange(100-2)
@@ -159,7 +170,7 @@ def test_angle_index_shuffling():
 
     shuffled_inds = [tuple(i) for i in np.array(y_angle_inds)[inds]]
     f_shuffle = GeometryFeature(feature_tuples=shuffled_inds)
-    out_shuffle = f_shuffle.forward(yt)
+    _ = f_shuffle.forward(pseudo_dataset_tensor)
 
     # See if the non-shuffled angles are the same when indexexed according
     # to the shuffling
@@ -170,13 +181,15 @@ def test_dihedral_index_shuffling():
     # Make sure shuffled dihedrals return the right results
 
     # Create a dataset with one frame, 100 beads, 3 dimensions
-    y = np.random.randn(1, 100, 3)
-    yt = torch.Tensor(y)
+    pseudo_dataset = np.random.randn(1, 100, 3)
+    pseudo_dataset_tensor = torch.Tensor(pseudo_dataset)
 
     y_dihed_inds = [(i, i+1, i+2, i+3) for i in range(100-3)]
 
     f = GeometryFeature(feature_tuples=y_dihed_inds)
-    out = f.forward(yt)
+    # Forward pass calculates features (distances, angles, dihedrals)
+    # and makes them accessible as attributes
+    _ = f.forward(pseudo_dataset_tensor)
 
     # Shuffle all the inds that can serve as a dihedral start
     inds = np.arange(100-3)
@@ -184,7 +197,7 @@ def test_dihedral_index_shuffling():
 
     shuffled_inds = [tuple(i) for i in np.array(y_dihed_inds)[inds]]
     f_shuffle = GeometryFeature(feature_tuples=shuffled_inds)
-    out_shuffle = f_shuffle.forward(yt)
+    _ = f_shuffle.forward(pseudo_dataset_tensor)
 
     # See if the non-shuffled dihedral sines and cosines are the same when
     # indexexed according to the shuffling
