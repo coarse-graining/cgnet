@@ -16,29 +16,31 @@ def _get_random_distr():
     # Here, we create two distributions, and then shuffle the bins
     # so that the zero count bins are distributed randomly along the
     # distribution extent
-    dist1 = np.abs(np.concatenate([np.random.randn(length), zeros]))
-    dist2 = np.abs(np.concatenate([np.random.randn(length), zeros]))
-    np.random.shuffle(dist1)
-    np.random.shuffle(dist2)
-    return dist1, dist2
+    distribution_1 = np.abs(np.concatenate([np.random.randn(length), zeros]))
+    distribution_2 = np.abs(np.concatenate([np.random.randn(length), zeros]))
+    np.random.shuffle(distribution_1)
+    np.random.shuffle(distribution_2)
+    return distribution_1, distribution_2
 
 
 def _get_uniform_histograms():
     # This function produces two histograms sampled from uniform
     # distributions, returning the corresponding bins as well
     nbins = np.random.randint(2, high=50)  # Random number of bins
-    bins_ = np.linspace(0, 1, nbins)  # Equally space bins
+    _bins = np.linspace(0, 1, nbins)  # Equally spaced bins
 
     # Here, we produce the two histogram/bin pairs
-    hist1, bins1 = np.histogram(np.random.uniform(size=nbins), bins=bins_,
-                                density=True)
-    hist2, bins2 = np.histogram(np.random.uniform(size=nbins), bins=bins_,
-                                density=True)
+    histogram_1, bins_1 = np.histogram(np.random.uniform(size=nbins),
+                                       bins=_bins,
+                                       density=True)
+    histogram_2, bins_2 = np.histogram(np.random.uniform(size=nbins),
+                                       bins=_bins,
+                                       density=True)
 
     # We verify that that the two bin arrays are the same. This is necessary
     # for proper histogram comparison, which is done bin-wise
-    np.testing.assert_array_equal(bins1, bins2)
-    return hist1, hist2, bins_, bins1
+    np.testing.assert_array_equal(bins_1, bins_2)
+    return histogram_1, histogram_2, _bins, bins_1
 
 
 # We use the above two functions to generate random distributions
@@ -98,12 +100,14 @@ def test_js_divergence():
     for i, entry in enumerate(dist1):
         if dist1[i] > 0 and elementwise_mean[i] > 0:
             manual_div_1 += entry * np.log(entry / elementwise_mean[i])
+
     manual_div_2 = 0.  # accumulator for the second divergence
     # Here, we loop through the bins of the second distribution and calculate
     # the divergence
     for i, entry in enumerate(dist2):
         if dist2[i] > 0 and elementwise_mean[i] > 0:
             manual_div_2 += entry * np.log(entry / elementwise_mean[i])
+
     # Manual calculation of the JS divergence
     manual_div = np.mean([manual_div_1, manual_div_2])
 
@@ -122,8 +126,8 @@ def test_js_divergence_2():
     dist1_masked = np.ma.masked_where(dist1 == 0, dist1)
     dist2_masked = np.ma.masked_where(dist2 == 0, dist2)
     elementwise_mean = 0.5 * (dist1_masked + dist2_masked)
-    summand = 0.5 * (dist1_masked * np.ma.log(dist1_masked/elementwise_mean))
-    summand += 0.5 * (dist2_masked * np.ma.log(dist2_masked/elementwise_mean))
+    summand = 0.5 * (dist1_masked * np.ma.log(dist1_masked / elementwise_mean))
+    summand += 0.5 * (dist2_masked * np.ma.log(dist2_masked / elementwise_mean))
     manual_div = np.ma.sum(summand)
 
     cgnet_div = js_divergence(dist1, dist2)
