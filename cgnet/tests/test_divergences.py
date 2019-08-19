@@ -9,9 +9,9 @@ def _get_random_distr():
     # This function produces two random distributions upon which
     # comparisons, overlaps, and divergences can be calculated
 
-    length = np.random.randint(1, 50) # Range of distribution
-    n_zeros = np.random.randint(0, 10) # Number of bins with zero counts
-    zeros = np.zeros(n_zeros) # corresponding array of zero count bins
+    length = np.random.randint(1, 50)  # Range of distribution
+    n_zeros = np.random.randint(0, 10)  # Number of bins with zero counts
+    zeros = np.zeros(n_zeros)  # corresponding array of zero count bins
 
     # Here, we create two distributions, and then shuffle the bins
     # so that the zero count bins are distributed randomly along the
@@ -26,8 +26,8 @@ def _get_random_distr():
 def _get_uniform_histograms():
     # This function produces two histograms sampled from uniform
     # distributions, returning the corresponding bins as well
-    nbins = np.random.randint(2, high=50) # Random number of bins
-    bins_ = np.linspace(0, 1, nbins) # Equally space bins
+    nbins = np.random.randint(2, high=50)  # Random number of bins
+    bins_ = np.linspace(0, 1, nbins)  # Equally space bins
 
     # Here, we produce the two histogram/bin pairs
     hist1, bins1 = np.histogram(np.random.uniform(size=nbins), bins=bins_,
@@ -58,7 +58,7 @@ def test_zero_kl_divergence():
 def test_kl_divergence():
     # Tests the calculation of KL divergence for two random distributions with
     # zeros using a manual calculation
-    manual_div = 0. # accumulator for the KL divergence
+    manual_div = 0.  # accumulator for the KL divergence
 
     # Loop through the bins of distribution 1 and accumulate the KL divergence
     for i, entry in enumerate(dist1):
@@ -74,7 +74,7 @@ def test_kl_divergence():
 def test_zero_js_divergence():
     # Tests the calculation of JS divergence for a random distribution from
     # zeros with itself. The JS divergence of a distribution with itself is
-    # equal to zero 
+    # equal to zero
     div = js_divergence(dist1, dist1)
     np.testing.assert_allclose(div, 0.)
 
@@ -92,13 +92,13 @@ def test_js_divergence():
     # for calculating the JS divergence
     elementwise_mean = 0.5 * (dist1_masked + dist2_masked)
 
-    manual_div_1 = 0. # accumulator for the first divergence
+    manual_div_1 = 0.  # accumulator for the first divergence
     # Here, we loop through the bins of the first distribution and calculate
     # the divergence
     for i, entry in enumerate(dist1):
         if dist1[i] > 0 and elementwise_mean[i] > 0:
             manual_div_1 += entry * np.log(entry / elementwise_mean[i])
-    manual_div_2 = 0. # accumulator for the second divergence
+    manual_div_2 = 0.  # accumulator for the second divergence
     # Here, we loop through the bins of the second distribution and calculate
     # the divergence
     for i, entry in enumerate(dist2):
@@ -107,7 +107,7 @@ def test_js_divergence():
     # Manual calculation of the JS divergence
     manual_div = np.mean([manual_div_1, manual_div_2])
 
-    # Here, we verify that the manual calculation matches the 
+    # Here, we verify that the manual calculation matches the
     # output of the js_divergence function
     cgnet_div = js_divergence(dist1, dist2)
     np.testing.assert_allclose(manual_div, cgnet_div)
@@ -143,8 +143,8 @@ def test_histogram_intersection():
     # Tests the calculation of intersection for histograms drawn from
     # uniform distributions
 
-    manual_intersection = 0. # intersection accumulator
-    intervals = np.diff(bins_) # intervals betweem histogram bins
+    manual_intersection = 0.  # intersection accumulator
+    intervals = np.diff(bins_)  # intervals betweem histogram bins
 
     # Here we loop though the common histogram intervals and accumulate
     # the intersection of the two histograms
