@@ -1,4 +1,5 @@
 # Authors: Brooke Husic and Nick Charron
+# Contributors : Dominik Lemm
 
 import numpy as np
 
@@ -10,7 +11,7 @@ def _get_random_distr():
     # comparisons, overlaps, and divergences can be calculated
 
     length = np.random.randint(1, 50)  # Range of distribution
-    n_zeros = np.random.randint(0, 10)  # Number of bins with zero counts
+    n_zeros = np.random.randint(1, 10)  # Number of bins with zero counts
     zeros = np.zeros(n_zeros)  # corresponding array of zero count bins
 
     # Here, we create two distributions, and then shuffle the bins
@@ -27,7 +28,7 @@ def _get_uniform_histograms():
     # This function produces two histograms sampled from uniform
     # distributions, returning the corresponding bins as well
     nbins = np.random.randint(2, high=50)  # Random number of bins
-    _bins = np.linspace(0, 1, nbins)  # Equally spaced bins
+    _bins = np.linspace(0, 1, nbins)  # Equally space bins
 
     # Here, we produce the two histogram/bin pairs
     histogram_1, bins_1 = np.histogram(np.random.uniform(size=nbins),
