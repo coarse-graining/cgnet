@@ -315,7 +315,8 @@ class GeometryStatistics():
         self._get_stats(self.distances, 'Distances')
         self.order += ['Distances']
         if self.get_redundant_distance_mapping:
-            self._get_redundant_distance_mapping()
+            self.redundant_distance_mapping = g.get_redundant_distance_mapping(
+                                                              self._pair_order)
 
     def _get_angles(self):
         """Obtains all planar angles for the three-bead indices provided.
@@ -566,28 +567,6 @@ class GeometryStatistics():
         else:
             raise ValueError(
                 "features must be description string or list of tuples.")
-
-    def _get_redundant_distance_mapping(self):
-        """Reformulates pairwise distances from shape [n_examples, n_dist]
-        to shape [n_examples, n_beads, n_neighbors]
-
-        This is done by finding the index mapping between non-redundant and
-        redundant representations of the pairwise distances. This mapping can
-        then be supplied to Schnet-related features, such as a
-        RadialBasisFunction() layer, which use redundant pairwise distance
-        representations.
-
-        """
-        pairwise_dist_inds = [zipped_pair[1] for zipped_pair in sorted(
-            [z for z in zip(self._pair_order,
-                            np.arange(len(self._pair_order)))
-             ])
-        ]
-        map_matrix = scipy.spatial.distance.squareform(pairwise_dist_inds)
-        map_matrix = map_matrix[~np.eye(map_matrix.shape[0],
-                                        dtype=bool)].reshape(
-                                            map_matrix.shape[0], -1)
-        self.redundant_distance_mapping = map_matrix
 
 
 def kl_divergence(dist_1, dist_2):
