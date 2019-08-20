@@ -1,7 +1,6 @@
 # Authors: Nick Charron, Brooke Husic
 
 import torch.nn as nn
-import torch
 import numpy as np
 from torch.utils.data import SubsetRandomSampler, DataLoader
 from cgnet.network import lipschitz_projection, dataset_loss, Simulation
@@ -43,8 +42,8 @@ def test_lipschitz_weak_and_strong():
     # Here we create a single layer test architecture and use it to
     # construct a simple CGnet model. We use a random hidden layer width
     width = np.random.randint(10, high=20)
-    test_arch = (LinearLayer(1, dims, activation=nn.Tanh()) +
-                 LinearLayer(dims, 1, activation=None))
+    test_arch = (LinearLayer(1, width, activation=nn.Tanh()) +
+                 LinearLayer(width, 1, activation=None))
     test_model = CGnet(test_arch, ForceLoss()).float()
 
     # Here we set the lipschitz projection to be extremely strong ( _lambda << 1 )
@@ -137,19 +136,19 @@ def test_regular_simulation_shape():
     # Grab intitial coordinates as a simulation starting configuration
     # from the moleular dataset
     initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
-    length = np.random.choice([2, 4])*2  # Simulation length
+    sim_length = np.random.choice([2, 4])*2  # Simulation length
     # Frequency of frame saving (either 2 or 4)
-    save = np.random.choice([2, 4])
+    save_interval = np.random.choice([2, 4])
 
     # Here, we generate the simulation
-    my_sim = Simulation(model, initial_coordinates, length=length,
-                        save_interval=save)
+    my_sim = Simulation(model, initial_coordinates, length=sim_length,
+                        save_interval=save_interval)
     traj = my_sim.simulate()
 
     # Here, we verify that the trajectory shape corresponds with the
     # choices of simulation length and saving frequency above
     # We also verify that the potential and the forces are not saved
-    assert traj.shape == (frames, length // save, beads, dims)
+    assert traj.shape == (frames, sim_length // save_interval, beads, dims)
     assert my_sim.simulated_forces is None
     assert my_sim.simulated_potential is None
 
