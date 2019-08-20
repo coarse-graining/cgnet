@@ -117,8 +117,9 @@ def test_repulsion_layer():
 
     repulsion_potential = RepulsionLayer(repul_idx, repul_list)
     geom_feat = GeometryFeature(n_beads=beads)
-    feat = geom_feat(coords)
-    energy = repulsion_potential(feat[:, repulsion_potential.callback_indices])
+    output_features = geom_feat(coords)
+    energy = repulsion_potential(output_features[:,
+                                 repulsion_potential.callback_indices])
 
     # Test to see if RepulsionLayer ouput is scalar energy
     np.testing.assert_equal(energy.size(), (frames, 1))
@@ -128,8 +129,8 @@ def test_repulsion_layer():
     # matches the output of the RepulsionLayer
     p1 = torch.tensor(ex_vols).float()
     p2 = torch.tensor(exps).float()
-    energy_check = torch.sum((p1/feat[:, repul_idx]) ** p2,
-                             1).reshape(len(feat), 1) / 2
+    energy_check = torch.sum((p1/output_features[:, repul_idx]) ** p2,
+                             1).reshape(len(output_features), 1) / 2
     np.testing.assert_array_equal(energy.detach().numpy(),
                                   energy_check.detach().numpy())
 
@@ -148,8 +149,9 @@ def test_harmonic_layer():
     # HarmonicLayer forward method to manual energy calculation
     harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
     geom_feat = GeometryFeature(n_beads=beads)
-    feat = geom_feat(coords)
-    energy = harmonic_potential(feat[:, harmonic_potential.callback_indices])
+    output_features = geom_feat(coords)
+    energy = harmonic_potential(output_features[:,
+                                 harmonic_potential.callback_indices])
 
     # Test to see if HarmonicLayer output is scalar energy
     np.testing.assert_equal(energy.size(), (frames, 1))
@@ -165,9 +167,10 @@ def test_harmonic_layer():
             harmonic_parameters,
             torch.tensor([[stat['k']],
                           [stat['mean']]])), dim=1)
-    energy_check = torch.sum(harmonic_parameters[0, :] * (feat[:, bonds_idx] -
+    energy_check = torch.sum(harmonic_parameters[0, :] *
+                             (output_features[:, bonds_idx] -
                              harmonic_parameters[1, :]) ** 2,
-                             1).reshape(len(feat), 1) / 2
+                             1).reshape(len(output_features), 1) / 2
 
     np.testing.assert_array_equal(energy.detach().numpy(),
                                   energy_check.detach().numpy())
