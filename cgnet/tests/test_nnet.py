@@ -30,20 +30,25 @@ geom_stats = GeometryStatistics(coords.detach().numpy())
 def test_linear_layer():
     # Tests LinearLayer function for bias logic and input/output size
 
-    rand = np.random.randint(1, 11)  # Random linear layer widths
-    layers = LinearLayer(1, rand, activation=None, bias=True)
-    rands = 3 * [rand]
-    biases = list(np.random.randint(2, size=3))  # Random bias binary mask
+    width = np.random.randint(1, 11)  # Random linear layer widths
+    layers = LinearLayer(1, width, activation=None, bias=True)
+    # Here, we create a simple 3 layer hidden architecture using the
+    # random width defined above
+    widths = 3 * [width]
+    # Random bias binary mask for hidden layers
+    biases = list(np.random.randint(2, size=3))
     # Assemble internal layers with random bias dropout
-    for r, bias in zip(rands, biases):
-        layers += LinearLayer(r, r, activation=nn.ReLU(),
+    for width, bias in zip(widths, biases):
+        layers += LinearLayer(width, width, activation=nn.ReLU(),
                               bias=bool(bias), dropout=0.3)
-    layers += LinearLayer(rand, 1, activation=None, bias=False)
-    biases = [1] + biases + [0]  # Full bias mask
+    layers += LinearLayer(width, 1, activation=None, bias=True)
+    # Here we extend the bias binary mask to the input and output layers
+    # giving them default bias=True values
+    biases = [1] + biases + [1]
     # Next, we isolate the nn.Linear modules and test if the
     # bias mask is respected
-    linears = [l for l in layers if isinstance(l, nn.Linear)]
-    for layer, bias in zip(linears, biases):
+    linear_layer_list = [l for l in layers if isinstance(l, nn.Linear)]
+    for layer, bias in zip(linear_layer_list, biases):
         if layer.bias is not None:
             np.testing.assert_equal(bool(layer.bias.data[0]), bool(bias))
         else:
