@@ -78,8 +78,8 @@ def test_zscore_layer():
         zscores[1, i] = full_prior_stats[key]['std']
 
     # Then we create a feature layer and featurize our linear protein test data
-    feat_layer = GeometryFeature(n_beads=beads)
-    feat = feat_layer(coords)
+    geom_feat = GeometryFeature(n_beads=beads)
+    feat = geom_feat(coords)
     rescaled_feat_truth = (feat - zscores[0, :])/zscores[1, :]
 
     # Next, we instance a ZscoreLayer and test to see if its forward
@@ -112,8 +112,8 @@ def test_repulsion_layer():
                   for ex_vol, exp in zip(ex_vols, exps)]
 
     repulsion_potential = RepulsionLayer(repul_idx, repul_list)
-    feat_layer = GeometryFeature(n_beads=beads)
-    feat = feat_layer(coords)
+    geom_feat = GeometryFeature(n_beads=beads)
+    feat = geom_feat(coords)
     energy = repulsion_potential(feat[:, repulsion_potential.callback_indices])
 
     # Test to see if RepulsionLayer ouput is scalar energy
@@ -143,8 +143,8 @@ def test_harmonic_layer():
     # HarmonicLayer. We pass the output of a feature layer to compare
     # HarmonicLayer forward method to manual energy calculation
     harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
-    feat_layer = GeometryFeature(n_beads=beads)
-    feat = feat_layer(coords)
+    geom_feat = GeometryFeature(n_beads=beads)
+    feat = geom_feat(coords)
     energy = harmonic_potential(feat[:, harmonic_potential.callback_indices])
 
     # Test to see if HarmonicLayer output is scalar energy
@@ -174,8 +174,8 @@ def test_prior_callback_order():
 
     # First, we instance a statistics object and a feature layer
     stats = GeometryStatistics(coords)
-    feat_layer = GeometryFeature(n_beads=beads)
-    feat = feat_layer(coords)
+    geom_feat = GeometryFeature(n_beads=beads)
+    feat = geom_feat(coords)
 
     # Next, we isolate the bonds from the distance feature tuples
     bonds_tuples = [beads for beads in stats.master_description_tuples
@@ -229,7 +229,7 @@ def test_prior_with_stats_dropout():
                                get_backbone_dihedrals=feature_bools[2])
 
     # Next we create a GeometryFeature instance using the shuffled features
-    feat_layer = GeometryFeature(feature_tuples=stats.feature_tuples)
+    geom_feat = GeometryFeature(feature_tuples=stats.feature_tuples)
 
     # Here we construct priors on available features and test the callback order
     if 'Distances' in stats.descriptions:
