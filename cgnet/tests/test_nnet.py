@@ -1,7 +1,6 @@
 # Author: Nick Charron
 # Contributors: Brooke Husic, Dominik Lemm
 
-import random
 import numpy as np
 import torch
 import torch.nn as nn
@@ -25,7 +24,7 @@ dims = 3  # Number of dimensions
 
 # Create mock linear protein simulation data and create statistics
 coords = torch.randn((frames, beads, 3), requires_grad=True)
-stats = GeometryStatistics(coords.detach().numpy())
+geom_stats = GeometryStatistics(coords.detach().numpy())
 
 
 def test_linear_layer():
@@ -69,7 +68,7 @@ def test_zscore_layer():
     # However, the equality is only preserved with precision >= 1e-4.
 
     # Complete prior dictionary
-    full_prior_stats = stats.get_prior_statistics()
+    full_prior_stats = geom_stats.get_prior_statistics()
 
     # First compute the reference zscore-rescaled features
     zscores = torch.zeros((2, len(full_prior_stats)))
@@ -100,9 +99,9 @@ def test_repulsion_layer():
 
     # The following sets up distance variables
     # List of distances at least 2 beads apart for RepulsionLayer tests
-    repul_distances = [i for i in stats.descriptions['Distances']
+    repul_distances = [i for i in geom_stats.descriptions['Distances']
                        if abs(i[0]-i[1]) > 2]
-    repul_idx = stats.return_indices(repul_distances)  # Indices of beads
+    repul_idx = geom_stats.return_indices(repul_distances)  # Indices of beads
     # Random excluded volumes
     ex_vols = np.random.uniform(2, 8, len(repul_distances))
     # Random interaction exponentials
@@ -134,9 +133,9 @@ def test_harmonic_layer():
     # Tests HarmonicLayer class for calculation and output size
 
     # Set up bond indices (integers) and interactiosn
-    bonds_idx = stats.return_indices('Bonds')  # Bond indices
+    bonds_idx = geom_stats.return_indices('Bonds')  # Bond indices
     # List of bond interaction dictionaries for assembling priors
-    bonds_interactions, _ = stats.get_prior_statistics(
+    bonds_interactions, _ = geom_stats.get_prior_statistics(
         features='Bonds', as_list=True)
 
     # First, we use the preamble bond variable to instance a
@@ -154,7 +153,7 @@ def test_harmonic_layer():
 
     # Next, we test to see if the manually calculated energy
     # matches the output of the HarmonicLayer
-    feature_stats = stats.get_prior_statistics('Bonds')
+    feature_stats = geom_stats.get_prior_statistics('Bonds')
     harmonic_parameters = torch.tensor([])
     for bead_tuple, stat in feature_stats.items():
         harmonic_parameters = torch.cat((
@@ -269,8 +268,8 @@ def test_cgnet():
     # feature layer.
 
     # First, we set up a bond harmonic prior and a GeometryFeature layer
-    bonds_idx = stats.return_indices('Bonds')
-    bonds_interactions, _ = stats.get_prior_statistics(
+    bonds_idx = geom_stats.return_indices('Bonds')
+    bonds_interactions, _ = geom_stats.get_prior_statistics(
         features='Bonds', as_list=True)
     harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
     feature_layer = GeometryFeature(n_beads=beads)
@@ -313,8 +312,8 @@ def test_cgnet_simulation():
     # for the shapes of its coordinate, force, and potential outputs
 
     # First, we set up a bond harmonic prior and a GeometryFeature layer
-    bonds_idx = stats.return_indices('Bonds')
-    bonds_interactions, _ = stats.get_prior_statistics(
+    bonds_idx = geom_stats.return_indices('Bonds')
+    bonds_interactions, _ = geom_stats.get_prior_statistics(
         features='Bonds', as_list=True)
     harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
     feature_layer = GeometryFeature(n_beads=beads)
@@ -352,7 +351,7 @@ def test_cgnet_simulation():
     save = np.random.choice([2, 4])
 
     # Here we instance a simulation class and produce a CG trajectory
-    my_sim = Simulation(model, coords, beta=stats.beta, length=length,
+    my_sim = Simulation(model, coords, beta=geom_stats.beta, length=length,
                         save_interval=save, save_forces=True,
                         save_potential=True)
 
