@@ -176,13 +176,10 @@ def test_harmonic_layer():
                                   energy_check.detach().numpy())
 
 
-def test_prior_callback_order():
+def test_prior_callback_order_1():
     # Tests the order of prior callbacks with respect to feature layer output
-
-    # First, we instance a statistics object and a feature layer
+    # First, we instance a statistics object
     stats = GeometryStatistics(coords)
-    geom_feat = GeometryFeature(n_beads=beads)
-    feat = geom_feat(coords)
 
     # Next, we isolate the bonds from the distance feature tuples
     bonds_tuples = [beads for beads in stats.master_description_tuples
@@ -195,28 +192,46 @@ def test_prior_callback_order():
     # Next, we create a shuffled harmonic potential using shuffled statistics
     bonds_interactions, _ = stats.get_prior_statistics(features=list(bonds_tuples),
                                                        as_list=True)
-
     harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
 
     # Test to see if callback indices are correctly embedded
     np.testing.assert_array_equal(
         bonds_idx, harmonic_potential.callback_indices)
 
+
+def test_prior_callback_order_2():
     # The order of callback indices should not change the final HarmonicLayer
     # energy output - so here we test to see if the shuffled HarmonicLayer output
     # matches a manual calculation using the default order
-    energy = harmonic_potential(feat[:, harmonic_potential.callback_indices])
+    # We use the same setup as in test_prior_callback_order_1, but add further
+    # add a GeometryFeature layer for comparing energy outputs
+    stats = GeometryStatistics(coords)
+    geom_feat = GeometryFeature(n_beads=beads)
+    output_features = geom_feat(coords)
+    bonds_tuples = [beads for beads in stats.master_description_tuples
+                    if len(beads) == 2 and abs(beads[0] - beads[1]) == 1]
+    np.random.shuffle(bonds_tuples)
+    bonds_idx = stats.return_indices(bonds_tuples)
+    bonds_interactions, _ = stats.get_prior_statistics(features=list(bonds_tuples),
+                                                       as_list=True)
+    harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
+
+    # Here, we test the energy of the shuffled HarmonicLayer with a manual
+    # calculation according to the default GeometryStatistics bond order
+    energy = harmonic_potential(output_features[:,
+                                harmonic_potential.callback_indices])
     feature_stats = stats.get_prior_statistics('Bonds')
-    feat_idx = stats.return_indices('Bonds')
+    feature_idx = stats.return_indices('Bonds')
     harmonic_parameters = torch.tensor([])
     for bead_tuple, stat in feature_stats.items():
         harmonic_parameters = torch.cat((
             harmonic_parameters,
             torch.tensor([[stat['k']],
                           [stat['mean']]])), dim=1)
-    energy_check = torch.sum(harmonic_parameters[0, :] * (feat[:, feat_idx] -
+    energy_check = torch.sum(harmonic_parameters[0, :] *
+                             (output_features[:, feature_idx] -
                              harmonic_parameters[1, :]) ** 2,
-                             1).reshape(len(feat), 1) / 2
+                             1).reshape(len(output_features), 1) / 2
     np.testing.assert_allclose(np.sum(energy.detach().numpy()),
                                np.sum(energy_check.detach().numpy()), rtol=1e-4)
 
