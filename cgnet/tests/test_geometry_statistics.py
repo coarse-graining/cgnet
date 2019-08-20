@@ -143,10 +143,10 @@ def test_backbone_means_and_stds():
 
     np.testing.assert_allclose(feature_dist_mean,
                                stats._stats_dict['Distances']['mean'],
-                               rtol=1e-4)
+                               rtol=1e-6)
     np.testing.assert_allclose(feature_dist_std,
                                stats._stats_dict['Distances']['std'],
-                               rtol=1e-4)
+                               rtol=1e-6)
 
 
     feature_angle_mean = np.mean(geom_feature.angles.numpy(), axis=0)
@@ -169,17 +169,17 @@ def test_backbone_means_and_stds():
 
     np.testing.assert_allclose(feature_dihed_cos_mean,
                                stats._stats_dict['Dihedral_cosines']['mean'],
-                               rtol=1e-6)
+                               rtol=1e-4)
     np.testing.assert_allclose(feature_dihed_cos_std,
                                stats._stats_dict['Dihedral_cosines']['std'],
-                               rtol=1e-6)
+                               rtol=1e-4)
 
     np.testing.assert_allclose(feature_dihed_sin_mean,
                                stats._stats_dict['Dihedral_sines']['mean'],
-                               rtol=1e-6)
+                               rtol=1e-4)
     np.testing.assert_allclose(feature_dihed_sin_std,
                                stats._stats_dict['Dihedral_sines']['std'],
-                               rtol=1e-6)
+                               rtol=1e-4)
 
 
 def test_prior_statistics_shape_1():
