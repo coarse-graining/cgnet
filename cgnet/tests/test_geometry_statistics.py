@@ -415,7 +415,6 @@ def test_return_indices_and_prior_stats():
                                       distance_pairs).keys()))
 
     # angles
-    angle_start_list = np.arange(beads-2)
     trips = np.random.choice(all_beads[:-2],
                              size=np.random.randint(1, high=beads-2),
                              replace=False)
@@ -480,7 +479,6 @@ def test_zscore_array_equivalence_to_prior_stats():
     features[:], indices[:] = zip(*zipped)
 
     # Then we get the indices and zscore values for our shuffled features
-    random_indices = stats.return_indices(features)
     prior_stats_list, prior_keys = stats.get_prior_statistics(features=features,
                                                               as_list=True)
     zscore_array, zscore_keys = stats.get_zscore_array(features=features)
@@ -524,8 +522,8 @@ def test_redundant_distance_mapping_vals():
     # of triangle numbers (generated the neighbor_sequence function)
     mapping = np.zeros((stats.n_beads, stats.n_beads - 1), dtype='uint8')
     for bead in range(stats.n_beads):
-        def neighbor_sequence(bead, n_beads):
-            n = bead
+        def neighbor_sequence(_bead, n_beads):
+            n = _bead
             j = n_beads - 1
             while(True):
                 yield n + j
