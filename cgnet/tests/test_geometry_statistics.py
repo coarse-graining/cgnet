@@ -21,13 +21,13 @@ beads = np.random.randint(8, 20)
 dims = 3 
 
 # Create a pseudo simulation dataset
-x = np.random.randn(frames, beads, dims)
-xt = torch.Tensor(x)
+data = np.random.randn(frames, beads, dims)
+data_tensor = torch.Tensor(data)
 
-f = GeometryFeature(n_beads=beads)
-out = f.forward(xt)
+geom_feature = GeometryFeature(n_beads=beads)
+_ = geom_feature.forward(data_tensor)
 
-stats = GeometryStatistics(xt)
+stats = GeometryStatistics(data_tensor)
 
 
 def test_feature_tuples():
@@ -51,10 +51,11 @@ def test_manual_backbone_calculations():
     backbone_inds = [i for i in range(beads) if i % 2 == 0]
 
     # Create a backbone-only coordinate data tensor
-    xt_bb_only = xt[:, backbone_inds]
+    data_tensor_bb_only = data_tensor[:, backbone_inds]
 
-    stats_bb_inds = GeometryStatistics(xt, backbone_inds=backbone_inds)
-    stats_bb_only = GeometryStatistics(xt_bb_only)
+    stats_bb_inds = GeometryStatistics(data_tensor,
+                                       backbone_inds=backbone_inds)
+    stats_bb_only = GeometryStatistics(data_tensor_bb_only)
 
     # Distances will be different because there are a different number
     # of beads in each dataset, but the bonds (which default to the adjacent
@@ -90,17 +91,19 @@ def test_manual_backbone_descriptions():
     backbone_inds = [i for i in range(beads) if i % 2 == 0]
 
     # Create a backbone-only coordinate data tensor
-    xt_bb_only = xt[:, backbone_inds]
+    data_tensor_bb_only = data_tensor[:, backbone_inds]
 
-    stats_bb_inds = GeometryStatistics(xt, backbone_inds=backbone_inds)
-    stats_bb_only = GeometryStatistics(xt_bb_only)
+    stats_bb_inds = GeometryStatistics(data_tensor,
+                                       backbone_inds=backbone_inds)
+    stats_bb_only = GeometryStatistics(data_tensor_bb_only)
 
     # Manually specify what all the descriptions should be
     bb_inds_bond_descs = [(backbone_inds[i], backbone_inds[i+1])
                          for i in range(len(backbone_inds)-1)]
     bb_only_bond_descs = [(i, i+1) for i in range(len(backbone_inds)-1)]
 
-    bb_ind_angle_descs = [(backbone_inds[i], backbone_inds[i+1], backbone_inds[i+2])
+    bb_ind_angle_descs = [(backbone_inds[i], backbone_inds[i+1],
+                           backbone_inds[i+2])
                           for i in range(len(backbone_inds)-2)]
     bb_only_angle_descs = [(i, i+1, i+2) for i in range(len(backbone_inds)-2)]
 
@@ -135,8 +138,8 @@ def test_backbone_means_and_stds():
     # Make sure distance, angle, and dihedral statistics are consistent with
     # numpy
 
-    feature_dist_mean = np.mean(f.distances.numpy(), axis=0)
-    feature_dist_std = np.std(f.distances.numpy(), axis=0)
+    feature_dist_mean = np.mean(geom_feature.distances.numpy(), axis=0)
+    feature_dist_std = np.std(geom_feature.distances.numpy(), axis=0)
 
     np.testing.assert_allclose(feature_dist_mean,
                                stats._stats_dict['Distances']['mean'],
@@ -146,8 +149,8 @@ def test_backbone_means_and_stds():
                                rtol=1e-4)
 
 
-    feature_angle_mean = np.mean(f.angles.numpy(), axis=0)
-    feature_angle_std = np.std(f.angles.numpy(), axis=0)
+    feature_angle_mean = np.mean(geom_feature.angles.numpy(), axis=0)
+    feature_angle_std = np.std(geom_feature.angles.numpy(), axis=0)
 
     np.testing.assert_allclose(feature_angle_mean,
                                stats._stats_dict['Angles']['mean'], rtol=1e-5)
@@ -155,10 +158,14 @@ def test_backbone_means_and_stds():
                                stats._stats_dict['Angles']['std'], rtol=1e-5)
 
 
-    feature_dihed_cos_mean = np.mean(f.dihedral_cosines.numpy(), axis=0)
-    feature_dihed_cos_std = np.std(f.dihedral_cosines.numpy(), axis=0)
-    feature_dihed_sin_mean = np.mean(f.dihedral_sines.numpy(), axis=0)
-    feature_dihed_sin_std = np.std(f.dihedral_sines.numpy(), axis=0)
+    feature_dihed_cos_mean = np.mean(geom_feature.dihedral_cosines.numpy(),
+                                     axis=0)
+    feature_dihed_cos_std = np.std(geom_feature.dihedral_cosines.numpy(),
+                                   axis=0)
+    feature_dihed_sin_mean = np.mean(geom_feature.dihedral_sines.numpy(),
+                                     axis=0)
+    feature_dihed_sin_std = np.std(geom_feature.dihedral_sines.numpy(),
+                                   axis=0)
 
     np.testing.assert_allclose(feature_dihed_cos_mean,
                                stats._stats_dict['Dihedral_cosines']['mean'],
@@ -184,7 +191,7 @@ def test_prior_statistics_shape_1():
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
-    stats_ = GeometryStatistics(xt,
+    stats_ = GeometryStatistics(data_tensor,
                                 get_all_distances=bool_list[0],
                                 get_backbone_angles=bool_list[1],
                                 get_backbone_dihedrals=bool_list[2])
@@ -209,7 +216,7 @@ def test_prior_statistics_shape_2():
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
-    stats_ = GeometryStatistics(xt,
+    stats_ = GeometryStatistics(data_tensor,
                                 get_all_distances=bool_list[0],
                                 get_backbone_angles=bool_list[1],
                                 get_backbone_dihedrals=bool_list[2])
@@ -239,10 +246,10 @@ def test_prior_statistics():
     pair_means = []
     pair_stds = []
     for pair in sorted(custom_bond_pairs):
-        pair_means.append(np.mean(np.linalg.norm(x[:, pair[1], :]
-                                                 - x[:, pair[0], :], axis=1)))
-        pair_stds.append(np.std(np.linalg.norm(x[:, pair[1], :]
-                                               - x[:, pair[0], :], axis=1)))
+        pair_means.append(np.mean(np.linalg.norm(data[:, pair[1], :]
+                                                 - data[:, pair[0], :], axis=1)))
+        pair_stds.append(np.std(np.linalg.norm(data[:, pair[1], :]
+                                               - data[:, pair[0], :], axis=1)))
 
     # We input our custom bonds into stats, and see if they match our
     # manual calculations
@@ -286,7 +293,7 @@ def test_return_indices_shape_1():
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
-    stats_ = GeometryStatistics(xt,
+    stats_ = GeometryStatistics(data_tensor,
                                 get_all_distances=bool_list[0],
                                 get_backbone_angles=bool_list[1],
                                 get_backbone_dihedrals=bool_list[2])
@@ -321,7 +328,7 @@ def test_return_indices_1():
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
-    stats_ = GeometryStatistics(xt,
+    stats_ = GeometryStatistics(data_tensor,
                                 get_all_distances=bool_list[0],
                                 get_backbone_angles=bool_list[1],
                                 get_backbone_dihedrals=bool_list[2])
@@ -373,7 +380,7 @@ def test_return_indices_2():
 
     # We input our custom bond pairs and do not care whether adjacent
     # backbone bonds are counted or not
-    stats_ = GeometryStatistics(xt, bond_pairs=custom_bond_pairs,
+    stats_ = GeometryStatistics(data_tensor, bond_pairs=custom_bond_pairs,
                                 adjacent_backbone_bonds=bool(np.random.randint(2)))
     returned_bond_inds = stats_.return_indices('Bonds')
 
