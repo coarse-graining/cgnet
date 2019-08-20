@@ -520,8 +520,11 @@ def test_redundant_distance_mapping_vals():
 
     # Here, we form the redundant mapping matrix by using shifted sequences
     # of triangle numbers (generated the neighbor_sequence function)
+    # based on the default ordering of pairwise distances in GeometryStatistics
     mapping = np.zeros((stats.n_beads, stats.n_beads - 1), dtype='uint8')
     for bead in range(stats.n_beads):
+        # Given the current bead integer, the sequence of neighbor bead distance
+        # indices are generated with the use of the yeild statement
         def neighbor_sequence(_bead, n_beads):
             n = _bead
             j = n_beads - 1
@@ -529,13 +532,23 @@ def test_redundant_distance_mapping_vals():
                 yield n + j
                 n = n + j
                 j -= 1
+        # The above generator should only be called (n_beads - 2) times
+        # becasue there are (n_beads - 2) distances to assemble after the 
+        # the first call 
         max_calls_to_generator = stats.n_beads - bead - 1
         generator = neighbor_sequence(bead, stats.n_beads)
+        # Here, the row of the bead neighbor distance indices is assembled
         index = np.array([bead] + [next(generator)
                                    for _ in range(max_calls_to_generator-1)])
+        # The above row is then inserted into the mapping matrix to fill the
+        # columns that occur after the current bead cloumn index
         mapping[bead, (bead):] = index
+        # The same pattern in the row of indices extends down column-wise
         if bead < stats.n_beads - 1:
             mapping[(bead+1):, bead] = index
+        # Ultimately, we are left with an index maping matrix that is
+        # nearly symmetric (though obviously not symmetric because it is not 
+        # a squre matrix)
     # We test the above form against the method provided by GeometryStatistics
     np.testing.assert_array_equal(stats.redundant_distance_mapping,
                                   mapping)
