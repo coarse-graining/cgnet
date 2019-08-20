@@ -227,9 +227,6 @@ def test_prior_with_stats_dropout():
                                get_backbone_angles=feature_bools[1],
                                get_backbone_dihedrals=feature_bools[2])
 
-    # Next we create a GeometryFeature instance using the shuffled features
-    geom_feat = GeometryFeature(feature_tuples=stats.feature_tuples)
-
     # Here we construct priors on available features and test the callback order
     if 'Distances' in stats.descriptions:
         # HarmonicLayer bonds test with random constants & means
