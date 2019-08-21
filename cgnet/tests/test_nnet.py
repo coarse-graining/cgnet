@@ -241,24 +241,24 @@ def test_prior_with_stats_dropout():
     # and create an instance of GeometryStatistics
     feature_bools = [1] + [np.random.randint(0, high=1) for _ in range(2)]
     np.random.shuffle(feature_bools)
-    stats = GeometryStatistics(coords,
+    dropout_stats = GeometryStatistics(coords,
                                get_all_distances=feature_bools[0],
                                get_backbone_angles=feature_bools[1],
                                get_backbone_dihedrals=feature_bools[2])
 
     # Here we construct priors on available features and test the callback order
-    if 'Distances' in stats.descriptions:
+    if 'Distances' in dropout_stats.descriptions:
         # HarmonicLayer bonds test with random constants & means
-        bonds_interactions, _ = stats.get_prior_statistics(features='Bonds',
+        bonds_interactions, _ = dropout_stats.get_prior_statistics(features='Bonds',
                                                            as_list=True)
-        bonds_idx = stats.return_indices('Bonds')
+        bonds_idx = dropout_stats.return_indices('Bonds')
         harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
         np.testing.assert_array_equal(bonds_idx,
                                       harmonic_potential.callback_indices)
 
         # RepulsionLayer test with random exclusion volumess & exponents
-        repul_distances = stats.descriptions['Distances']
-        dist_idx = stats.return_indices('Distances')
+        repul_distances = dropout_stats.descriptions['Distances']
+        dist_idx = dropout_stats.return_indices('Distances')
         ex_vols = np.random.uniform(2, 8, len(repul_distances))
         exps = np.random.randint(1, 6, len(repul_distances))
         repul_interactions = [{'ex_vol': ex_vol, "exp": exp} for ex_vol, exp
@@ -269,10 +269,10 @@ def test_prior_with_stats_dropout():
     # Next, we run the same tests as above but for non-distance features
     # using harmonic priors
     for name in ['Angles', 'Dihedral_cosines', 'Dihedral_sines']:
-        if name in stats.descriptions:
-            feat_interactions, _ = stats.get_prior_statistics(features=name,
+        if name in dropout_stats.descriptions:
+            feat_interactions, _ = dropout_stats.get_prior_statistics(features=name,
                                                               as_list=True)
-            feat_idx = stats.return_indices(name)
+            feat_idx = dropout_stats.return_indices(name)
             harmonic_potential = HarmonicLayer(feat_idx, feat_interactions)
             np.testing.assert_array_equal(feat_idx,
                                           harmonic_potential.callback_indices)
