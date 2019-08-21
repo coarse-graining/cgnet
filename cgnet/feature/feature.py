@@ -366,7 +366,7 @@ class InteractionBlock(nn.Module):
         return output_features
 
 
-class SchnetBlock(nn.Module):
+class SchnetFeature(nn.Module):
     """Wrapper class for RBF layer, continuous filter convolution, and
     interaction block connecting feature inputs and outputs residuallly
     """
@@ -374,12 +374,11 @@ class SchnetBlock(nn.Module):
     def __init__(self,
                  feature_size,
                  embedding_layer,
-                 geometry_calculator,  # Maybe doesnt need to be passed at all
                  rbf_cutoff=5.0,
                  num_gaussians=50,
                  variance=1.0,
                  n_interaction_blocks=1,
-                 share_weights=True):
+                 share_weights=False):
         """
 
         Parameters
@@ -389,22 +388,20 @@ class SchnetBlock(nn.Module):
             Needs to be clarified a bit better here.
         embedding_layer: torch.nn.Module
             Class that embeds a property into a feature vector.
-        geometry_calculator: something that lets us compute distances and neighbors
-        rbf_cutoff: float
+        rbf_cutoff: float (Default=5.0)
             Cutoff for the radial basis function.
-        num_gaussians: int
+        num_gaussians: int (Default=50)
             Number of gaussians for the gaussian expansion in the radial basis
             function.
-        variance: float
+        variance: float (Default=1.0)
             The variance (standard deviation squared) of the Gaussian functions.
-        n_interaction_blocks: int
+        n_interaction_blocks: int (Default=1)
             Number of interaction blocks.
-        share_weights: bool
+        share_weights: bool (Default=False)
             If True, shares the weights between all interaction blocks.
         """
-        super(SchnetBlock, self).__init__()
+        super(SchnetFeature, self).__init__()
         self.embedding = embedding_layer
-        self.geometry = geometry_calculator
         self.rbf_layer = RadialBasisFunction(cutoff=rbf_cutoff,
                                              num_gaussians=num_gaussians,
                                              variance=variance)
@@ -442,10 +439,9 @@ class SchnetBlock(nn.Module):
             Size [n_examples, n_beads, n_filters]
 
         """
-        # TODO DOM: need to check out the new geometry stuff to do this step properly
-        # but you get the idea
-        distances = self.geometry.compute_distances(coordinates)
-        neighbors = self.geometry.compute_neighbors(coordinates)
+        # TODO: PLACEHOLDER until the Feature base class is figured out
+        distances = self.compute_distances(coordinates)
+        neighbors = self.compute_neighbors(coordinates)
 
         features = self.embedding(embedding_property)
         rbf_expansion = self.rbf_layer(distances=distances)
