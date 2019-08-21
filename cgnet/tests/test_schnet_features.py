@@ -5,25 +5,26 @@ import torch
 
 from cgnet.feature import (ContinuousFilterConvolution, InteractionBlock)
 
-# Random protein
-num_examples = np.random.randint(10, 30)
+# Define sizes for a pseudo-dataset
+num_frames = np.random.randint(10, 30)
 num_beads = np.random.randint(5, 10)
 
-# Random feature sizes
+# Define random feature sizes
 num_gaussians = np.random.randint(5, 10)
 num_feats = np.random.randint(4, 16)
 num_filters = np.random.randint(4, 16)
 
-# Create test input features, radial basis function output and neighbor list
-test_rbf = torch.randn((num_examples, num_beads, num_beads - 1, num_gaussians))
-test_features = torch.randn((num_examples, num_beads, num_feats))
-test_cfconv_features = torch.randn((num_examples, num_beads, num_filters))
+# Create random test input features, radial basis function output and
+# continuous convolution feature
+test_rbf = torch.randn((num_frames, num_beads, num_beads - 1, num_gaussians))
+test_features = torch.randn((num_frames, num_beads, num_feats))
+test_cfconv_features = torch.randn((num_frames, num_beads, num_filters))
 
 # Create a simple neighbor list in which all beads see each other
-# Shape (num_examples, num_beads, num_beads -1)
-test_nbh = np.tile(np.arange(num_beads), (num_examples, num_beads, 1))
+# Shape (num_frames, num_beads, num_beads -1)
+test_nbh = np.tile(np.arange(num_beads), (num_frames, num_beads, 1))
 inverse_identity = np.eye(num_beads, num_beads) != 1
-test_nbh = torch.from_numpy(test_nbh[:, inverse_identity].reshape(num_examples,
+test_nbh = torch.from_numpy(test_nbh[:, inverse_identity].reshape(num_frames,
                                                                   num_beads,
                                                                   num_beads - 1))
 
@@ -38,18 +39,30 @@ def test_continuous_convolution():
                                       test_nbh).detach()
 
     # Calculate convolution manually
-    test_conv_filter = cfconv.filter_generator(test_rbf).detach().numpy()
-
     num_neighbors = num_beads - 1
     test_nbh_np = test_nbh.numpy()
     test_feat_np = test_cfconv_features.numpy()
 
+    # Feature tensor needs to be transformed from
+    # (n_frames, n_beads, n_features)
+    # to
+    # (n_frames, n_beads, n_neighbors, n_features)
+    # This can be done by feeding the features of a respective bead into
+    # its position in the neighbor_list.
     # Gather the features into the respective places in the neighbor list
     neighbor_list = test_nbh_np.reshape(-1, num_beads * num_neighbors, 1)
     neighbor_list = neighbor_list.repeat(num_filters, axis=2)
+    # Gather the features into the respective places in the neighbor list
     neighbor_features = np.take_along_axis(test_feat_np, neighbor_list, axis=1)
-    neighbor_features = neighbor_features.reshape(num_examples, num_beads,
+    # Reshape back to (n_frames, n_beads, n_neighbors, n_features) for
+    # element-wise multiplication with the filter
+    neighbor_features = neighbor_features.reshape(num_frames, num_beads,
                                                   num_neighbors, -1)
+
+    # In order to compare the layer output with the manual calculation, we
+    # need to use the same filter generator (2 linear layers with and without
+    # activation function, respectively).
+    test_conv_filter = cfconv.filter_generator(test_rbf).detach().numpy()
 
     # element-wise multiplication and pooling
     conv_features = neighbor_features * test_conv_filter
@@ -66,7 +79,7 @@ def test_interaction_block():
     interaction_output = interaction_b(test_features, test_rbf, test_nbh)
 
     np.testing.assert_equal(interaction_output.shape,
-                            (num_examples, num_beads, num_filters))
+                            (num_frames, num_beads, num_filters))
 
 
 def test_schnet_feature():
