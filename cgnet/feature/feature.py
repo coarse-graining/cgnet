@@ -381,8 +381,9 @@ class SchnetFeature(nn.Module):
         Parameters
         ----------
         feature_size: int
-            Input size and number of filters for the InteractionBlock.
-            Needs to be clarified a bit better here.
+            Defines the number of neurons of the linear layers in the
+            InteractionBlock. Also defines the number of convolutional
+            filters that will be used.
         embedding_layer: torch.nn.Module
             Class that embeds a property into a feature vector.
         rbf_cutoff: float (default=5.0)
@@ -425,15 +426,13 @@ class SchnetFeature(nn.Module):
         embedding_property: torch.Tensor
             Some property that should be embedded. Can be nuclear charge
             or maybe an arbitrary number assigned for amino-acids.
-            Size [n_frames] (not sure if it can have 2 dimensions?)
+            Size [n_frames, n_properties]
 
         Returns
         -------
         features: torch.Tensor
-            output of interaction block. If residual_connect = True, then
-            this output is additively combined with interaction block input
-            to produce: output_feature = (output_feature + features).
-            Size [n_frames, n_beads, n_filters]
+            Atom-wise feature representation.
+            Size [n_frames, n_beads, n_features]
 
         """
         # TODO: PLACEHOLDER until the Feature base class is figured out
@@ -477,7 +476,7 @@ class CGBeadEmbedding(torch.nn.Module):
         embedding_property: torch.Tensor
             Some property that should be embedded. Can be nuclear charge
             or maybe an arbitrary number assigned for amino-acids.
-            Size [n_frames] (not sure if it can have 2 dimensions?)
+            Size [n_frames, n_properties]
 
         Returns
         -------
