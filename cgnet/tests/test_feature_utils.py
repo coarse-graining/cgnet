@@ -9,8 +9,8 @@ from cgnet.feature.statistics import GeometryStatistics
 from cgnet.feature.feature import GeometryFeature
 
 
-# Random protein
-num_examples = np.random.randint(10, 30)
+# Define sizes for a pseudo-dataset
+num_frames = np.random.randint(10, 30)
 num_beads = np.random.randint(5, 10)
 
 
@@ -18,7 +18,8 @@ def test_radial_basis_function():
     # Make sure radial basis functions are consistent with manual calculation
 
     # Distances need to have shape (n_batch, n_beads, n_neighbors)
-    distances = torch.randn((num_examples, num_beads, num_beads - 1))
+    distances = torch.randn((num_frames, num_beads, num_beads - 1))
+    # Define random parameters for the RBF
     variance = np.random.random() + 1
     n_gaussians = np.random.randint(5, 10)
     cutoff = np.random.uniform(1.0, 5.0)
@@ -28,14 +29,20 @@ def test_radial_basis_function():
                               variance=variance)
     gauss_layer = rbf.forward(distances)
 
-    # Manually calculate expansion
-    centers = torch.linspace(0.0, cutoff, n_gaussians)
-    coefficient = -0.5 / variance
-    magnitude_squared = torch.pow(distances.unsqueeze(dim=3) - centers, 2)
-    gauss_manual = torch.exp(coefficient * magnitude_squared)
+    # Manually calculate expansion with numpy
+    # according to the following formula:
+    # e_k (r_j - r_i) = exp(- \gamma (\left \| r_j - r_i \right \| - \mu_k)^2)
+    # with centers mu_k calculated on a uniform grid between
+    # zero and the distance cutoff and gamma as a scaling parameter.
+    centers = np.linspace(0.0, cutoff, n_gaussians)
+    gamma = -0.5 / variance
+    distances = np.expand_dims(distances, axis=3)
+    magnitude_squared = (distances - centers)**2
+    gauss_manual = np.exp(gamma * magnitude_squared)
 
+    # Shapes and values need to be the same
     np.testing.assert_equal(centers.shape, rbf.centers.shape)
-    np.testing.assert_allclose(gauss_layer, gauss_manual)
+    np.testing.assert_allclose(gauss_layer.numpy(), gauss_manual, rtol=1e-5)
 
 
 def test_shifted_softplus():
@@ -43,9 +50,11 @@ def test_shifted_softplus():
     # manual calculation
 
     # Initialize random feature vector
-    feature = torch.randn((num_examples, num_beads), dtype=torch.double)
+    feature = torch.randn((num_frames, num_beads), dtype=torch.double)
 
     ssplus = ShiftedSoftplus()
-    manual_output = torch.log(1.0 + torch.exp(feature)) - np.log(2.0)
+    # Shifted softplus has the following form:
+    # y = \ln\left(1 + e^{-x}\right) - \ln(2)
+    manual_output = np.log(1.0 + np.exp(feature.numpy())) - np.log(2.0)
 
-    np.testing.assert_allclose(manual_output, ssplus(feature))
+    np.testing.assert_allclose(manual_output, ssplus(feature).numpy())
