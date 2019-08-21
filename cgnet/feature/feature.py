@@ -250,11 +250,8 @@ class ContinuousFilterConvolution(nn.Module):
         # (n_frames, n_beads, n_neighbors, n_features)
         # This can be done by feeding the features of a respective bead into
         # its position in the neighbor_list.
-        num_batch = rbf_expansion.size()[0]
-        num_beads, num_neighbors = neighbor_list.size()
-        neighbor_list = neighbor_list.unsqueeze(0).expand(num_batch,
-                                                          num_beads,
-                                                          num_neighbors)
+        num_batch, num_beads, num_neighbors = neighbor_list.size()
+
         # Shape (n_frames, n_beads * n_neighbors, 1)
         neighbor_list = neighbor_list.reshape(-1, num_beads * num_neighbors, 1)
         # Shape (n_frames, n_beads * n_neighbors, n_features)
