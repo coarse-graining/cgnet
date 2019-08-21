@@ -225,29 +225,29 @@ class ContinuousFilterConvolution(nn.Module):
         Parameters
         ----------
         features: torch.Tensor
-            Feature vector of size [n_examples, n_beads, n_features].
+            Feature vector of size [n_frames, n_beads, n_features].
         rbf_expansion: torch.Tensor
             Gaussian expansion of bead distances of size
-            [n_examples, n_beads, n_neighbors, n_gaussians].
+            [n_frames, n_beads, n_neighbors, n_gaussians].
         neighbor_list: torch.Tensor
             Indices of all neighbors of each bead.
-            Size [n_examples, n_beads, n_neighbors]
+            Size [n_frames, n_beads, n_neighbors]
 
         Returns
         -------
         conv_features: torch.Tensor
-            Residual features of size [n_examples, n_beads, n_features]
+            Residual features of size [n_frames, n_beads, n_features]
 
         """
 
         # Generate the convolutional filter
-        # Shape (n_examples, n_beads, n_neighbors, n_features)
+        # Shape (n_frames, n_beads, n_neighbors, n_features)
         conv_filter = self.filter_generator(rbf_expansion)
 
         # Feature tensor needs to be transformed from
-        # (n_examples, n_beads, n_features)
+        # (n_frames, n_beads, n_features)
         # to
-        # (n_examples, n_beads, n_neighbors, n_features)
+        # (n_frames, n_beads, n_neighbors, n_features)
         # This can be done by feeding the features of a respective bead into
         # its position in the neighbor_list.
         num_batch = rbf_expansion.size()[0]
@@ -255,14 +255,14 @@ class ContinuousFilterConvolution(nn.Module):
         neighbor_list = neighbor_list.unsqueeze(0).expand(num_batch,
                                                           num_beads,
                                                           num_neighbors)
-        # Shape (n_examples, n_beads * n_neighbors, 1)
+        # Shape (n_frames, n_beads * n_neighbors, 1)
         neighbor_list = neighbor_list.reshape(-1, num_beads * num_neighbors, 1)
-        # Shape (n_examples, n_beads * n_neighbors, n_features)
+        # Shape (n_frames, n_beads * n_neighbors, n_features)
         neighbor_list = neighbor_list.expand(-1, -1, features.size(2))
 
         # Gather the features into the respective places in the neighbor list
         neighbor_features = torch.gather(features, 1, neighbor_list)
-        # Reshape back to (n_examples, n_beads, n_neighbors, n_features) for
+        # Reshape back to (n_frames, n_beads, n_neighbors, n_features) for
         # element-wise multiplication with the filter
         neighbor_features = neighbor_features.reshape(num_batch, num_beads,
                                                       num_neighbors, -1)
@@ -271,8 +271,8 @@ class ContinuousFilterConvolution(nn.Module):
         # the convolutional filter
         conv_features = neighbor_features * conv_filter
 
-        # Aggregate/pool the features from (n_examples, n_beads, n_neighs, n_feats)
-        # to (n_examples, n_beads, n_features)
+        # Aggregate/pool the features from (n_frames, n_beads, n_neighs, n_feats)
+        # to (n_frames, n_beads, n_features)
         agg_features = torch.sum(conv_features, dim=2)
         return agg_features
 
@@ -342,13 +342,13 @@ class InteractionBlock(nn.Module):
         ----------
         features: torch.Tensor
             Input features from an embedding or interaction layer.
-            Shape [n_examples, n_beads, n_features]
+            Shape [n_frames, n_beads, n_features]
         rbf_expansion: torch.Tensor
             Radial basis function expansion of interatomic distances.
-            Shape [n_batch, n_beads, n_neighbors, n_gaussians]
+            Shape [n_frames, n_beads, n_neighbors, n_gaussians]
         neighbor_list: torch.Tensor
             Indices of all neighbors of each bead.
-            Size [n_examples, n_beads, n_neighbors]
+            Size [n_frames, n_beads, n_neighbors]
 
         Returns
         -------
@@ -356,7 +356,7 @@ class InteractionBlock(nn.Module):
             Output of an interaction block. This output can be used to form
             a residual connection with the output of a prior embedding/interaction
             layer.
-            Shape [n_examples, n_beads, n_filters]
+            Shape [n_frames, n_beads, n_filters]
 
         """
         init_feature_output = self.inital_dense(features)
@@ -388,16 +388,16 @@ class SchnetFeature(nn.Module):
             Needs to be clarified a bit better here.
         embedding_layer: torch.nn.Module
             Class that embeds a property into a feature vector.
-        rbf_cutoff: float (Default=5.0)
+        rbf_cutoff: float (default=5.0)
             Cutoff for the radial basis function.
-        num_gaussians: int (Default=50)
+        num_gaussians: int (default=50)
             Number of gaussians for the gaussian expansion in the radial basis
             function.
-        variance: float (Default=1.0)
+        variance: float (default=1.0)
             The variance (standard deviation squared) of the Gaussian functions.
-        n_interaction_blocks: int (Default=1)
+        n_interaction_blocks: int (default=1)
             Number of interaction blocks.
-        share_weights: bool (Default=False)
+        share_weights: bool (default=False)
             If True, shares the weights between all interaction blocks.
         """
         super(SchnetFeature, self).__init__()
@@ -424,11 +424,11 @@ class SchnetFeature(nn.Module):
         Parameters
         ----------
         coordinates: torch.Tensor (grad enabled)
-            input trajectory/data of size [n_examples, n_degrees_of_freedom].
+            input trajectory/data of size [n_frames, n_degrees_of_freedom].
         embedding_property: torch.Tensor
             Some property that should be embedded. Can be nuclear charge
             or maybe an arbitrary number assigned for amino-acids.
-            Size [n_examples] (not sure if it can have 2 dimensions?)
+            Size [n_frames] (not sure if it can have 2 dimensions?)
 
         Returns
         -------
@@ -436,7 +436,7 @@ class SchnetFeature(nn.Module):
             output of interaction block. If residual_connect = True, then
             this output is additively combined with interaction block input
             to produce: output_feature = (output_feature + features).
-            Size [n_examples, n_beads, n_filters]
+            Size [n_frames, n_beads, n_filters]
 
         """
         # TODO: PLACEHOLDER until the Feature base class is figured out
@@ -480,7 +480,7 @@ class CGBeadEmbedding(torch.nn.Module):
         embedding_property: torch.Tensor
             Some property that should be embedded. Can be nuclear charge
             or maybe an arbitrary number assigned for amino-acids.
-            Size [n_examples] (not sure if it can have 2 dimensions?)
+            Size [n_frames] (not sure if it can have 2 dimensions?)
 
         Returns
         -------

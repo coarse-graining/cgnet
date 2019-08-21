@@ -127,13 +127,13 @@ class ShiftedSoftplus(nn.Module):
         Parameters
         ----------
         input_tensor: torch.Tensor
-            Input tensor of shape (n_examples, *) where `*` means, any number of
+            Input tensor of shape (n_frames, *) where `*` means, any number of
             additional dimensions.
 
         Returns
         -------
         Output: torch.Tensor
-            Same shape (n_examples, *) as the input.
+            Same shape (n_frames, *) as the input.
         """
         return nn.functional.softplus(input_tensor) - np.log(2.0)
 
@@ -160,7 +160,7 @@ class RadialBasisFunction(nn.Module):
         Total number of Gaussian functions to calculate. Number will be used to
         create a uniform grid from 0.0 to cutoff. The number of Gaussians will
         also decide the output size of the RBF layer output
-        ([n_examples, n_beads, n_neighbors, n_gauss]).
+        ([n_frames, n_beads, n_neighbors, n_gauss]).
     variance : float (default=1.0)
         The variance (standard deviation squared) of the Gaussian functions.
     """
@@ -176,12 +176,12 @@ class RadialBasisFunction(nn.Module):
         Parameters
         ----------
         distances : torch.Tensor
-            Interatomic distances of shape [n_examples, n_beads, n_distances]
+            Interatomic distances of shape [n_frames, n_beads, n_distances]
 
         Returns
         -------
         gaussian_exp: torch.Tensor
-            Gaussian expansions of shape [n_examples, n_beads, n_neighbors, n_gauss]
+            Gaussian expansions of shape [n_frames, n_beads, n_neighbors, n_gauss]
         """
         dist_centered_squared = torch.pow(distances.unsqueeze(dim=3) -
                                           self.centers, 2)
