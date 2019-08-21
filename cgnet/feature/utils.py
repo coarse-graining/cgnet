@@ -153,14 +153,6 @@ class RadialBasisFunction(nn.Module):
 
     Parameters
     ----------
-    callback_indices : list(int)
-        List of feature idices that serve as a callback to a previous
-        featurization layer. For example, these indices could by the
-        indices corresponding to all pairwise distances output from a
-        ProteinBackboneFeature() layer
-    redundant_mapping : numpy.array or torch.Tensor
-        neighborlist redundant index mapping for distances. See
-        cgnet.feature.GeometryStatistics._get_redundant_distance_mapping
     cutoff : float (default=5.0)
         Distance cutoff for the Gaussian function. The cutoff represents the
         center of the last gaussian function in basis.
@@ -173,11 +165,10 @@ class RadialBasisFunction(nn.Module):
         The variance (standard deviation squared) of the Gaussian functions.
     """
 
-    def __init__(self, redundant_callback_mapping, cutoff=5.0, num_gaussians=50, variance=1.0):
+    def __init__(self, cutoff=5.0, num_gaussians=50, variance=1.0):
         super(RadialBasisFunction, self).__init__()
         self.centers = torch.linspace(0.0, cutoff, num_gaussians)
         self.variance = variance
-        self.redundant_callback_mapping = redundant_callback_mapping
 
     def forward(self, distances):
         """Calculate Gaussian expansion
