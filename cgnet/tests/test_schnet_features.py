@@ -3,7 +3,8 @@
 import numpy as np
 import torch
 
-from cgnet.feature import (ContinuousFilterConvolution, InteractionBlock)
+from cgnet.feature import (ContinuousFilterConvolution, InteractionBlock,
+                           SchnetFeature, CGBeadEmbedding)
 
 # Define sizes for a pseudo-dataset
 num_frames = np.random.randint(10, 30)
@@ -80,6 +81,42 @@ def test_interaction_block():
 
     np.testing.assert_equal(interaction_output.shape,
                             (num_frames, num_beads, num_filters))
+
+
+def test_shared_weights():
+    # Tests the weight sharing functionality of the interaction block
+    feature_size = 4
+    embedding_layer = CGBeadEmbedding(num_embeddings=2,
+                                      embedding_dim=2)
+    # Initialize two Schnet networks
+    # With and without weight sharing, respectively.
+    schnet_feature_no_sw = SchnetFeature(feature_size=feature_size,
+                                         embedding_layer=embedding_layer,
+                                         rbf_cutoff=5.0,
+                                         num_gaussians=5,
+                                         variance=1.0,
+                                         n_interaction_blocks=2,
+                                         share_weights=False)
+    schnet_feature_sw = SchnetFeature(feature_size=feature_size,
+                                      embedding_layer=embedding_layer,
+                                      rbf_cutoff=5.0,
+                                      num_gaussians=5,
+                                      variance=1.0,
+                                      n_interaction_blocks=2,
+                                      share_weights=True)
+
+    # Loop over all parameters in both interaction blocks
+    # If the weights are shared, the parameters in both interaction blocks
+    # should be equal, respectively.
+    for par1, par2 in zip(schnet_feature_sw.interaction_blocks[0].parameters(),
+                          schnet_feature_sw.interaction_blocks[1].parameters()):
+        assert np.array_equal(par1.detach().numpy(), par2.detach().numpy())
+
+    # If the weights are not shared, the parameters should be different.
+    for par1, par2 in zip(
+            schnet_feature_no_sw.interaction_blocks[0].parameters(),
+            schnet_feature_no_sw.interaction_blocks[1].parameters()):
+        assert not np.array_equal(par1.detach().numpy(), par2.detach().numpy())
 
 
 def test_schnet_feature():
