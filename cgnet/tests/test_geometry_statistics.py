@@ -27,7 +27,11 @@ data_tensor = torch.Tensor(data)
 geom_feature = GeometryFeature(n_beads=beads)
 _ = geom_feature.forward(data_tensor)
 
-stats = GeometryStatistics(data_tensor)
+stats = GeometryStatistics(data_tensor, backbone_inds='all',
+                           get_all_distances=True,
+                           get_backbone_angles=True,
+                           get_backbone_dihedrals=True,
+                           get_redundant_distance_mapping=True)
 
 
 def test_feature_tuples():
@@ -54,8 +58,15 @@ def test_manual_backbone_calculations():
     data_tensor_bb_only = data_tensor[:, backbone_inds]
 
     stats_bb_inds = GeometryStatistics(data_tensor,
-                                       backbone_inds=backbone_inds)
-    stats_bb_only = GeometryStatistics(data_tensor_bb_only)
+                                       backbone_inds=backbone_inds,
+                                       get_all_distances=True,
+                                       get_backbone_angles=True,
+                                       get_backbone_dihedrals=True)
+    stats_bb_only = GeometryStatistics(data_tensor_bb_only,
+                                       backbone_inds='all',
+                                       get_all_distances=True,
+                                       get_backbone_angles=True,
+                                       get_backbone_dihedrals=True)
 
     # Distances will be different because there are a different number
     # of beads in each dataset, but the bonds (which default to the adjacent
@@ -94,8 +105,15 @@ def test_manual_backbone_descriptions():
     data_tensor_bb_only = data_tensor[:, backbone_inds]
 
     stats_bb_inds = GeometryStatistics(data_tensor,
-                                       backbone_inds=backbone_inds)
-    stats_bb_only = GeometryStatistics(data_tensor_bb_only)
+                                       backbone_inds=backbone_inds,
+                                       get_all_distances=True,
+                                       get_backbone_angles=True,
+                                       get_backbone_dihedrals=True)
+    stats_bb_only = GeometryStatistics(data_tensor_bb_only,
+                                       backbone_inds='all',
+                                       get_all_distances=True,
+                                       get_backbone_angles=True,
+                                       get_backbone_dihedrals=True)
 
     # Manually specify what all the descriptions should be
     bb_inds_bond_descs = [(backbone_inds[i], backbone_inds[i+1])
@@ -191,7 +209,7 @@ def test_prior_statistics_shape_1():
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
-    stats_ = GeometryStatistics(data_tensor,
+    stats_ = GeometryStatistics(data_tensor, backbone_inds='all',
                                 get_all_distances=bool_list[0],
                                 get_backbone_angles=bool_list[1],
                                 get_backbone_dihedrals=bool_list[2])
@@ -216,7 +234,7 @@ def test_prior_statistics_shape_2():
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
-    stats_ = GeometryStatistics(data_tensor,
+    stats_ = GeometryStatistics(data_tensor, backbone_inds='all',
                                 get_all_distances=bool_list[0],
                                 get_backbone_angles=bool_list[1],
                                 get_backbone_dihedrals=bool_list[2])
@@ -293,7 +311,7 @@ def test_return_indices_shape_1():
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
-    stats_ = GeometryStatistics(data_tensor,
+    stats_ = GeometryStatistics(data_tensor, backbone_inds='all',
                                 get_all_distances=bool_list[0],
                                 get_backbone_angles=bool_list[1],
                                 get_backbone_dihedrals=bool_list[2])
@@ -328,7 +346,7 @@ def test_return_indices_1():
     bool_list = [True] + [bool(np.random.randint(2)) for _ in range(2)]
     np.random.shuffle(bool_list)
 
-    stats_ = GeometryStatistics(data_tensor,
+    stats_ = GeometryStatistics(data_tensor, backbone_inds='all',
                                 get_all_distances=bool_list[0],
                                 get_backbone_angles=bool_list[1],
                                 get_backbone_dihedrals=bool_list[2])
@@ -381,6 +399,7 @@ def test_return_indices_2():
     # We input our custom bond pairs and do not care whether adjacent
     # backbone bonds are counted or not
     stats_ = GeometryStatistics(data_tensor, bond_pairs=custom_bond_pairs,
+                                backbone_inds='all', get_all_distances=True,
                                 adjacent_backbone_bonds=bool(np.random.randint(2)))
     returned_bond_inds = stats_.return_indices('Bonds')
 
