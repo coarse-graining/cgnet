@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from .priors import ZscoreLayer, HarmonicLayer, RepulsionLayer
-
+from cgnet.feature import FeatureCombiner
 
 class ForceLoss(torch.nn.Module):
     """Loss function for force matching scheme."""
@@ -153,13 +153,17 @@ class CGnet(nn.Module):
         """
         feat = coord
         if self.feature:
-            feat = self.feature(feat)
-        # forward pass through the hidden architecture of the CGnet
-        energy = self.arch(feat)
-        # addition of external priors to form total energy
+            if isinstance(self.feature, FeatureCombiner):
+                forward_feat, feat = self.feature(feat)
+                energy = self.arch(forward_feat)
+            if not isinstance(self.feature, FeautureCombiner):
+                feat = self.feature(feat)
+                energy = self.arch(feat)
+        else:
+            energy = self.arch(feat)
         if self.priors:
             for prior in self.priors:
-                energy = energy + prior(feat[:, prior.callback_indices])
+                energy = energy + prior(geom_feat[:, prior.callback_indices])
 
         # Perform autograd to learn potential of conservative force field
         force = torch.autograd.grad(-torch.sum(energy),
