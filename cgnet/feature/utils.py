@@ -71,21 +71,24 @@ def LinearLayer(
             )
     if dropout:
         seq += [nn.Dropout(dropout)]
-    if weight_init == 'xavier':
-        torch.nn.init.xavier_uniform_(seq[0].weight)
-    if weight_init == 'identity':
-        torch.nn.init.eye_(seq[0].weight)
-    if weight_init not in ['xavier', 'identity', None]:
-        if isinstance(weight_init, int) or isinstance(weight_init, float):
-            torch.nn.init.constant_(seq[0].weight, weight_init)
-        if callable(weight_init):
-            if weight_init_args is None:
-                weight_init_args = []
-            if weight_init_kwargs is None:
-                weight_init_kwargs = []
-            weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
-        else:
-            raise RuntimeError(
-                'Unknown weight initialization \"{}\"'.format(str(weight_init))
-            )
+    with torch.no_grad():
+        if weight_init == 'xavier':
+            torch.nn.init.xavier_uniform_(seq[0].weight)
+        if weight_init == 'identity':
+            torch.nn.init.eye_(seq[0].weight)
+        if weight_init not in ['xavier', 'identity', None]:
+            if isinstance(weight_init, int) or isinstance(weight_init, float):
+                torch.nn.init.constant_(seq[0].weight, weight_init)
+            if callable(weight_init):
+                if weight_init_args is None:
+                    weight_init_args = []
+                if weight_init_kwargs is None:
+                    weight_init_kwargs = []
+                weight_init(seq[0].weight, *weight_init_args,
+                            **weight_init_kwargs)
+            else:
+                raise RuntimeError(
+                    'Unknown weight initialization \"{}\"'.format(
+                        str(weight_init))
+                )
     return seq
