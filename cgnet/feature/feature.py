@@ -404,6 +404,11 @@ class SchnetFeature(nn.Module):
         -----
         Default values for radial basis function related variables (rbf_cutoff,
         n_gaussians, variance) are taken as suggested in SchnetPack.
+
+        Example
+        -------
+        # TODO: Maybe add an exmaple here once it's functional?
+
         """
         super(SchnetFeature, self).__init__()
         self.embedding_layer = embedding_layer
@@ -460,7 +465,8 @@ class SchnetFeature(nn.Module):
 
 class CGBeadEmbedding(torch.nn.Module):
     def __init__(self, n_embeddings, embedding_dim):
-        """
+        """Simple embedding class for coarse-grain beads.
+        Serves as a lookup table that returns a fixed size embedding.
 
         Parameters
         ----------
