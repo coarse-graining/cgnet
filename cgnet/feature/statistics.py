@@ -146,6 +146,7 @@ class GeometryStatistics():
             self._distance_pairs = []
             self.bond_pairs = []
         self._distance_pairs.extend(self._custom_distance_pairs)
+        self._pair_order = self._distance_pairs
         self.bond_pairs.extend(self._bond_pairs)
 
         if len(self._distance_pairs) > 0:
@@ -184,7 +185,7 @@ class GeometryStatistics():
                 warnings.warn(
     "Some custom dihedrals were on the backbone and will not be re-calculated."
                 )
-                self._custom_dihedral_quads = [cust_dih for _custom_dihedral_quads
+                self._custom_dihedral_quads = [cust_dih for cust_dih
                                                in self._custom_dihedral_quads
                                                if cust_dih not in self._dihedral_quads]
         else:
