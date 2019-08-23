@@ -2,14 +2,16 @@
 # Contributors: Jiang Wang
 
 
-import torch
-import torch.nn as nn
-from cgnet.feature.utils import ShiftedSoftplus, LinearLayer
-import numpy as np
 import warnings
 
-from .utils import RadialBasisFunction
+import numpy as np
+import torch
+import torch.nn as nn
+
+from cgnet.feature.utils import ShiftedSoftplus, LinearLayer
 from .geometry import Geometry
+from .utils import RadialBasisFunction
+
 g = Geometry(method='torch')
 
 
@@ -187,10 +189,10 @@ class ContinuousFilterConvolution(nn.Module):
 
     Parameters
     ----------
-    num_gaussians: int
+    n_gaussians: int
         Number of Gaussians that has been used in the radial basis function.
         Needed to determine the input feature size of the first dense layer.
-    num_filters: int
+    n_filters: int
         Number of filters that will be created. Also determines the output size.
         Needs to be the same size as the features of the residual connection in
         the interaction block.
@@ -210,13 +212,13 @@ class ContinuousFilterConvolution(nn.Module):
         https://doi.org/10.1063/1.5019779
     """
 
-    def __init__(self, num_gaussians, num_filters):
+    def __init__(self, n_gaussians, n_filters):
         super(ContinuousFilterConvolution, self).__init__()
-        filter_layers = LinearLayer(num_gaussians, num_filters, bias=True,
+        filter_layers = LinearLayer(n_gaussians, n_filters, bias=True,
                                     activation=ShiftedSoftplus())
         # No activation function in the last layer allows the filter generator
         # to contain negative values.
-        filter_layers += LinearLayer(num_filters, num_filters, bias=True)
+        filter_layers += LinearLayer(n_filters, n_filters, bias=True)
         self.filter_generator = nn.Sequential(*filter_layers)
 
     def forward(self, features, rbf_expansion, neighbor_list):
@@ -235,7 +237,7 @@ class ContinuousFilterConvolution(nn.Module):
 
         Returns
         -------
-        conv_features: torch.Tensor
+        aggregated_features: torch.Tensor
             Residual features of size [n_frames, n_beads, n_features]
 
         """
@@ -250,10 +252,10 @@ class ContinuousFilterConvolution(nn.Module):
         # (n_frames, n_beads, n_neighbors, n_features)
         # This can be done by feeding the features of a respective bead into
         # its position in the neighbor_list.
-        num_batch, num_beads, num_neighbors = neighbor_list.size()
+        n_batch, n_beads, n_neighbors = neighbor_list.size()
 
         # Shape (n_frames, n_beads * n_neighbors, 1)
-        neighbor_list = neighbor_list.reshape(-1, num_beads * num_neighbors, 1)
+        neighbor_list = neighbor_list.reshape(-1, n_beads * n_neighbors, 1)
         # Shape (n_frames, n_beads * n_neighbors, n_features)
         neighbor_list = neighbor_list.expand(-1, -1, features.size(2))
 
@@ -261,8 +263,8 @@ class ContinuousFilterConvolution(nn.Module):
         neighbor_features = torch.gather(features, 1, neighbor_list)
         # Reshape back to (n_frames, n_beads, n_neighbors, n_features) for
         # element-wise multiplication with the filter
-        neighbor_features = neighbor_features.reshape(num_batch, num_beads,
-                                                      num_neighbors, -1)
+        neighbor_features = neighbor_features.reshape(n_batch, n_beads,
+                                                      n_neighbors, -1)
 
         # Element-wise multiplication of the features with
         # the convolutional filter
@@ -270,8 +272,8 @@ class ContinuousFilterConvolution(nn.Module):
 
         # Aggregate/pool the features from (n_frames, n_beads, n_neighs, n_feats)
         # to (n_frames, n_beads, n_features)
-        agg_features = torch.sum(conv_features, dim=2)
-        return agg_features
+        aggregated_features = torch.sum(conv_features, dim=2)
+        return aggregated_features
 
 
 class InteractionBlock(nn.Module):
@@ -291,14 +293,14 @@ class InteractionBlock(nn.Module):
 
     Parameters
     ----------
-    num_inputs: int
+    n_inputs: int
         Number of input features. Determines input size for the initial linear
         layer.
-    num_gaussians: int
+    n_gaussians: int
         Number of Gaussians that has been used in the radial basis function.
         Needed in to determine the input size of the continuous filter
         convolution.
-    num_filters: int
+    n_filters: int
         Number of filters that will be created in the continuous filter convolution.
         The same feature size will be used for the output linear layers of the
         interaction block.
@@ -318,17 +320,17 @@ class InteractionBlock(nn.Module):
         https://doi.org/10.1063/1.5019779
     """
 
-    def __init__(self, num_inputs, num_gaussians, num_filters):
+    def __init__(self, n_inputs, n_gaussians, n_filters):
         super(InteractionBlock, self).__init__()
 
         self.inital_dense = nn.Sequential(
-            *LinearLayer(num_inputs, num_filters, bias=False,
+            *LinearLayer(n_inputs, n_filters, bias=False,
                          activation=None))
-        self.cfconv = ContinuousFilterConvolution(num_gaussians=num_gaussians,
-                                                  num_filters=num_filters)
-        output_layers = LinearLayer(num_filters, num_filters, bias=True,
+        self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
+                                                  n_filters=n_filters)
+        output_layers = LinearLayer(n_filters, n_filters, bias=True,
                                     activation=ShiftedSoftplus())
-        output_layers += LinearLayer(num_filters, num_filters, bias=True,
+        output_layers += LinearLayer(n_filters, n_filters, bias=True,
                                      activation=None)
         self.output_dense = nn.Sequential(*output_layers)
 
@@ -341,7 +343,7 @@ class InteractionBlock(nn.Module):
             Input features from an embedding or interaction layer.
             Shape [n_frames, n_beads, n_features]
         rbf_expansion: torch.Tensor
-            Radial basis function expansion of interatomic distances.
+            Radial basis function expansion of inter-bead distances.
             Shape [n_frames, n_beads, n_neighbors, n_gaussians]
         neighbor_list: torch.Tensor
             Indices of all neighbors of each bead.
@@ -364,15 +366,15 @@ class InteractionBlock(nn.Module):
 
 
 class SchnetFeature(nn.Module):
-    """Wrapper class for RBF layer, continuous filter convolution, and
-    interaction block connecting feature inputs and outputs residuallly
+    """Wrapper class for radial basis function layer, continuous filter convolution,
+    and interaction block connecting feature inputs and outputs residuallly
     """
 
     def __init__(self,
                  feature_size,
                  embedding_layer,
                  rbf_cutoff=5.0,
-                 num_gaussians=50,
+                 n_gaussians=50,
                  variance=1.0,
                  n_interaction_blocks=1,
                  share_weights=False):
@@ -388,7 +390,7 @@ class SchnetFeature(nn.Module):
             Class that embeds a property into a feature vector.
         rbf_cutoff: float (default=5.0)
             Cutoff for the radial basis function.
-        num_gaussians: int (default=50)
+        n_gaussians: int (default=50)
             Number of gaussians for the gaussian expansion in the radial basis
             function.
         variance: float (default=1.0)
@@ -397,22 +399,27 @@ class SchnetFeature(nn.Module):
             Number of interaction blocks.
         share_weights: bool (default=False)
             If True, shares the weights between all interaction blocks.
+
+        Notes
+        -----
+        Default values for radial basis function related variables (rbf_cutoff,
+        n_gaussians, variance) are taken as suggested in SchnetPack.
         """
         super(SchnetFeature, self).__init__()
-        self.embedding = embedding_layer
+        self.embedding_layer = embedding_layer
         self.rbf_layer = RadialBasisFunction(cutoff=rbf_cutoff,
-                                             num_gaussians=num_gaussians,
+                                             n_gaussians=n_gaussians,
                                              variance=variance)
         if share_weights:
             # Lets the interaction blocks share the weights
             self.interaction_blocks = nn.ModuleList(
-                [InteractionBlock(feature_size, num_gaussians, feature_size)]
+                [InteractionBlock(feature_size, n_gaussians, feature_size)]
                 * n_interaction_blocks
             )
         else:
             # Every interaction block has their own weights
             self.interaction_blocks = nn.ModuleList(
-                [InteractionBlock(feature_size, num_gaussians, feature_size)
+                [InteractionBlock(feature_size, n_gaussians, feature_size)
                  for _ in range(n_interaction_blocks)]
             )
 
@@ -439,7 +446,7 @@ class SchnetFeature(nn.Module):
         distances = self.compute_distances(coordinates)
         neighbors = self.compute_neighbors(coordinates)
 
-        features = self.embedding(embedding_property)
+        features = self.embedding_layer(embedding_property)
         rbf_expansion = self.rbf_layer(distances=distances)
 
         for interaction_block in self.interaction_blocks:
@@ -452,19 +459,19 @@ class SchnetFeature(nn.Module):
 
 
 class CGBeadEmbedding(torch.nn.Module):
-    def __init__(self, num_embeddings, embedding_dim):
+    def __init__(self, n_embeddings, embedding_dim):
         """
 
         Parameters
         ----------
-        num_embeddings: int
+        n_embeddings: int
             Maximum number of different properties/amino_acids/elements,
             basically the dictionary size.
         embedding_dim: int
             Size of the embedding vector.
         """
         super(CGBeadEmbedding, self).__init__()
-        self.embedding = nn.Embedding(num_embeddings=num_embeddings,
+        self.embedding = nn.Embedding(num_embeddings=n_embeddings,
                                       embedding_dim=embedding_dim,
                                       padding_idx=0)
 
@@ -475,12 +482,15 @@ class CGBeadEmbedding(torch.nn.Module):
         ----------
         embedding_property: torch.Tensor
             Some property that should be embedded. Can be nuclear charge
-            or maybe an arbitrary number assigned for amino-acids.
+            or maybe an arbitrary number assigned for amino-acids. Passing a
+            zero will produce an embedding vector filled with zeroes (necessary
+            in the case of zero padded batches).
             Size [n_frames, n_properties]
 
         Returns
         -------
         embedding_vector: torch.Tensor
+            Corresponding embedding vector to the passed indices.
         """
         return self.embedding(embedding_property)
 

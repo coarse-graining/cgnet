@@ -15,7 +15,7 @@ def LinearLayer(
         weight_init='xavier',
         weight_init_args=None,
         weight_init_kwargs=None):
-    """Linear layer function
+    r"""Linear layer function
 
     Parameters
     ----------
@@ -49,10 +49,10 @@ def LinearLayer(
 
     Example
     -------
-    MyLayer = LinearLayer(5,10,bias=True,activation=nn.Softplus(beta=2),
-                               weight_init=nn.init.kaiming_uniform_,
-                               weight_init_kwargs={"a":0,"mode":"fan_out",
-                               "nonlinearity":"leaky_relu"})
+    MyLayer = LinearLayer(5, 10, bias=True, activation=nn.Softplus(beta=2),
+                          weight_init=nn.init.kaiming_uniform_,
+                          weight_init_kwargs={"a":0, "mode":"fan_out",
+                          "nonlinearity":"leaky_relu"})
 
     Produces a linear layer with input dimension 5, output dimension 10, bias
     inclusive, followed by a beta=2 softplus activation, with the layer weights
@@ -67,7 +67,7 @@ def LinearLayer(
             seq += [activation]
         else:
             raise TypeError(
-                'Activation \"{}\" is not a valid torch.nn.Module'.format(
+                'Activation {} is not a valid torch.nn.Module'.format(
                     str(activation))
             )
     if dropout:
@@ -87,7 +87,7 @@ def LinearLayer(
             weight_init(seq[0].weight, *weight_init_args, **weight_init_kwargs)
         else:
             raise RuntimeError(
-                'Unknown weight initialization \"{}\"'.format(str(weight_init))
+                'Unknown weight initialization {}'.format(str(weight_init))
             )
     return seq
 
@@ -156,7 +156,7 @@ class RadialBasisFunction(nn.Module):
     cutoff : float (default=5.0)
         Distance cutoff for the Gaussian function. The cutoff represents the
         center of the last gaussian function in basis.
-    num_gaussians : int (default=50)
+    n_gaussians : int (default=50)
         Total number of Gaussian functions to calculate. Number will be used to
         create a uniform grid from 0.0 to cutoff. The number of Gaussians will
         also decide the output size of the RBF layer output
@@ -165,9 +165,9 @@ class RadialBasisFunction(nn.Module):
         The variance (standard deviation squared) of the Gaussian functions.
     """
 
-    def __init__(self, cutoff=5.0, num_gaussians=50, variance=1.0):
+    def __init__(self, cutoff=5.0, n_gaussians=50, variance=1.0):
         super(RadialBasisFunction, self).__init__()
-        self.centers = torch.linspace(0.0, cutoff, num_gaussians)
+        self.centers = torch.linspace(0.0, cutoff, n_gaussians)
         self.variance = variance
 
     def forward(self, distances):

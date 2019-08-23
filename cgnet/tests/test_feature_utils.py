@@ -25,7 +25,7 @@ def test_radial_basis_function():
     cutoff = np.random.uniform(1.0, 5.0)
 
     # Calculate Gaussian expansion using the implemented layer
-    rbf = RadialBasisFunction(cutoff=cutoff, num_gaussians=n_gaussians,
+    rbf = RadialBasisFunction(cutoff=cutoff, n_gaussians=n_gaussians,
                               variance=variance)
     gauss_layer = rbf.forward(distances)
 
