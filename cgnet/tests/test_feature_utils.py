@@ -10,15 +10,15 @@ from cgnet.feature.feature import GeometryFeature
 
 
 # Define sizes for a pseudo-dataset
-num_frames = np.random.randint(10, 30)
-num_beads = np.random.randint(5, 10)
+frames = np.random.randint(10, 30)
+beads = np.random.randint(5, 10)
 
 
 def test_radial_basis_function():
     # Make sure radial basis functions are consistent with manual calculation
 
     # Distances need to have shape (n_batch, n_beads, n_neighbors)
-    distances = torch.randn((num_frames, num_beads, num_beads - 1))
+    distances = torch.randn((frames, beads, beads - 1))
     # Define random parameters for the RBF
     variance = np.random.random() + 1
     n_gaussians = np.random.randint(5, 10)
@@ -50,7 +50,7 @@ def test_shifted_softplus():
     # manual calculation
 
     # Initialize random feature vector
-    feature = torch.randn((num_frames, num_beads), dtype=torch.double)
+    feature = torch.randn((frames, beads), dtype=torch.double)
 
     ssplus = ShiftedSoftplus()
     # Shifted softplus has the following form:
