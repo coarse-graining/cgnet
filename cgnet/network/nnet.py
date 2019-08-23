@@ -106,7 +106,6 @@ class CGnet(nn.Module):
 
     def __init__(self, arch, criterion, feature=None, priors=None):
         super(CGnet, self).__init__()
-        # register parameters/buffers labeled by their order in arch
 
         zscore_idx = 1
         for layer in arch:
