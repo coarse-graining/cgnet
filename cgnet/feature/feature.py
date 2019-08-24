@@ -468,7 +468,7 @@ class SchnetFeature(nn.Module):
         # if geometry is specified, the distances are calculated from input
         # coordinates. Otherwise, it is assumed that in_features are 
         # pairwise distances in redundant form
-        if self.geometry::
+        if self.geometry:
             distances = g.get_distances(self._distance_pairs, in_features,
                                         norm=True)
             distances = distances[:, self.redundant_distance_mapping]
