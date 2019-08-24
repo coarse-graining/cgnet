@@ -396,7 +396,7 @@ class SchnetFeature(nn.Module):
             standalone SchnetFeature instance (i.e. one that is not
             preceded by a GeometryFeature instance).
         n_beads: int (default=None)
-            Number of coarse grain beads in the modeli.
+            Number of coarse grain beads in the model.
         rbf_cutoff: float (default=5.0)
             Cutoff for the radial basis function.
         n_gaussians: int (default=50)
