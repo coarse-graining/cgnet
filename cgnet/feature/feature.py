@@ -373,6 +373,8 @@ class SchnetFeature(nn.Module):
     def __init__(self,
                  feature_size,
                  embedding_layer,
+                 geometry=None,
+                 n_beads=None,
                  rbf_cutoff=5.0,
                  n_gaussians=50,
                  variance=1.0,
@@ -388,6 +390,12 @@ class SchnetFeature(nn.Module):
             filters that will be used.
         embedding_layer: torch.nn.Module
             Class that embeds a property into a feature vector.
+        geometry: boolean (default=False)
+            Allows calls to Geometry instance for calculating distances for a
+            standalone SchnetFeature instance (i.e. one that is not
+            preceded by a GeometryFeature instance).
+        n_beads: int (default=None)
+            Number of coarse grain beads in the modeli.
         rbf_cutoff: float (default=5.0)
             Cutoff for the radial basis function.
         n_gaussians: int (default=50)
@@ -428,13 +436,23 @@ class SchnetFeature(nn.Module):
                  for _ in range(n_interaction_blocks)]
             )
 
-    def forward(self, coordinates, embedding_property):
+        self.n_beads = n_beads
+        self.geometry = geometry
+        if self.geometry:
+            self._distance_pairs, _ = g.get_distance_indices(n_beads,[],[])
+            self.redundant_distance_mapping = g.get_redundant_distance_mapping(
+                                              self._distance_pairs)
+        else:
+            self._distance_pairs = None
+            self.redundant_distance_mapping = None
+
+    def forward(self, in_features, embedding_property):
         """Forward method through single Schnet block
 
         Parameters
         ----------
-        coordinates: torch.Tensor (grad enabled)
-            input trajectory/data of size [n_frames, n_degrees_of_freedom].
+        in_features: torch.Tensor (grad enabled)
+            input trajectory/data of size [n_frames, n_in_features].
         embedding_property: torch.Tensor
             Some property that should be embedded. Can be nuclear charge
             or maybe an arbitrary number assigned for amino-acids.
@@ -447,8 +465,14 @@ class SchnetFeature(nn.Module):
             Size [n_frames, n_beads, n_features]
 
         """
-        # TODO: PLACEHOLDER until the Feature base class is figured out
-        distances = self.compute_distances(coordinates)
+        # if geometry is specified, the distances are calculated from input
+        # coordinates. Otherwise, it is assumed that in_features are 
+        # pairwise distances in redundant form
+        if self.geometry::
+            distances = g.get_distances(self._distance_pairs, in_features,
+                                        norm=True)
+            distances = distances[:, self.redundant_distance_mapping]
+        # TODO compute neighborlist
         neighbors = self.compute_neighbors(coordinates)
 
         features = self.embedding_layer(embedding_property)
