@@ -7,6 +7,10 @@ import warnings
 import numpy as np
 import torch
 import torch.nn as nn
+from cgnet.feature.utils import ShiftedSoftplus, LinearLayer
+import numpy as np
+import warnings
+
 
 from cgnet.feature.utils import ShiftedSoftplus, LinearLayer
 from .geometry import Geometry

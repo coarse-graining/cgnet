@@ -28,6 +28,7 @@ def test_model_gpu_mount():
     stats = GeometryStatistics(coords)
     feat_layer = GeometryFeature(feature_tuples=stats.feature_tuples)
 
+
     bonds_list, _ = stats.get_prior_statistsics('Bonds')
     bonds_idx = stats.return_indices('Bonds')
 
