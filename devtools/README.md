@@ -16,6 +16,7 @@ The developers (@coarse-graining/developers) are Brooke ([@brookehus](https://gi
 PR best practices
 --
 - Since the repo cannot be forked, always develop in your own branch.
+- Make sure that you are always pulling the latest code from `master` as you develop. 
 - Default to PRing to other people's branches, even if it seems obnoxious. Never commit to someone else's branch unless you have cleared it with them first!
 - *Never merge your own PR, especially to master*, but in general to any branch.
 - Never commit any kinds of non-coding files without discussing first.
