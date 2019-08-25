@@ -39,8 +39,6 @@ def test_continuous_convolution():
     # Calculate continuous convolution output with the created layer
     cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                          n_filters=n_filters)
-    cfconv_layer_out = cfconv.forward(test_cfconv_features, test_rbf,
-                                      test_nbh).detach()
 
     # Calculate convolution manually
     n_neighbors = beads - 1
