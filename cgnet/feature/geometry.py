@@ -2,6 +2,7 @@
 
 import torch
 import numpy as np
+import scipy
 
 
 class Geometry():
@@ -51,6 +52,28 @@ class Geometry():
                         adj_backbone_pairs.append((i, i+increment))
 
         return pair_order, adj_backbone_pairs
+
+    def get_redundant_distance_mapping(self, pair_order):
+        """Reformulates pairwise distances from shape [n_frames, n_dist]
+        to shape [n_frames, n_beads, n_neighbors]
+
+        This is done by finding the index mapping between non-redundant and
+        redundant representations of the pairwise distances. This mapping can
+        then be supplied to Schnet-related features, such as a
+        RadialBasisFunction() layer, which use redundant pairwise distance
+        representations.
+
+        """
+        pairwise_dist_inds = [zipped_pair[1] for zipped_pair in sorted(
+            [z for z in zip(pair_order,
+                            np.arange(len(pair_order)))
+             ])
+        ]
+        map_matrix = scipy.spatial.distance.squareform(pairwise_dist_inds)
+        map_matrix = map_matrix[~np.eye(map_matrix.shape[0],
+                                        dtype=bool)].reshape(
+                                            map_matrix.shape[0], -1)
+        return map_matrix
 
     def get_vectorize_inputs(self, inds, data):
         """Helper function to obtain indices for vectorized calculations.
