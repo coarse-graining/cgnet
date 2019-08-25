@@ -20,9 +20,9 @@ class ForceLoss(torch.nn.Module):
         ----------
         force : torch.Tensor (grad enabled)
             forces calculated from the CGnet energy via autograd.
-            Size [n_examples, n_degrees_freedom].
+            Size [n_frames, n_degrees_freedom].
         labels : torch.Tensor
-            forces to compute the loss against. Size [n_examples,
+            forces to compute the loss against. Size [n_frames,
                                                       n_degrees_of_freedom].
 
         Returns
@@ -137,16 +137,16 @@ class CGnet(nn.Module):
         Parameters
         ----------
         coord : torch.Tensor (grad enabled)
-            input trajectory/data of size [n_examples, n_degrees_of_freedom].
+            input trajectory/data of size [n_frames, n_degrees_of_freedom].
 
         Returns
         -------
         energy : torch.Tensor
-            scalar potential energy of size [n_examples, 1]. If priors are
+            scalar potential energy of size [n_frames, 1]. If priors are
             supplied to the CGnet, then this energy is the sum of network
             and prior energies.
         force  : torch.Tensor
-            vector forces of size [n_examples, n_degrees_of_freedom].
+            vector forces of size [n_frames, n_degrees_of_freedom].
         """
         feat = coord
         if self.feature:
@@ -172,9 +172,9 @@ class CGnet(nn.Module):
         Parameters
         ----------
         coord: torch.Tensor (grad enabled)
-            input trajectory/data of size [n_examples, n_degrees_of_freedom]
+            input trajectory/data of size [n_frames, n_degrees_of_freedom]
         force_labels: torch.Tensor
-            force labels of size [n_examples, n_degrees_of_freedom]
+            force labels of size [n_frames, n_degrees_of_freedom]
 
         Returns
         -------
