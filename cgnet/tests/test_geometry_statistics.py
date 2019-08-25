@@ -46,6 +46,29 @@ def test_feature_tuples():
     np.testing.assert_array_equal(unique_tuples, stats.feature_tuples)
 
 
+def test_custom_feature_shapes():
+    # Tests whether statistics object has the right number of distances,
+    # angles, and dihedrals when custom features are given
+
+    # First generate the starts of features to be used for distances,
+    # angles, and dihedrals
+    custom_starts = np.unique([np.random.randint(beads - 4) for _ in range(5)])
+    custom_distance_pairs = [(i, i+2) for i in custom_starts]
+    custom_angle_triples = [(i, i+1, i+2) for i in custom_starts]
+    custom_dihed_quads = [(i, i+1, i+2, i+3) for i in custom_starts]
+
+    custom_features = (custom_distance_pairs +
+        custom_angle_triples + custom_dihed_quads)
+
+    custom_stats = GeometryStatistics(data_tensor, custom_features)
+
+    # We just want to make sure that no other features (like backbone)
+    # showed up
+    assert len(custom_starts) == len(custom_stats._distance_pairs)
+    assert len(custom_starts) == len(custom_stats._angle_trips)
+    assert len(custom_starts) == len(custom_stats._dihedral_quads)
+
+
 def test_manual_backbone_calculations():
     # Make sure backbone distance, angle, and dihedral statistics work
     # for manually specified backbone
