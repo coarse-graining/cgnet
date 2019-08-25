@@ -15,10 +15,10 @@ frames = np.random.randint(1, 10)
 # Number of coarse-grained beads. We need at least 8 so we can do
 # dihedrals in the backbone tests (where every other atom is designated
 # as a backbone atom)
-beads = np.random.randint(8, 20) 
+beads = np.random.randint(8, 20)
 
 # Number of dimensions; for now geometry only handles 3
-dims = 3 
+dims = 3
 
 # Create a pseudo simulation dataset
 data = np.random.randn(frames, beads, dims)
@@ -38,8 +38,8 @@ def test_feature_tuples():
     # Tests to see if the feature_tuples attribute is assembled correctly
     unique_tuples = []
 
-    for desc in stats.order: # for each type of feature
-        sub_list = stats.descriptions[desc] # list the feature tuples
+    for desc in stats.order:  # for each type of feature
+        sub_list = stats.descriptions[desc]  # list the feature tuples
         for bead_tuple in sub_list:
             if bead_tuple not in unique_tuples:
                 unique_tuples.append(bead_tuple)
@@ -58,7 +58,7 @@ def test_custom_feature_shapes():
     custom_dihed_quads = [(i, i+1, i+2, i+3) for i in custom_starts]
 
     custom_features = (custom_distance_pairs +
-        custom_angle_triples + custom_dihed_quads)
+                       custom_angle_triples + custom_dihed_quads)
 
     custom_stats = GeometryStatistics(data_tensor, custom_features)
 
@@ -78,8 +78,8 @@ def test_custom_feature_consistency_with_backbone():
     custom_features = backbone_angles + backbone_diheds
 
     backbone_stats = GeometryStatistics(data_tensor, backbone_inds='all',
-                                    get_backbone_angles=True,
-                                    get_backbone_dihedrals=True)
+                                        get_backbone_angles=True,
+                                        get_backbone_dihedrals=True)
     backbone_stats_dict = backbone_stats.get_prior_statistics()
 
     custom_stats = GeometryStatistics(data_tensor, custom_features)
@@ -116,9 +116,9 @@ def test_manual_backbone_calculations():
     # in each case, so we use return_indices to get only the "bond" distances
     # for testing
     stats_bb_inds_bond_dists = stats_bb_inds.distances[:,
-                    stats_bb_inds.return_indices(stats_bb_inds.bond_pairs)]
+                        stats_bb_inds.return_indices(stats_bb_inds.bond_pairs)]
     stats_bb_only_bond_dists = stats_bb_only.distances[:,
-                    stats_bb_only.return_indices(stats_bb_only.bond_pairs)]
+                        stats_bb_only.return_indices(stats_bb_only.bond_pairs)]
 
     np.testing.assert_allclose(stats_bb_inds_bond_dists,
                                stats_bb_only_bond_dists)
@@ -159,7 +159,7 @@ def test_manual_backbone_descriptions():
 
     # Manually specify what all the descriptions should be
     bb_inds_bond_descs = [(backbone_inds[i], backbone_inds[i+1])
-                         for i in range(len(backbone_inds)-1)]
+                          for i in range(len(backbone_inds)-1)]
     bb_only_bond_descs = [(i, i+1) for i in range(len(backbone_inds)-1)]
 
     bb_ind_angle_descs = [(backbone_inds[i], backbone_inds[i+1],
@@ -208,7 +208,6 @@ def test_backbone_means_and_stds():
                                stats._stats_dict['Distances']['std'],
                                rtol=1e-6)
 
-
     feature_angle_mean = np.mean(geom_feature.angles.numpy(), axis=0)
     feature_angle_std = np.std(geom_feature.angles.numpy(), axis=0)
 
@@ -216,7 +215,6 @@ def test_backbone_means_and_stds():
                                stats._stats_dict['Angles']['mean'], rtol=1e-5)
     np.testing.assert_allclose(feature_angle_std,
                                stats._stats_dict['Angles']['std'], rtol=1e-5)
-
 
     feature_dihed_cos_mean = np.mean(geom_feature.dihedral_cosines.numpy(),
                                      axis=0)
@@ -516,8 +514,8 @@ def test_prior_stats_list():
     # We also grab the keys (tuples of bead integers)
     prior_stats_dict = stats.get_prior_statistics(features=features)
     prior_stats_list, prior_stats_keys = stats.get_prior_statistics(
-                                                    features=features,
-                                                    as_list=True)
+        features=features,
+        as_list=True)
     # Next, we test to see if the shuffled keys were retrieved successfully
     np.testing.assert_array_equal(list(prior_stats_keys),
                                   [stats.master_description_tuples[i]
@@ -594,8 +592,8 @@ def test_redundant_distance_mapping_vals():
                 n = n + j
                 j -= 1
         # The above generator should only be called (n_beads - 2) times
-        # becasue there are (n_beads - 2) distances to assemble after the 
-        # the first call 
+        # becasue there are (n_beads - 2) distances to assemble after the
+        # the first call
         max_calls_to_generator = stats.n_beads - bead - 1
         generator = neighbor_sequence(bead, stats.n_beads)
         # Here, the row of the bead neighbor distance indices is assembled
@@ -608,7 +606,7 @@ def test_redundant_distance_mapping_vals():
         if bead < stats.n_beads - 1:
             mapping[(bead+1):, bead] = index
         # Ultimately, we are left with an index maping matrix that is
-        # nearly symmetric (though obviously not symmetric because it is not 
+        # nearly symmetric (though obviously not symmetric because it is not
         # a squre matrix)
     # We test the above form against the method provided by GeometryStatistics
     np.testing.assert_array_equal(stats.redundant_distance_mapping,
