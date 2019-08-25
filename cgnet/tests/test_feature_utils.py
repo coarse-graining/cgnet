@@ -14,6 +14,7 @@ frames = np.random.randint(10, 30)
 beads = np.random.randint(5, 10)
 
 
+
 def test_radial_basis_function():
     # Make sure radial basis functions are consistent with manual calculation
 
@@ -58,3 +59,4 @@ def test_shifted_softplus():
     manual_output = np.log(1.0 + np.exp(feature.numpy())) - np.log(2.0)
 
     np.testing.assert_allclose(manual_output, ssplus(feature).numpy())
+
