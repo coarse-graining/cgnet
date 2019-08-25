@@ -69,6 +69,25 @@ def test_custom_feature_shapes():
     assert len(custom_starts) == len(custom_stats._dihedral_quads)
 
 
+def test_custom_feature_consistency_with_backbone():
+    # Tests whether manually specifying backbone indices gives the same result
+    # as automatically calculating backbone features
+
+    backbone_angles = [(i, i+1, i+2) for i in range(beads - 2)]
+    backbone_diheds = [(i, i+1, i+2, i+3) for i in range(beads - 3)]
+    custom_features = backbone_angles + backbone_diheds
+
+    backbone_stats = GeometryStatistics(data_tensor, backbone_inds='all',
+                                    get_backbone_angles=True,
+                                    get_backbone_dihedrals=True)
+    backbone_stats_dict = backbone_stats.get_prior_statistics()
+
+    custom_stats = GeometryStatistics(data_tensor, custom_features)
+    custom_stats_dict = custom_stats.get_prior_statistics()
+
+    np.testing.assert_array_equal(backbone_stats_dict, custom_stats_dict)
+
+
 def test_manual_backbone_calculations():
     # Make sure backbone distance, angle, and dihedral statistics work
     # for manually specified backbone
