@@ -374,7 +374,7 @@ class SchnetFeature(nn.Module):
     def __init__(self,
                  feature_size,
                  embedding_layer,
-                 geometry=None,
+                 calculate_geometry=None,
                  n_beads=None,
                  rbf_cutoff=5.0,
                  n_gaussians=50,
@@ -391,7 +391,7 @@ class SchnetFeature(nn.Module):
             filters that will be used.
         embedding_layer: torch.nn.Module
             Class that embeds a property into a feature vector.
-        geometry: boolean (default=False)
+        calculate_geometry: boolean (default=False)
             Allows calls to Geometry instance for calculating distances for a
             standalone SchnetFeature instance (i.e. one that is not
             preceded by a GeometryFeature instance).
@@ -438,8 +438,8 @@ class SchnetFeature(nn.Module):
             )
 
         self.n_beads = n_beads
-        self.geometry = geometry
-        if self.geometry:
+        self.calculate_geometry = calculate_geometry
+        if self.calculate_geometry:
             self._distance_pairs, _ = g.get_distance_indices(n_beads, [], [])
             self.redundant_distance_mapping = g.get_redundant_distance_mapping(
                 self._distance_pairs)
@@ -469,7 +469,7 @@ class SchnetFeature(nn.Module):
         # if geometry is specified, the distances are calculated from input
         # coordinates. Otherwise, it is assumed that in_features are
         # pairwise distances in redundant form
-        if self.geometry:
+        if self.calculate_geometry:
             distances = g.get_distances(self._distance_pairs, in_features,
                                         norm=True)
             distances = distances[:, self.redundant_distance_mapping]
