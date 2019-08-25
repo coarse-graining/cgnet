@@ -39,7 +39,8 @@ def test_continuous_convolution():
     # Calculate continuous convolution output with the created layer
     cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                          n_filters=n_filters)
-
+    cfconv_layer_out = cfconv.forward(test_cfconv_features, test_rbf,
+                                      test_nbh).detach()
     # Calculate convolution manually
     n_neighbors = beads - 1
     test_nbh_np = test_nbh.numpy()
@@ -129,7 +130,7 @@ def test_schnet_feature_geometry():
     schnet_feature = SchnetFeature(feature_size=feature_size,
                                    embedding_layer=embedding_layer,
                                    n_interaction_blocks=2,
-                                   geometry=True, n_beads=beads)
+                                   calculate_geometry=True, n_beads=beads)
     assert schnet_feature.n_beads == beads
     # Next we instance a geom_stats that only calculates distances
     # and compare distance pair tuples
