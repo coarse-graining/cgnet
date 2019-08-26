@@ -50,12 +50,13 @@ class GeometryFeature(nn.Module):
 
         self._n_beads = n_beads
         if feature_tuples is not 'all':
-            _temp_dict = dict(zip(feature_tuples, np.arange(len(feature_tuples))))
+            _temp_dict = dict(
+                zip(feature_tuples, np.arange(len(feature_tuples))))
             if len(_temp_dict) < len(feature_tuples):
                 feature_tuples = list(_temp_dict.keys())
                 warnings.warn(
                     "Some feature tuples are repeated and have been removed."
-                    )
+                )
 
             self.feature_tuples = feature_tuples
             if (np.min([len(feat) for feat in feature_tuples]) < 2 or
@@ -74,16 +75,16 @@ class GeometryFeature(nn.Module):
             if n_beads is None:
                 raise RuntimeError(
                     "Must specify n_beads if feature_tuples is 'all'."
-                    )
+                )
             self._distance_pairs, _ = g.get_distance_indices(n_beads)
             if n_beads > 2:
                 self._angle_trips = [(i, i+1, i+2)
-                                    for i in range(n_beads-2)]
+                                     for i in range(n_beads-2)]
             else:
                 self._angle_trips = []
             if n_beads > 3:
                 self._dihedral_quads = [(i, i+1, i+2, i+3)
-                                       for i in range(n_beads-3)]
+                                        for i in range(n_beads-3)]
             else:
                 self._dihedral_quads = []
             self.feature_tuples = self._distance_pairs + \
@@ -126,7 +127,7 @@ class GeometryFeature(nn.Module):
         if self._n_beads is not None and self.n_beads != self._n_beads:
             raise ValueError(
                 "n_beads passed to __init__ does not match n_beads in data."
-                )
+            )
         if np.max([np.max(bead) for bead in self.feature_tuples]) > self.n_beads - 1:
             raise ValueError(
                 "Bead index in at least one feature is out of range."
@@ -173,7 +174,7 @@ class ContinuousFilterConvolution(nn.Module):
     locations in space using continuous radial filters (Schütt et al. 2018).
 
         x_i^{l+i} = (X^i * W^l)_i = \sum_{j=0}^{n_{atoms}} x_j^l \circ W^l (r_j -r_i)
-        
+
     with feature representation X^l=(x^l_1, ..., x^l_n), filter-generating 
     network W^l, positions R=(r_1, ..., r_n) and the current layer l.
 
@@ -377,6 +378,8 @@ class SchnetFeature(nn.Module):
     def __init__(self,
                  feature_size,
                  embedding_layer,
+                 calculate_geometry=None,
+                 n_beads=None,
                  rbf_cutoff=5.0,
                  n_gaussians=50,
                  variance=1.0,
@@ -392,6 +395,12 @@ class SchnetFeature(nn.Module):
             filters that will be used.
         embedding_layer: torch.nn.Module
             Class that embeds a property into a feature vector.
+        calculate_geometry: boolean (default=False)
+            Allows calls to Geometry instance for calculating distances for a
+            standalone SchnetFeature instance (i.e. one that is not
+            preceded by a GeometryFeature instance).
+        n_beads: int (default=None)
+            Number of coarse grain beads in the model.
         rbf_cutoff: float (default=5.0)
             Cutoff for the radial basis function.
         n_gaussians: int (default=50)
@@ -432,13 +441,23 @@ class SchnetFeature(nn.Module):
                  for _ in range(n_interaction_blocks)]
             )
 
-    def forward(self, coordinates, embedding_property):
+        self.n_beads = n_beads
+        self.calculate_geometry = calculate_geometry
+        if self.calculate_geometry:
+            self._distance_pairs, _ = g.get_distance_indices(n_beads, [], [])
+            self.redundant_distance_mapping = g.get_redundant_distance_mapping(
+                self._distance_pairs)
+        else:
+            self._distance_pairs = None
+            self.redundant_distance_mapping = None
+
+    def forward(self, in_features, embedding_property):
         """Forward method through single Schnet block
 
         Parameters
         ----------
-        coordinates: torch.Tensor (grad enabled)
-            input trajectory/data of size [n_frames, n_degrees_of_freedom].
+        in_features: torch.Tensor (grad enabled)
+            input trajectory/data of size [n_frames, n_in_features].
         embedding_property: torch.Tensor
             Some property that should be embedded. Can be nuclear charge
             or maybe an arbitrary number assigned for amino-acids.
@@ -451,8 +470,14 @@ class SchnetFeature(nn.Module):
             Size [n_frames, n_beads, n_features]
 
         """
-        # TODO: PLACEHOLDER until the Feature base class is figured out
-        distances = self.compute_distances(coordinates)
+        # if geometry is specified, the distances are calculated from input
+        # coordinates. Otherwise, it is assumed that in_features are
+        # pairwise distances in redundant form
+        if self.calculate_geometry:
+            distances = g.get_distances(self._distance_pairs, in_features,
+                                        norm=True)
+            distances = distances[:, self.redundant_distance_mapping]
+        # TODO compute neighborlist
         neighbors = self.compute_neighbors(coordinates)
 
         features = self.embedding_layer(embedding_property)
