@@ -1,8 +1,8 @@
 # Author: Brooke Husic
 
-import torch
 import numpy as np
 import scipy
+import torch
 
 
 class Geometry():
@@ -144,3 +144,21 @@ class Geometry():
             cp_base[:, ::2], axis=2)/self.norm(plane_vector[:, ::2], axis=2)
 
         return dihedral_cosines, dihedral_sines
+
+    def get_neighbors(self, distances, cutoff=None):
+        n_frames, n_beads, n_neighbors = distances.size()
+        neighbors = np.tile(np.arange(n_beads), (n_frames, n_beads, 1))
+        neighbors = neighbors[:, ~np.eye(n_beads, dtype=np.bool)].reshape(
+            n_frames,
+            n_beads,
+            n_neighbors)
+        if cutoff is not None:
+            neighbor_map = distances.numpy() < cutoff
+            neighbors[~neighbor_map] = -1
+        else:
+            neighbor_map = np.ones((n_frames, n_beads, n_neighbors))
+
+        if self.method == 'torch':
+            return torch.from_numpy(neighbors), torch.from_numpy(neighbor_map)
+        else:
+            return neighbors, neighbor_map
