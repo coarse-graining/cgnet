@@ -26,13 +26,13 @@ class GeometryStatistics():
     custom_feature_tuples : list of tuples (default=[])
         List of 2-, 3-, and 4-element tuples containing arbitrary distance,
         angle, and dihedral features to be calculated.
-    backbone_inds : 'all', list or np.ndarray, or None (default='all')
+    backbone_inds : 'all', list or np.ndarray, or None (default=None)
         Which bead indices correspond to consecutive beads along the backbone
-    get_all_distances : Boolean (default=True)
+    get_all_distances : Boolean (default=False)
         Whether to calculate all pairwise distances
-    get_backbone_angles : Boolean (default=True)
+    get_backbone_angles : Boolean (default=False)
         Whether to calculate angles among adjacent beads along the backbone
-    get_backbone_dihedrals : Boolean (default=True)
+    get_backbone_dihedrals : Boolean (default=False)
         Whether to calculate dihedral cosines and sines among adjacent beads
         along the backbone
     temperature : float or None (default=300.0)
@@ -63,15 +63,20 @@ class GeometryStatistics():
     prior_stats_dict = ds.get_prior_statistics()
     """
 
-    def __init__(self, data, custom_feature_tuples=[], backbone_inds='all',
-                 get_all_distances=True, get_backbone_angles=True,
-                 get_backbone_dihedrals=True, temperature=300.0,
-                 get_redundant_distance_mapping=True, bond_pairs=[],
+    def __init__(self, data, custom_feature_tuples=None, backbone_inds=None,
+                 get_all_distances=False, get_backbone_angles=False,
+                 get_backbone_dihedrals=False, temperature=300.0,
+                 get_redundant_distance_mapping=False, bond_pairs=[],
                  adjacent_backbone_bonds=True):
         if torch.is_tensor(data):
             self.data = data.detach().numpy()
         else:
             self.data = data
+
+        if custom_feature_tuples is None:
+            self.custom_feature_tuples = []
+        else:
+            self.custom_feature_tuples = custom_feature_tuples
 
         self.n_frames = self.data.shape[0]
         self.n_beads = self.data.shape[1]
@@ -83,11 +88,17 @@ class GeometryStatistics():
             self.beta = 1.0
 
         self._process_backbone(backbone_inds)
-        self._process_custom_feature_tuples(custom_feature_tuples)
+        self._process_custom_feature_tuples()
+
+        if get_redundant_distance_mapping and not get_all_distances:
+            raise ValueError(
+                    "Redundant distance mapping can only be returned "
+                    "if get_all_distances is True."
+                )
         self.get_redundant_distance_mapping = get_redundant_distance_mapping
 
         if not get_all_distances:
-            if np.any([bond_ind not in custom_feature_tuples
+            if np.any([bond_ind not in self.custom_feature_tuples
                        for bond_ind in bond_pairs]):
                 raise ValueError(
                     "All bond_pairs must be also in custom_feature_tuples "
@@ -184,7 +195,7 @@ class GeometryStatistics():
                 warnings.warn(
     "Some custom dihedrals were on the backbone and will not be re-calculated."
                 )
-                self._custom_dihedral_quads = [cust_dih for _custom_dihedral_quads
+                self._custom_dihedral_quads = [cust_dih for cust_dih
                                                in self._custom_dihedral_quads
                                                if cust_dih not in self._dihedral_quads]
         else:
@@ -225,35 +236,37 @@ class GeometryStatistics():
                     self.feature_tuples.extend(self.descriptions[feature_type])
         self._master_stat_array = np.array(self._master_stat_array)
 
-    def _process_custom_feature_tuples(self, custom_feature_tuples):
+    def _process_custom_feature_tuples(self):
         """Helper function to sort custom features into distances, angles,
         and dihedrals.
         """
-        if len(custom_feature_tuples) > 0:
-            if (np.min([len(feat) for feat in custom_feature_tuples]) < 2 or
-                    np.max([len(feat) for feat in custom_feature_tuples]) > 4):
+        if len(self.custom_feature_tuples) > 0:
+            if (np.min([len(feat) for feat in self.custom_feature_tuples]) < 2 or
+                    np.max([len(feat) for feat in self.custom_feature_tuples]) > 4):
                 raise ValueError(
                     "Custom features must be tuples of length 2, 3, or 4."
                 )
-            if np.max([np.max(bead) for bead in custom_feature_tuples]) > self.n_beads - 1:
+            if np.max([np.max(bead)
+                       for bead in self.custom_feature_tuples]) > self.n_beads - 1:
                 raise ValueError(
                     "Bead index in at least one feature is out of range."
                 )
 
             _temp_dict = dict(
-                zip(custom_feature_tuples, np.arange(len(custom_feature_tuples))))
-            if len(_temp_dict) < len(custom_feature_tuples):
-                custom_feature_tuples = list(_temp_dict.keys())
+                zip(self.custom_feature_tuples,
+                    np.arange(len(self.custom_feature_tuples))))
+            if len(_temp_dict) < len(self.custom_feature_tuples):
+                self.custom_feature_tuples = list(_temp_dict.keys())
                 warnings.warn(
                     "Some custom feature tuples are repeated and have been removed."
                 )
 
             self._custom_distance_pairs = [
-                feat for feat in custom_feature_tuples if len(feat) == 2]
+                feat for feat in self.custom_feature_tuples if len(feat) == 2]
             self._custom_angle_trips = [
-                feat for feat in custom_feature_tuples if len(feat) == 3]
+                feat for feat in self.custom_feature_tuples if len(feat) == 3]
             self._custom_dihedral_quads = [
-                feat for feat in custom_feature_tuples if len(feat) == 4]
+                feat for feat in self.custom_feature_tuples if len(feat) == 4]
         else:
             self._custom_distance_pairs = []
             self._custom_angle_trips = []
@@ -295,9 +308,10 @@ class GeometryStatistics():
 
             self._backbone_map = self._get_backbone_map()
         elif backbone_inds is None:
-            if len(custom_feature_tuples) == 0:
+            if len(self.custom_feature_tuples) == 0:
                 raise RuntimeError(
-                    "Must have either backbone or custom features.")
+                    "Must have either backbone or custom features. Did you forget "
+                    "to specify backbone_inds='all'?")
             self.backbone_inds = np.array([])
             self._backbone_map = None
         else:
@@ -316,7 +330,7 @@ class GeometryStatistics():
         self.order += ['Distances']
         if self.get_redundant_distance_mapping:
             self.redundant_distance_mapping = g.get_redundant_distance_mapping(
-                                                              self._pair_order)
+                                                              self._distance_pairs)
 
     def _get_angles(self):
         """Obtains all planar angles for the three-bead indices provided.
