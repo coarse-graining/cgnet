@@ -147,20 +147,49 @@ class Geometry():
         return dihedral_cosines, dihedral_sines
 
     def get_neighbors(self, distances, cutoff=None):
-        n_frames, n_beads, n_neighbors = distances.size()
+        """Calculates a simple neighbor list in which every bead sees
+        each other. If a cutoff is specified, only beads inside that distance
+        cutoff are considered as neighbors.
+
+        Parameters
+        ----------
+        distances: torch.Tensor or np.array
+            Redundant distance matrix of size (n_frames, n_beads, n_neighbors).
+        cutoff: float (default=None)
+            Distance cutoff in Angstrom in which beads are considered neighbors.
+
+        Returns
+        -------
+        neighbors: torch.Tensor or np.array
+            Indices of all neighbors of each bead.
+            Size [n_frames, n_beads, n_neighbors]
+        neighbor_mask: torch.Tensor or np.array
+            Index mask to filter out non-existing neighbors that were
+            introduced to due distance cutoffs.
+
+        """
+        n_frames, n_beads, n_neighbors = distances.shape
+
+        # Create a simple neighbor list of size [n_frames, n_beads, n_neighbors]
+        # in which every bead sees each other but themselves.
         neighbors = np.tile(np.arange(n_beads), (n_frames, n_beads, 1))
         neighbors = neighbors[:, ~np.eye(n_beads, dtype=np.bool)].reshape(
             n_frames,
             n_beads,
             n_neighbors)
+
         if cutoff is not None:
-            neighbor_map = (distances.numpy() < cutoff).astype(np.float32)
-            neighbors[~neighbor_map.astype(np.bool)] = 0
+            if isinstance(distances, torch.Tensor):
+                distances = distances.numpy()
+            # Create an index mask for neighbors that are inside the cutoff
+            neighbor_mask = (distances < cutoff).astype(np.float32)
+            # Set the indices of beads outside the cutoff to 0
+            neighbors[~neighbor_mask.astype(np.bool)] = 0
         else:
-            neighbor_map = np.ones((n_frames, n_beads, n_neighbors),
-                                   dtype=np.float32)
+            neighbor_mask = np.ones((n_frames, n_beads, n_neighbors),
+                                    dtype=np.float32)
 
         if self.method == 'torch':
-            return torch.from_numpy(neighbors), torch.from_numpy(neighbor_map)
+            return torch.from_numpy(neighbors), torch.from_numpy(neighbor_mask)
         else:
-            return neighbors, neighbor_map
+            return neighbors, neighbor_mask
