@@ -1,13 +1,8 @@
 # Author: Brooke Husic, Dominik Lemm
 # Contributors: Jiang Wang
 
-
-import warnings
-
-import numpy as np
 import torch
 import torch.nn as nn
-from cgnet.feature.utils import ShiftedSoftplus, LinearLayer
 import numpy as np
 import warnings
 
@@ -226,7 +221,7 @@ class ContinuousFilterConvolution(nn.Module):
         filter_layers += LinearLayer(n_filters, n_filters, bias=True)
         self.filter_generator = nn.Sequential(*filter_layers)
 
-    def forward(self, features, rbf_expansion, neighbor_list):
+    def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask):
         """ Compute convolutional block
 
         Parameters
@@ -239,6 +234,9 @@ class ContinuousFilterConvolution(nn.Module):
         neighbor_list: torch.Tensor
             Indices of all neighbors of each bead.
             Size [n_frames, n_beads, n_neighbors]
+        neighbor_mask: torch.Tensor
+            Index mask to filter out non-existing neighbors that were
+            introduced to due distance cutoffs or padding.
 
         Returns
         -------
@@ -275,6 +273,8 @@ class ContinuousFilterConvolution(nn.Module):
         # the convolutional filter
         conv_features = neighbor_features * conv_filter
 
+        # Remove features from non-existing neighbors
+        conv_features = conv_features * neighbor_mask[..., None]
         # Aggregate/pool the features from (n_frames, n_beads, n_neighs, n_feats)
         # to (n_frames, n_beads, n_features)
         aggregated_features = torch.sum(conv_features, dim=2)
@@ -339,7 +339,7 @@ class InteractionBlock(nn.Module):
                                      activation=None)
         self.output_dense = nn.Sequential(*output_layers)
 
-    def forward(self, features, rbf_expansion, neighbor_list):
+    def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask):
         """ Compute interaction block
 
         Parameters
@@ -353,6 +353,9 @@ class InteractionBlock(nn.Module):
         neighbor_list: torch.Tensor
             Indices of all neighbors of each bead.
             Size [n_frames, n_beads, n_neighbors]
+        neighbor_mask: torch.Tensor
+            Index mask to filter out non-existing neighbors that were
+            introduced to due distance cutoffs or padding.
 
         Returns
         -------
@@ -365,7 +368,7 @@ class InteractionBlock(nn.Module):
         """
         init_feature_output = self.inital_dense(features)
         conv_output = self.cfconv(init_feature_output, rbf_expansion,
-                                  neighbor_list)
+                                  neighbor_list, neighbor_mask)
         output_features = self.output_dense(conv_output)
         return output_features
 
@@ -380,6 +383,7 @@ class SchnetFeature(nn.Module):
                  embedding_layer,
                  calculate_geometry=None,
                  n_beads=None,
+                 neighbor_cutoff=None,
                  rbf_cutoff=5.0,
                  n_gaussians=50,
                  variance=1.0,
@@ -401,6 +405,8 @@ class SchnetFeature(nn.Module):
             preceded by a GeometryFeature instance).
         n_beads: int (default=None)
             Number of coarse grain beads in the model.
+        neighbor_cutoff: float (default=None)
+            Cutoff distance in whether beads are considered neighbors or not.
         rbf_cutoff: float (default=5.0)
             Cutoff for the radial basis function.
         n_gaussians: int (default=50)
@@ -441,7 +447,7 @@ class SchnetFeature(nn.Module):
                  for _ in range(n_interaction_blocks)]
             )
 
-        self.n_beads = n_beads
+        self.neighbor_cutoff = neighbor_cutoff
         self.calculate_geometry = calculate_geometry
         if self.calculate_geometry:
             self._distance_pairs, _ = g.get_distance_indices(n_beads, [], [])
@@ -477,8 +483,11 @@ class SchnetFeature(nn.Module):
             distances = g.get_distances(self._distance_pairs, in_features,
                                         norm=True)
             distances = distances[:, self.redundant_distance_mapping]
-        # TODO compute neighborlist
-        neighbors = self.compute_neighbors(coordinates)
+        else:
+            distances = in_features
+
+        neighbors, neighbor_mask = g.get_neighbors(distances,
+                                                   cutoff=self.neighbor_cutoff)
 
         features = self.embedding_layer(embedding_property)
         rbf_expansion = self.rbf_layer(distances=distances)
@@ -486,7 +495,8 @@ class SchnetFeature(nn.Module):
         for interaction_block in self.interaction_blocks:
             interaction_features = interaction_block(features=features,
                                                      rbf_expansion=rbf_expansion,
-                                                     neighbor_list=neighbors)
+                                                     neighbor_list=neighbors,
+                                                     neighbor_mask=neighbor_mask)
             features = features + interaction_features
 
         return features
