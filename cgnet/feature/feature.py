@@ -273,7 +273,7 @@ class ContinuousFilterConvolution(nn.Module):
         # the convolutional filter
         conv_features = neighbor_features * conv_filter
 
-        # Remove features from non-existing neighbors
+        # Remove features from non-existing neighbors outside the cutoff
         conv_features = conv_features * neighbor_mask[..., None]
         # Aggregate/pool the features from (n_frames, n_beads, n_neighs, n_feats)
         # to (n_frames, n_beads, n_features)

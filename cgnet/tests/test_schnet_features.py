@@ -28,8 +28,8 @@ neighbor_cutoff = np.random.uniform(0, 1)
 test_rbf = torch.randn((frames, beads, beads - 1, n_gaussians))
 
 
-# Create a simple neighbor list in which all beads see each other
-# Shape (num_frames, num_beads, num_beads -1)
+# Calculate redundant distances and create a simple neighbor list in which all
+# beads see each other (shape [n_frames, n_beads, n_beads -1]).
 _distance_pairs, _ = g.get_distance_indices(beads, [], [])
 redundant_distance_mapping = g.get_redundant_distance_mapping(_distance_pairs)
 distances = g.get_distances(_distance_pairs, torch.from_numpy(coords), norm=True)
@@ -202,7 +202,7 @@ def test_schnet_feature():
 
 
 def test_cg_embedding():
-    # Test whether the embedding layer produces zero embeddings, same embeddings
+    # Tests if the embedding layer produces zero embeddings, same embeddings
     # for the same properties and different embeddings for different properties
 
     embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
