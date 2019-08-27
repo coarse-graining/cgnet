@@ -135,12 +135,8 @@ def test_schnet_feature_geometry():
     # Tests SchnetFeature's calls to the Geometry class for 
     # distance calculations
     # First, we instance a SchnetFeature that can call to Geometry
-    embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
-                                      embedding_dim=n_feats)
-    embedding_property = torch.randint(low=0, high=n_embeddings,
-                                       size=(frames, beads))
     schnet_feature = SchnetFeature(feature_size=n_feats,
-                                   embedding_layer=embedding_layer,
+                                   embedding_layer=None,
                                    n_interaction_blocks=2,
                                    calculate_geometry=True,
                                    n_beads=beads)
@@ -157,24 +153,52 @@ def test_schnet_feature_geometry():
     np.testing.assert_equal(schnet_feature.redundant_distance_mapping,
                             geom_stats.redundant_distance_mapping)
 
-    # Next, we check that forwarding cartesian coordinates through SchnetFeature
-    # that makes calls to Geometry is able to make the proper transformation
-    # to redundant distances.
-    schnet_output = schnet_feature(torch.from_numpy(coords), embedding_property)
-    assert schnet_output.size() == (frames, beads, n_feats)
 
 def test_schnet_feature():
-    # TODO: Will be implemented once the SchnetFeature is fully functional
     # Tests proper forwarding through SchNet wrapper class
-    # interaction = InteractionBlock(num_inputs=num_feats,
-    #                                num_gaussians=num_gaussians,
-    #                                num_filters=num_filters)
-    #
-    # schnet_block = SchnetFeature(interaction, rbf_layer)
-    # output = schnet_block(test_features, distances)
-    # assert output.size() == test_features.size()
-    #
-    pass
+
+    # Create random embedding properties
+    embedding_property = torch.randint(low=0, high=n_embeddings,
+                                       size=(frames, beads))
+
+    # Initialize the embedding and SchnetFeature class
+    embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
+                                      embedding_dim=n_feats)
+    schnet_feature = SchnetFeature(feature_size=n_feats,
+                                   embedding_layer=embedding_layer,
+                                   n_interaction_blocks=2,
+                                   calculate_geometry=True,
+                                   n_beads=beads,
+                                   neighbor_cutoff=neighbor_cutoff)
+
+    # Next, we check that forwarding cartesian coordinates through SchnetFeature
+    # produces the correct output feature sizes
+    schnet_features = schnet_feature(torch.from_numpy(coords),
+                                     embedding_property)
+    assert schnet_features.size() == (frames, beads, n_feats)
+
+    # To test the internal logic of SchnetFeature, a full forward pass is
+    # computed using the same internal components as SchnetFeature.
+    # First, the embedding feature and radial basis function expansion are
+    # computed.
+    features = embedding_layer.forward(embedding_property)
+    rbf_expansion = schnet_feature.rbf_layer(distances=distances)
+
+    # Then, the embedding features are used as an input to the first
+    # interaction block and as a residual connection, respectively. Depending
+    # on the amount of interaction blocks, the resulting features are then used
+    # again as an input for the next interaction block and as a residual
+    # connection, respectively.
+    for interaction_block in schnet_feature.interaction_blocks:
+        interaction_features = interaction_block(features=features,
+                                                 rbf_expansion=rbf_expansion,
+                                                 neighbor_list=test_nbh,
+                                                 neighbor_mask=test_nbh_mask)
+        features = features + interaction_features
+
+    # The manually computed features and the feature from the forward pass
+    # should be the same.
+    np.testing.assert_allclose(schnet_features.detach(), features.detach())
 
 
 def test_cg_embedding():
