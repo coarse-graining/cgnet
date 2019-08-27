@@ -4,7 +4,10 @@ import numpy as np
 import torch
 
 from cgnet.feature import (ContinuousFilterConvolution, InteractionBlock,
-                           SchnetFeature, CGBeadEmbedding, GeometryStatistics)
+                           SchnetFeature, CGBeadEmbedding, GeometryStatistics,
+                           Geometry)
+
+g = Geometry(method='torch')
 
 # Define sizes for a pseudo-dataset
 frames = np.random.randint(10, 30)
@@ -26,11 +29,11 @@ test_cfconv_features = torch.randn((frames, beads, n_filters))
 
 # Create a simple neighbor list in which all beads see each other
 # Shape (num_frames, num_beads, num_beads -1)
-test_nbh = np.tile(np.arange(beads), (frames, beads, 1))
-inverse_identity = np.eye(beads, beads) != 1
-test_nbh = torch.from_numpy(test_nbh[:, inverse_identity].reshape(frames,
-                                                                  beads,
-                                                                  beads - 1))
+_distance_pairs, _ = g.get_distance_indices(beads, [], [])
+redundant_distance_mapping = g.get_redundant_distance_mapping(_distance_pairs)
+distances = g.get_distances(_distance_pairs, torch.from_numpy(coords), norm=True)
+distances = distances[:, redundant_distance_mapping]
+test_nbh, test_nbh_mask = g.get_neighbors(distances, cutoff=1.0)
 
 
 def test_continuous_convolution():
@@ -40,7 +43,7 @@ def test_continuous_convolution():
     cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                          n_filters=n_filters)
     cfconv_layer_out = cfconv.forward(test_cfconv_features, test_rbf,
-                                      test_nbh).detach()
+                                      test_nbh, test_nbh_mask).detach()
     # Calculate convolution manually
     n_neighbors = beads - 1
     test_nbh_np = test_nbh.numpy()
@@ -69,6 +72,7 @@ def test_continuous_convolution():
 
     # element-wise multiplication and pooling
     conv_features = neighbor_features * test_conv_filter
+    conv_features = conv_features * test_nbh_mask.numpy()[..., None]
     cfconv_manual_out = np.sum(conv_features, axis=2)
 
     np.testing.assert_allclose(cfconv_layer_out, cfconv_manual_out)
@@ -79,7 +83,8 @@ def test_interaction_block():
     interaction_b = InteractionBlock(n_inputs=n_feats,
                                      n_gaussians=n_gaussians,
                                      n_filters=n_filters)
-    interaction_output = interaction_b(test_features, test_rbf, test_nbh)
+    interaction_output = interaction_b(test_features, test_rbf, test_nbh,
+                                       test_nbh_mask)
 
     np.testing.assert_equal(interaction_output.shape,
                             (frames, beads, n_filters))
@@ -125,7 +130,7 @@ def test_schnet_feature_geometry():
     embedding_dim = 2
     embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
                                       embedding_dim=embedding_dim)
-    embedding_property = torch.rand(frames, n_embeddings)
+    embedding_property = torch.randint(frames, n_embeddings).long()
     feature_size = np.random.randint(4, 8)
     schnet_feature = SchnetFeature(feature_size=feature_size,
                                    embedding_layer=embedding_layer,
@@ -147,8 +152,8 @@ def test_schnet_feature_geometry():
     # Next, we check that forwarding cartesian coordinates through SchnetFeature
     # that makes calls to Geometry is able to make the proper transformation
     # to redundant distances.
-    # schnet_output = schnet_feature(torch.tensor(coords),embedding_property)
-    # assert schnet_output.size() == (n_frames, beads, feature_size)
+    schnet_output = schnet_feature(torch.tensor(coords), embedding_property)
+    assert schnet_output.size() == (frames, beads, feature_size)
 
 def test_schnet_feature():
     # TODO: Will be implemented once the SchnetFeature is fully functional
