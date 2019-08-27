@@ -1,4 +1,5 @@
 # Author: Brooke Husic
+# Contributors: Dominik Lemm
 
 import numpy as np
 import scipy
@@ -153,10 +154,11 @@ class Geometry():
             n_beads,
             n_neighbors)
         if cutoff is not None:
-            neighbor_map = distances.numpy() < cutoff
-            neighbors[~neighbor_map] = -1
+            neighbor_map = (distances.numpy() < cutoff).astype(np.float32)
+            neighbors[~neighbor_map.astype(np.bool)] = 0
         else:
-            neighbor_map = np.ones((n_frames, n_beads, n_neighbors))
+            neighbor_map = np.ones((n_frames, n_beads, n_neighbors),
+                                   dtype=np.float32)
 
         if self.method == 'torch':
             return torch.from_numpy(neighbors), torch.from_numpy(neighbor_map)
