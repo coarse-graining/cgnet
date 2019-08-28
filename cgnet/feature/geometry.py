@@ -173,7 +173,10 @@ class Geometry():
 
         # Create a simple neighbor list of shape [n_frames, n_beads, n_neighbors]
         # in which every bead sees each other but themselves.
+        # First, create a matrix that contains all indices.
         neighbors = np.tile(np.arange(n_beads), (n_frames, n_beads, 1))
+        # To remove the self interaction of beads, an inverted identity matrix
+        # is used to exclude the respective indices in the neighbor list.
         neighbors = neighbors[:, ~np.eye(n_beads, dtype=np.bool)].reshape(
             n_frames,
             n_beads,
