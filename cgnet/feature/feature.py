@@ -227,21 +227,22 @@ class ContinuousFilterConvolution(nn.Module):
         Parameters
         ----------
         features: torch.Tensor
-            Feature vector of size [n_frames, n_beads, n_features].
+            Feature vector of shape [n_frames, n_beads, n_features].
         rbf_expansion: torch.Tensor
-            Gaussian expansion of bead distances of size
+            Gaussian expansion of bead distances of shape
             [n_frames, n_beads, n_neighbors, n_gaussians].
         neighbor_list: torch.Tensor
             Indices of all neighbors of each bead.
-            Size [n_frames, n_beads, n_neighbors]
+            Shape [n_frames, n_beads, n_neighbors]
         neighbor_mask: torch.Tensor
             Index mask to filter out non-existing neighbors that were
             introduced to due distance cutoffs or padding.
+            Shape [n_frames, n_beads, n_neighbors]
 
         Returns
         -------
         aggregated_features: torch.Tensor
-            Residual features of size [n_frames, n_beads, n_features]
+            Residual features of shape [n_frames, n_beads, n_features]
 
         """
 
@@ -352,10 +353,11 @@ class InteractionBlock(nn.Module):
             Shape [n_frames, n_beads, n_neighbors, n_gaussians]
         neighbor_list: torch.Tensor
             Indices of all neighbors of each bead.
-            Size [n_frames, n_beads, n_neighbors]
+            Shape [n_frames, n_beads, n_neighbors]
         neighbor_mask: torch.Tensor
             Index mask to filter out non-existing neighbors that were
             introduced to due distance cutoffs or padding.
+            Shape [n_frames, n_beads, n_neighbors]
 
         Returns
         -------
@@ -375,7 +377,45 @@ class InteractionBlock(nn.Module):
 
 class SchnetFeature(nn.Module):
     """Wrapper class for radial basis function layer, continuous filter convolution,
-    and interaction block connecting feature inputs and outputs residuallly
+    and interaction block connecting feature inputs and outputs residuallly.
+
+    Parameters
+    ----------
+    feature_size: int
+        Defines the number of neurons of the linear layers in the
+        InteractionBlock. Also defines the number of convolutional
+        filters that will be used.
+    embedding_layer: torch.nn.Module
+        Class that embeds a property into a feature vector.
+    calculate_geometry: boolean (default=False)
+        Allows calls to Geometry instance for calculating distances for a
+        standalone SchnetFeature instance (i.e. one that is not
+        preceded by a GeometryFeature instance).
+    n_beads: int (default=None)
+        Number of coarse grain beads in the model.
+    neighbor_cutoff: float (default=None)
+        Cutoff distance in whether beads are considered neighbors or not.
+    rbf_cutoff: float (default=5.0)
+        Cutoff for the radial basis function.
+    n_gaussians: int (default=50)
+        Number of gaussians for the gaussian expansion in the radial basis
+        function.
+    variance: float (default=1.0)
+        The variance (standard deviation squared) of the Gaussian functions.
+    n_interaction_blocks: int (default=1)
+        Number of interaction blocks.
+    share_weights: bool (default=False)
+        If True, shares the weights between all interaction blocks.
+
+    Notes
+    -----
+    Default values for radial basis function related variables (rbf_cutoff,
+    n_gaussians, variance) are taken as suggested in SchnetPack.
+
+    Example
+    -------
+    # TODO: Maybe add an exmaple here once it's functional?
+
     """
 
     def __init__(self,
@@ -389,46 +429,6 @@ class SchnetFeature(nn.Module):
                  variance=1.0,
                  n_interaction_blocks=1,
                  share_weights=False):
-        """
-
-        Parameters
-        ----------
-        feature_size: int
-            Defines the number of neurons of the linear layers in the
-            InteractionBlock. Also defines the number of convolutional
-            filters that will be used.
-        embedding_layer: torch.nn.Module
-            Class that embeds a property into a feature vector.
-        calculate_geometry: boolean (default=False)
-            Allows calls to Geometry instance for calculating distances for a
-            standalone SchnetFeature instance (i.e. one that is not
-            preceded by a GeometryFeature instance).
-        n_beads: int (default=None)
-            Number of coarse grain beads in the model.
-        neighbor_cutoff: float (default=None)
-            Cutoff distance in whether beads are considered neighbors or not.
-        rbf_cutoff: float (default=5.0)
-            Cutoff for the radial basis function.
-        n_gaussians: int (default=50)
-            Number of gaussians for the gaussian expansion in the radial basis
-            function.
-        variance: float (default=1.0)
-            The variance (standard deviation squared) of the Gaussian functions.
-        n_interaction_blocks: int (default=1)
-            Number of interaction blocks.
-        share_weights: bool (default=False)
-            If True, shares the weights between all interaction blocks.
-
-        Notes
-        -----
-        Default values for radial basis function related variables (rbf_cutoff,
-        n_gaussians, variance) are taken as suggested in SchnetPack.
-
-        Example
-        -------
-        # TODO: Maybe add an exmaple here once it's functional?
-
-        """
         super(SchnetFeature, self).__init__()
         self.embedding_layer = embedding_layer
         self.rbf_layer = RadialBasisFunction(cutoff=rbf_cutoff,
@@ -463,17 +463,17 @@ class SchnetFeature(nn.Module):
         Parameters
         ----------
         in_features: torch.Tensor (grad enabled)
-            input trajectory/data of size [n_frames, n_in_features].
+            input trajectory/data of shape [n_frames, n_in_features].
         embedding_property: torch.Tensor
             Some property that should be embedded. Can be nuclear charge
             or maybe an arbitrary number assigned for amino-acids.
-            Size [n_frames, n_properties]
+            Shape [n_frames, n_properties]
 
         Returns
         -------
         features: torch.Tensor
             Atom-wise feature representation.
-            Size [n_frames, n_beads, n_features]
+            Shape [n_frames, n_beads, n_features]
 
         """
         # if geometry is specified, the distances are calculated from input
@@ -503,18 +503,18 @@ class SchnetFeature(nn.Module):
 
 
 class CGBeadEmbedding(torch.nn.Module):
-    def __init__(self, n_embeddings, embedding_dim):
-        """Simple embedding class for coarse-grain beads.
-        Serves as a lookup table that returns a fixed size embedding.
+    """Simple embedding class for coarse-grain beads.
+    Serves as a lookup table that returns a fixed size embedding.
 
-        Parameters
-        ----------
-        n_embeddings: int
-            Maximum number of different properties/amino_acids/elements,
-            basically the dictionary size.
-        embedding_dim: int
-            Size of the embedding vector.
-        """
+    Parameters
+    ----------
+    n_embeddings: int
+        Maximum number of different properties/amino_acids/elements,
+        basically the dictionary size.
+    embedding_dim: int
+        Size of the embedding vector.
+    """
+    def __init__(self, n_embeddings, embedding_dim):
         super(CGBeadEmbedding, self).__init__()
         self.embedding = nn.Embedding(num_embeddings=n_embeddings,
                                       embedding_dim=embedding_dim,
@@ -530,11 +530,12 @@ class CGBeadEmbedding(torch.nn.Module):
             or maybe an arbitrary number assigned for amino-acids. Passing a
             zero will produce an embedding vector filled with zeroes (necessary
             in the case of zero padded batches).
-            Size [n_frames, n_properties]
+            Shape [n_frames, n_beads]
 
         Returns
         -------
         embedding_vector: torch.Tensor
             Corresponding embedding vector to the passed indices.
+            Shape [n_frames, n_beads, embedding_dim]
         """
         return self.embedding(embedding_property)

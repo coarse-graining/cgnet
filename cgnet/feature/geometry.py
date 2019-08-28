@@ -154,7 +154,7 @@ class Geometry():
         Parameters
         ----------
         distances: torch.Tensor or np.array
-            Redundant distance matrix of size (n_frames, n_beads, n_neighbors).
+            Redundant distance matrix of shape (n_frames, n_beads, n_neighbors).
         cutoff: float (default=None)
             Distance cutoff in Angstrom in which beads are considered neighbors.
 
@@ -162,15 +162,16 @@ class Geometry():
         -------
         neighbors: torch.Tensor or np.array
             Indices of all neighbors of each bead.
-            Size [n_frames, n_beads, n_neighbors]
+            Shape [n_frames, n_beads, n_neighbors]
         neighbor_mask: torch.Tensor or np.array
             Index mask to filter out non-existing neighbors that were
             introduced to due distance cutoffs.
+            Shape [n_frames, n_beads, n_neighbors]
 
         """
         n_frames, n_beads, n_neighbors = distances.shape
 
-        # Create a simple neighbor list of size [n_frames, n_beads, n_neighbors]
+        # Create a simple neighbor list of shape [n_frames, n_beads, n_neighbors]
         # in which every bead sees each other but themselves.
         neighbors = np.tile(np.arange(n_beads), (n_frames, n_beads, 1))
         neighbors = neighbors[:, ~np.eye(n_beads, dtype=np.bool)].reshape(
