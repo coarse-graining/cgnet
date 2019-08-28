@@ -76,7 +76,7 @@ def test_continuous_convolution():
     # element-wise multiplication and pooling
     conv_features = neighbor_features * test_conv_filter
     # Remove features from non-existing neighbors
-    conv_features_masked = conv_features * test_nbh_mask_np[..., None]
+    conv_features_masked = conv_features * test_nbh_mask_np[:, :, :, None]
     cfconv_manual_out = np.sum(conv_features_masked, axis=2)
 
     # Test if all the removed features are indeed 0
