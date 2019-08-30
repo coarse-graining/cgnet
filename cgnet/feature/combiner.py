@@ -1,0 +1,129 @@
+# Authors: Nick Charron
+
+import torch.nn as nn
+from cgnet.feature import (GeometryFeature, Geometry, SchnetFeature,
+                           RadialBasisFunction)
+import warnings
+g = Geometry(method='torch')
+
+
+class FeatureCombiner(nn.Module):
+    """Class for combining several different kinds of feature layers
+
+    Attributes
+    ----------
+    layer_list : nn.ModuleList
+        feature layers with which data is transformed before being passed to
+        densely/fully connected layers prior to sum pooling and energy
+        prediction/force generation.
+    transforms : list of None or method types
+        inter-featurelayer transforms that may be needed during the forward
+        method. For example, SchnetFeature tools require a redundant form for
+        distances, so outputs from a previous GeometryFeature layer must be
+        re-indexed.
+    save_geometry  : boolean
+        specifies whether or not to save the output of GeometryFeature
+        layers. It is important to set this to true if CGnet priors
+        are to be used, and need to callback to GeometryFeature outputs.
+    mappings : dictionary of strings
+        dictionary of mappings to provide for specified inter-feature
+        transforms. Keys are strings which describe the mapping, and values
+        are mapping objects. For example, a redundant distance mapping may be
+        represented as:
+
+            {'redundant_distance_maping' : self.redundant_distance_mapping}
+    """
+
+    def __init__(self, layer_list, save_geometry=True,
+                 get_redundant_distance_mapping=False):
+        """Initialization
+
+        Parameters
+        ----------
+        layer_list : list of nn.Module objects
+            feature layers with which data is transformed before being passed to
+            densely/fully connected layers prior to sum pooling and energy
+            prediction/force generation.
+        save_geometry : boolean (default=True)
+            specifies whether or not to save the output of GeometryFeature
+            layers. It is important to set this to true if CGnet priors
+            are to be used, and need to callback to GeometryFeature outputs.
+        """
+
+        super(FeatureCombiner, self).__init__()
+        self.layer_list= nn.ModuleList(layer_list)
+        if type(save_geometry) == bool:
+            self.save_geometry = save_geometry
+        else:
+            raise ValueError("save_geometry must be a boolean value")
+        self.transforms = []
+        self.mappings = {}
+        if get_redundant_distance_mapping:
+            for layer in self.layer_list:
+                if isinstance(layer, GeometryFeature):
+                    self.mappings['redundant_distance_mapping'] = (
+                        g.get_redundant_distance_mapping(layer._distance_pairs))
+
+        redundant_distance_classes = (SchnetFeature, RadialBasisFunction)
+        for layer in self.layer_list:
+            if isinstance(layer, redundant_distance_classes):
+                if get_redundant_distance_mapping == False:
+                    raise RuntimeError("Warning: SchNet tools require redundant"
+                                " distances. Set get_redundant_distance_mapping"
+                                "=True")
+                self.transforms.append(self.distance_reindex)
+            else:
+                self.transforms.append(None)
+
+    def distance_reindex(self, geometry_output):
+        """Reindexes GeometryFeature distance outputs to redundant form for
+        SchnetFeatures and related tools.
+
+        Parameters
+        ----------
+        geometry_ouput : torch.Tensor
+            geometrical feature output frome a GeometryFeature layer, of shape
+            [n_frames, n_features].
+
+        Returns
+        -------
+        redundant_distances : torch.Tensor
+            pairwise distances transformed to shape
+            [n_frames, n_beads, n_beads-1].
+        """
+        return geometry_output[:, self.mappings['redundant_distance_mapping']]
+
+    def forward(self, coords):
+        """Forward method through specified feature layers. The forward
+        operation proceeds through self.layer_list in that same order
+        as the input layer_list for __init__().
+
+        Parameters
+        ----------
+        coords: torch.Tensor
+            input cartesian coordinates of shape [n_frames, n_beads, 3]
+
+        Returns
+        -------
+        feature_ouput: torch.Tensor
+            output tensor, of shape [n_frames, n_features] after featurization
+            through the layers contained in self.layer_list.
+        geometry_features : torch.Tensor (default=None)
+            if save_geometry is True and the layer list is not just a single
+            GeometryFeature layer, the output of the last GeometryFeature
+            layer is returned alongside the terminal features for prior energy
+            callback access. Else, None is returned.
+        """
+        feature_output = coords
+        geometry_features = None
+        for num, (layer, transform) in enumerate(zip(self.layer_list,
+                                                     self.transforms)):
+            if transform != None:
+                feature_output = transform(feature_output)
+            feature_output = layer(feature_output)
+            # Check to see if something follows a GeometryFeature layer
+            if self.save_geometry and len(self.layer_list) > 1:
+                geometry_features = feature_output
+        return feature_output, geometry_features
+
+
