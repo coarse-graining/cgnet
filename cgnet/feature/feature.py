@@ -1,12 +1,11 @@
 # Author: Brooke Husic, Dominik Lemm
 # Contributors: Jiang Wang
 
-
-import warnings
-
-import numpy as np
 import torch
 import torch.nn as nn
+import numpy as np
+import warnings
+
 
 from cgnet.feature.utils import ShiftedSoftplus, LinearLayer
 from .geometry import Geometry
@@ -46,12 +45,13 @@ class GeometryFeature(nn.Module):
 
         self._n_beads = n_beads
         if feature_tuples is not 'all':
-            _temp_dict = dict(zip(feature_tuples, np.arange(len(feature_tuples))))
+            _temp_dict = dict(
+                zip(feature_tuples, np.arange(len(feature_tuples))))
             if len(_temp_dict) < len(feature_tuples):
                 feature_tuples = list(_temp_dict.keys())
                 warnings.warn(
                     "Some feature tuples are repeated and have been removed."
-                    )
+                )
 
             self.feature_tuples = feature_tuples
             if (np.min([len(feat) for feat in feature_tuples]) < 2 or
@@ -70,16 +70,16 @@ class GeometryFeature(nn.Module):
             if n_beads is None:
                 raise RuntimeError(
                     "Must specify n_beads if feature_tuples is 'all'."
-                    )
+                )
             self._distance_pairs, _ = g.get_distance_indices(n_beads)
             if n_beads > 2:
                 self._angle_trips = [(i, i+1, i+2)
-                                    for i in range(n_beads-2)]
+                                     for i in range(n_beads-2)]
             else:
                 self._angle_trips = []
             if n_beads > 3:
                 self._dihedral_quads = [(i, i+1, i+2, i+3)
-                                       for i in range(n_beads-3)]
+                                        for i in range(n_beads-3)]
             else:
                 self._dihedral_quads = []
             self.feature_tuples = self._distance_pairs + \
@@ -122,7 +122,7 @@ class GeometryFeature(nn.Module):
         if self._n_beads is not None and self.n_beads != self._n_beads:
             raise ValueError(
                 "n_beads passed to __init__ does not match n_beads in data."
-                )
+            )
         if np.max([np.max(bead) for bead in self.feature_tuples]) > self.n_beads - 1:
             raise ValueError(
                 "Bead index in at least one feature is out of range."
@@ -169,7 +169,7 @@ class ContinuousFilterConvolution(nn.Module):
     locations in space using continuous radial filters (Schütt et al. 2018).
 
         x_i^{l+i} = (X^i * W^l)_i = \sum_{j=0}^{n_{atoms}} x_j^l \circ W^l (r_j -r_i)
-        
+
     with feature representation X^l=(x^l_1, ..., x^l_n), filter-generating 
     network W^l, positions R=(r_1, ..., r_n) and the current layer l.
 
@@ -221,7 +221,7 @@ class ContinuousFilterConvolution(nn.Module):
         filter_layers += LinearLayer(n_filters, n_filters, bias=True)
         self.filter_generator = nn.Sequential(*filter_layers)
 
-    def forward(self, features, rbf_expansion, neighbor_list):
+    def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask):
         """ Compute convolutional block
 
         Parameters
@@ -234,16 +234,20 @@ class ContinuousFilterConvolution(nn.Module):
         neighbor_list: torch.Tensor
             Indices of all neighbors of each bead.
             Size [n_frames, n_beads, n_neighbors]
+        neighbor_mask: torch.Tensor
+            Index mask to filter out non-existing neighbors that were
+            introduced to due distance cutoffs or padding.
+            Size [n_frames, n_beads, n_neighbors]
 
         Returns
         -------
         aggregated_features: torch.Tensor
-            Residual features of size [n_frames, n_beads, n_features]
+            Residual features of shape [n_frames, n_beads, n_features]
 
         """
 
         # Generate the convolutional filter
-        # Shape (n_frames, n_beads, n_neighbors, n_features)
+        # Size (n_frames, n_beads, n_neighbors, n_features)
         conv_filter = self.filter_generator(rbf_expansion)
 
         # Feature tensor needs to be transformed from
@@ -254,9 +258,9 @@ class ContinuousFilterConvolution(nn.Module):
         # its position in the neighbor_list.
         n_batch, n_beads, n_neighbors = neighbor_list.size()
 
-        # Shape (n_frames, n_beads * n_neighbors, 1)
+        # Size (n_frames, n_beads * n_neighbors, 1)
         neighbor_list = neighbor_list.reshape(-1, n_beads * n_neighbors, 1)
-        # Shape (n_frames, n_beads * n_neighbors, n_features)
+        # Size (n_frames, n_beads * n_neighbors, n_features)
         neighbor_list = neighbor_list.expand(-1, -1, features.size(2))
 
         # Gather the features into the respective places in the neighbor list
@@ -270,6 +274,8 @@ class ContinuousFilterConvolution(nn.Module):
         # the convolutional filter
         conv_features = neighbor_features * conv_filter
 
+        # Remove features from non-existing neighbors outside the cutoff
+        conv_features = conv_features * neighbor_mask[:, :, :, None]
         # Aggregate/pool the features from (n_frames, n_beads, n_neighs, n_feats)
         # to (n_frames, n_beads, n_features)
         aggregated_features = torch.sum(conv_features, dim=2)
@@ -334,19 +340,23 @@ class InteractionBlock(nn.Module):
                                      activation=None)
         self.output_dense = nn.Sequential(*output_layers)
 
-    def forward(self, features, rbf_expansion, neighbor_list):
+    def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask):
         """ Compute interaction block
 
         Parameters
         ----------
         features: torch.Tensor
             Input features from an embedding or interaction layer.
-            Shape [n_frames, n_beads, n_features]
+            Size [n_frames, n_beads, n_features]
         rbf_expansion: torch.Tensor
             Radial basis function expansion of inter-bead distances.
-            Shape [n_frames, n_beads, n_neighbors, n_gaussians]
+            Size [n_frames, n_beads, n_neighbors, n_gaussians]
         neighbor_list: torch.Tensor
             Indices of all neighbors of each bead.
+            Size [n_frames, n_beads, n_neighbors]
+        neighbor_mask: torch.Tensor
+            Index mask to filter out non-existing neighbors that were
+            introduced to due distance cutoffs or padding.
             Size [n_frames, n_beads, n_neighbors]
 
         Returns
@@ -355,61 +365,70 @@ class InteractionBlock(nn.Module):
             Output of an interaction block. This output can be used to form
             a residual connection with the output of a prior embedding/interaction
             layer.
-            Shape [n_frames, n_beads, n_filters]
+            Size [n_frames, n_beads, n_filters]
 
         """
         init_feature_output = self.inital_dense(features)
         conv_output = self.cfconv(init_feature_output, rbf_expansion,
-                                  neighbor_list)
+                                  neighbor_list, neighbor_mask)
         output_features = self.output_dense(conv_output)
         return output_features
 
 
 class SchnetFeature(nn.Module):
     """Wrapper class for radial basis function layer, continuous filter convolution,
-    and interaction block connecting feature inputs and outputs residuallly
+    and interaction block connecting feature inputs and outputs residuallly.
+
+    Parameters
+    ----------
+    feature_size: int
+        Defines the number of neurons of the linear layers in the
+        InteractionBlock. Also defines the number of convolutional
+        filters that will be used.
+    embedding_layer: torch.nn.Module
+        Class that embeds a property into a feature vector.
+    calculate_geometry: boolean (default=False)
+        Allows calls to Geometry instance for calculating distances for a
+        standalone SchnetFeature instance (i.e. one that is not
+        preceded by a GeometryFeature instance).
+    n_beads: int (default=None)
+        Number of coarse grain beads in the model.
+    neighbor_cutoff: float (default=None)
+        Cutoff distance in whether beads are considered neighbors or not.
+    rbf_cutoff: float (default=5.0)
+        Cutoff for the radial basis function.
+    n_gaussians: int (default=50)
+        Number of gaussians for the gaussian expansion in the radial basis
+        function.
+    variance: float (default=1.0)
+        The variance (standard deviation squared) of the Gaussian functions.
+    n_interaction_blocks: int (default=1)
+        Number of interaction blocks.
+    share_weights: bool (default=False)
+        If True, shares the weights between all interaction blocks.
+
+    Notes
+    -----
+    Default values for radial basis function related variables (rbf_cutoff,
+    n_gaussians, variance) are taken as suggested in SchnetPack.
+
+    Example
+    -------
+    # TODO: Maybe add an exmaple here once it's functional?
+
     """
 
     def __init__(self,
                  feature_size,
                  embedding_layer,
+                 calculate_geometry=None,
+                 n_beads=None,
+                 neighbor_cutoff=None,
                  rbf_cutoff=5.0,
                  n_gaussians=50,
                  variance=1.0,
                  n_interaction_blocks=1,
                  share_weights=False):
-        """
-
-        Parameters
-        ----------
-        feature_size: int
-            Defines the number of neurons of the linear layers in the
-            InteractionBlock. Also defines the number of convolutional
-            filters that will be used.
-        embedding_layer: torch.nn.Module
-            Class that embeds a property into a feature vector.
-        rbf_cutoff: float (default=5.0)
-            Cutoff for the radial basis function.
-        n_gaussians: int (default=50)
-            Number of gaussians for the gaussian expansion in the radial basis
-            function.
-        variance: float (default=1.0)
-            The variance (standard deviation squared) of the Gaussian functions.
-        n_interaction_blocks: int (default=1)
-            Number of interaction blocks.
-        share_weights: bool (default=False)
-            If True, shares the weights between all interaction blocks.
-
-        Notes
-        -----
-        Default values for radial basis function related variables (rbf_cutoff,
-        n_gaussians, variance) are taken as suggested in SchnetPack.
-
-        Example
-        -------
-        # TODO: Maybe add an exmaple here once it's functional?
-
-        """
         super(SchnetFeature, self).__init__()
         self.embedding_layer = embedding_layer
         self.rbf_layer = RadialBasisFunction(cutoff=rbf_cutoff,
@@ -428,13 +447,23 @@ class SchnetFeature(nn.Module):
                  for _ in range(n_interaction_blocks)]
             )
 
-    def forward(self, coordinates, embedding_property):
+        self.neighbor_cutoff = neighbor_cutoff
+        self.calculate_geometry = calculate_geometry
+        if self.calculate_geometry:
+            self._distance_pairs, _ = g.get_distance_indices(n_beads, [], [])
+            self.redundant_distance_mapping = g.get_redundant_distance_mapping(
+                self._distance_pairs)
+        else:
+            self._distance_pairs = None
+            self.redundant_distance_mapping = None
+
+    def forward(self, in_features, embedding_property):
         """Forward method through single Schnet block
 
         Parameters
         ----------
-        coordinates: torch.Tensor (grad enabled)
-            input trajectory/data of size [n_frames, n_degrees_of_freedom].
+        in_features: torch.Tensor (grad enabled)
+            input trajectory/data of size [n_frames, n_in_features].
         embedding_property: torch.Tensor
             Some property that should be embedded. Can be nuclear charge
             or maybe an arbitrary number assigned for amino-acids.
@@ -447,9 +476,18 @@ class SchnetFeature(nn.Module):
             Size [n_frames, n_beads, n_features]
 
         """
-        # TODO: PLACEHOLDER until the Feature base class is figured out
-        distances = self.compute_distances(coordinates)
-        neighbors = self.compute_neighbors(coordinates)
+        # if geometry is specified, the distances are calculated from input
+        # coordinates. Otherwise, it is assumed that in_features are
+        # pairwise distances in redundant form
+        if self.calculate_geometry:
+            distances = g.get_distances(self._distance_pairs, in_features,
+                                        norm=True)
+            distances = distances[:, self.redundant_distance_mapping]
+        else:
+            distances = in_features
+
+        neighbors, neighbor_mask = g.get_neighbors(distances,
+                                                   cutoff=self.neighbor_cutoff)
 
         features = self.embedding_layer(embedding_property)
         rbf_expansion = self.rbf_layer(distances=distances)
@@ -457,25 +495,26 @@ class SchnetFeature(nn.Module):
         for interaction_block in self.interaction_blocks:
             interaction_features = interaction_block(features=features,
                                                      rbf_expansion=rbf_expansion,
-                                                     neighbor_list=neighbors)
+                                                     neighbor_list=neighbors,
+                                                     neighbor_mask=neighbor_mask)
             features = features + interaction_features
 
         return features
 
 
 class CGBeadEmbedding(torch.nn.Module):
-    def __init__(self, n_embeddings, embedding_dim):
-        """Simple embedding class for coarse-grain beads.
-        Serves as a lookup table that returns a fixed size embedding.
+    """Simple embedding class for coarse-grain beads.
+    Serves as a lookup table that returns a fixed size embedding.
 
-        Parameters
-        ----------
-        n_embeddings: int
-            Maximum number of different properties/amino_acids/elements,
-            basically the dictionary size.
-        embedding_dim: int
-            Size of the embedding vector.
-        """
+    Parameters
+    ----------
+    n_embeddings: int
+        Maximum number of different properties/amino_acids/elements,
+        basically the dictionary size.
+    embedding_dim: int
+        Size of the embedding vector.
+    """
+    def __init__(self, n_embeddings, embedding_dim):
         super(CGBeadEmbedding, self).__init__()
         self.embedding = nn.Embedding(num_embeddings=n_embeddings,
                                       embedding_dim=embedding_dim,
@@ -491,12 +530,12 @@ class CGBeadEmbedding(torch.nn.Module):
             or maybe an arbitrary number assigned for amino-acids. Passing a
             zero will produce an embedding vector filled with zeroes (necessary
             in the case of zero padded batches).
-            Size [n_frames, n_properties]
+            Size [n_frames, n_beads]
 
         Returns
         -------
         embedding_vector: torch.Tensor
             Corresponding embedding vector to the passed indices.
+            Size [n_frames, n_beads, embedding_dim]
         """
         return self.embedding(embedding_property)
-

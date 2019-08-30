@@ -106,12 +106,12 @@ class CGnet(nn.Module):
 
     def __init__(self, arch, criterion, feature=None, priors=None):
         super(CGnet, self).__init__()
-
         zscore_idx = 1
         for layer in arch:
             if isinstance(layer, ZscoreLayer):
                 self.register_buffer('zscores_{}'.format(zscore_idx),
-                                 layer.zscores)
+                                     layer.zscores)
+
                 zscore_idx += 1
         self.arch = nn.Sequential(*arch)
         if priors:

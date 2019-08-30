@@ -62,29 +62,6 @@ def test_indexing():
     forces_tensor_from_numpy = torch.from_numpy(forces[selection])
     coords_tensor_from_ds, forces_tensor_from_ds = ds[selection]
 
-    assert xt_from_ds.requires_grad
-    np.testing.assert_array_equal(xt_from_numpy, xt_from_ds.detach().numpy())
-
-
-def test_cpu_mount():
-    # Make sure tensors are being mapped to cpu
-
-    selection = np.random.randint(20)
-    ds = MoleculeDataset(x, y)
-
-    np.testing.assert_equal(ds[selection][0].device.type, 'cpu')
-    np.testing.assert_equal(ds[selection][1].device.type, 'cpu')
-
-
-def test_gpu_mount():
-    # Make sure tensors are being mapped to gpu
-    if not torch.cuda.is_available():
-        raise SkipTest('GPU not available for testing.')
-    else:
-        selection = np.random.randint(20)
-        ds = MoleculeDataset(x, y, device=torch.device('cuda'))
-        np.testing.assert_equal(ds[selection][0].device.type, 'cuda')
-        np.testing.assert_equal(ds[selection][1].device.type, 'cuda')
     assert coords_tensor_from_ds.requires_grad
     np.testing.assert_array_equal(coords_tensor_from_numpy,
                                   coords_tensor_from_ds.detach().numpy())

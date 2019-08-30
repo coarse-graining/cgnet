@@ -1,8 +1,9 @@
 # Author: Brooke Husic
+# Contributors: Dominik Lemm
 
-import torch
 import numpy as np
 import scipy
+import torch
 
 
 class Geometry():
@@ -144,3 +145,55 @@ class Geometry():
             cp_base[:, ::2], axis=2)/self.norm(plane_vector[:, ::2], axis=2)
 
         return dihedral_cosines, dihedral_sines
+
+    def get_neighbors(self, distances, cutoff=None):
+        """Calculates a simple neighbor list in which every bead sees
+        each other. If a cutoff is specified, only beads inside that distance
+        cutoff are considered as neighbors.
+
+        Parameters
+        ----------
+        distances: torch.Tensor or np.array
+            Redundant distance matrix of shape (n_frames, n_beads, n_neighbors).
+        cutoff: float (default=None)
+            Distance cutoff in Angstrom in which beads are considered neighbors.
+
+        Returns
+        -------
+        neighbors: torch.Tensor or np.array
+            Indices of all neighbors of each bead.
+            Shape [n_frames, n_beads, n_neighbors]
+        neighbor_mask: torch.Tensor or np.array
+            Index mask to filter out non-existing neighbors that were
+            introduced to due distance cutoffs.
+            Shape [n_frames, n_beads, n_neighbors]
+
+        """
+        n_frames, n_beads, n_neighbors = distances.shape
+
+        # Create a simple neighbor list of shape [n_frames, n_beads, n_neighbors]
+        # in which every bead sees each other but themselves.
+        # First, create a matrix that contains all indices.
+        neighbors = np.tile(np.arange(n_beads), (n_frames, n_beads, 1))
+        # To remove the self interaction of beads, an inverted identity matrix
+        # is used to exclude the respective indices in the neighbor list.
+        neighbors = neighbors[:, ~np.eye(n_beads, dtype=np.bool)].reshape(
+            n_frames,
+            n_beads,
+            n_neighbors)
+
+        if cutoff is not None:
+            if isinstance(distances, torch.Tensor):
+                distances = distances.numpy()
+            # Create an index mask for neighbors that are inside the cutoff
+            neighbor_mask = (distances < cutoff).astype(np.float32)
+            # Set the indices of beads outside the cutoff to 0
+            neighbors[~neighbor_mask.astype(np.bool)] = 0
+        else:
+            neighbor_mask = np.ones((n_frames, n_beads, n_neighbors),
+                                    dtype=np.float32)
+
+        if self.method == 'torch':
+            return torch.from_numpy(neighbors), torch.from_numpy(neighbor_mask)
+        else:
+            return neighbors, neighbor_mask
