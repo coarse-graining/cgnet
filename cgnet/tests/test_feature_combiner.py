@@ -29,16 +29,17 @@ zscore_layer = ZscoreLayer(zscores)
 geometry_feature = GeometryFeature(n_beads=n_beads)
 
 # Finally, we create random schnet init varaibles for the subsequent tests
-feature_size = np.random.randint(5, high=10) # random feature size
-n_embeddings = np.random.randint(3, high=5) # random embedding number
-embedding_dim = feature_size # embedding property size
-n_interaction_blocks = np.random.randint(1,3) # random number of interactions
-neighbor_cutoff = np.random.uniform(0,1) # random neighbor cutoff
+feature_size = np.random.randint(5, high=10)  # random feature size
+n_embeddings = np.random.randint(3, high=5)  # random embedding number
+embedding_dim = feature_size  # embedding property size
+n_interaction_blocks = np.random.randint(1, 3)  # random number of interactions
+neighbor_cutoff = np.random.uniform(0, 1)  # random neighbor cutoff
 # random embedding property
 embedding_property = torch.randint(low=0, high=n_embeddings,
                                    size=(n_frames, n_beads))
 embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
                                   embedding_dim=embedding_dim)
+
 
 def test_combiner_geometry_feature():
     # Tests FeatureCombiner for just single GeometryFeature
@@ -52,7 +53,7 @@ def test_combiner_geometry_feature():
     feature_output, geometry_output = feature_combiner(coords_torch)
     assert feature_combiner.transforms == [None]
     np.testing.assert_equal(list(feature_output.size()), list((n_frames,
-                        len(geom_stats.master_description_tuples))))
+                            len(geom_stats.master_description_tuples))))
     assert geometry_output is None
 
 
@@ -76,7 +77,7 @@ def test_combiner_schnet_feature():
     feature_output, geometry_output = feature_combiner(coords_torch,
                                       embedding_property=embedding_property)
     np.testing.assert_array_equal(feature_output.size(), (n_frames, n_beads,
-                                  feature_size))
+                                                          feature_size))
     assert geometry_output is None
 
 
@@ -93,9 +94,9 @@ def test_combiner_zscore():
     # Both transfroms should be None
     assert feature_combiner.transforms == [None, None]
     np.testing.assert_equal(list(feature_output.size()), list((n_frames,
-                        len(geom_stats.master_description_tuples))))
+                            len(geom_stats.master_description_tuples))))
     np.testing.assert_equal(list(geometry_output.size()), list((n_frames,
-                        len(geom_stats.master_description_tuples))))
+                            len(geom_stats.master_description_tuples))))
 
 
 def test_combiner_priors():
@@ -107,7 +108,7 @@ def test_combiner_priors():
     # Next, we create CGnet and use the bond_potential prior and
     # feature_combiner. We use a simple, random, four-layer hidden architecutre
     # for the terminal fully-connected layers
-    width = np.random.randint(5, high=10) # random fully-connected width
+    width = np.random.randint(5, high=10)  # random fully-connected width
     arch = LinearLayer(len(geom_stats.master_description_tuples),
                        width, activation=nn.Tanh())
     for i in range(2):
@@ -122,7 +123,7 @@ def test_combiner_priors():
     np.testing.assert_array_equal(energy.size(), (n_frames, 1))
     np.testing.assert_array_equal(forces.size(), (n_frames, n_beads, 3))
 
-    # To test the priors, we compare to a CGnet formed with just 
+    # To test the priors, we compare to a CGnet formed with just
     # the tradiational feature=GeometryFeature init
     arch = [zscore_layer] + arch
     model_2 = CGnet(arch, ForceLoss(), feature=geometry_feature,
@@ -147,12 +148,12 @@ def test_combiner_full():
     layer_list = [geometry_feature, zscore_layer, schnet_feature]
     # grab distance indices
     dist_idx = geom_stats.return_indices('Distances')
-    feature_combiner = FeatureCombiner(layer_list,distance_indices=dist_idx)
+    feature_combiner = FeatureCombiner(layer_list, distance_indices=dist_idx)
 
     # Next, we create CGnet and use the bond_potential prior and
     # feature_combiner. We use a simple, random, four-layer hidden architecutre
     # for the terminal fully-connected layers
-    width = np.random.randint(5, high=10) # random fully-connected width
+    width = np.random.randint(5, high=10)  # random fully-connected width
     arch = LinearLayer(feature_size,
                        width, activation=nn.Tanh())
     for i in range(2):

@@ -13,13 +13,13 @@ class FeaturePipeline(nn.Module):
 
     Attributes
     ----------
-	layer_list : nn.ModuleList
-		List of layers through which input data will
-		pass.
-	transforms : list of type.FunctionType or type.LambdaType
-		List of declared functions or anonymous (lambda)
-		functions that define transforms for data before each
-		corresponding layer in the layer_list
+        layer_list : nn.ModuleList
+                List of layers through which input data will
+                pass.
+        transforms : list of type.FunctionType or type.LambdaType
+                List of declared functions or anonymous (lambda)
+                functions that define transforms for data before each
+                corresponding layer in the layer_list
 
     Notes
     -----
@@ -72,6 +72,7 @@ class FeaturePipeline(nn.Module):
             out_features = layer(out_features)
         return out_features
 
+
 class FeatureCombiner(nn.Module):
     """Class for combining GeometryFeatures and SchnetFeatures
 
@@ -118,7 +119,7 @@ class FeatureCombiner(nn.Module):
         """
 
         super(FeatureCombiner, self).__init__()
-        self.layer_list= nn.ModuleList(layer_list)
+        self.layer_list = nn.ModuleList(layer_list)
         if type(save_geometry) == bool:
             self.save_geometry = save_geometry
         else:
@@ -131,11 +132,11 @@ class FeatureCombiner(nn.Module):
                 if (layer.calculate_geometry and any(isinstance(layer,
                     GeometryFeature) for layer in self.layer_list)):
                     warnings.warn(("This SchnetFeature has been set to "
-                    "calculate pairwise distances. Set "
-                    "SchnetFeature.calculate_geometry=False if you are "
-                    "preceding this SchnetFeature with a GeometryFeature "
-                    "in order to prevent unnecessarily repeated pairwsie "
-                    "distance calculations"))
+                                   "calculate pairwise distances. Set "
+                                   "SchnetFeature.calculate_geometry=False if you are "
+                                   "preceding this SchnetFeature with a GeometryFeature "
+                                   "in order to prevent unnecessarily repeated pairwsie "
+                                   "distance calculations"))
                     self.transforms.append(None)
                 elif layer.calculate_geometry:
                     self.transforms.append(None)
@@ -149,7 +150,6 @@ class FeatureCombiner(nn.Module):
                     self.transforms.append([self.distance_reindex])
             else:
                 self.transforms.append(None)
-
 
     def distance_reindex(self, geometry_output):
         """Reindexes GeometryFeature distance outputs to redundant form for

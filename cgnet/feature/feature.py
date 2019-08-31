@@ -514,6 +514,7 @@ class CGBeadEmbedding(torch.nn.Module):
     embedding_dim: int
         Size of the embedding vector.
     """
+
     def __init__(self, n_embeddings, embedding_dim):
         super(CGBeadEmbedding, self).__init__()
         self.embedding = nn.Embedding(num_embeddings=n_embeddings,

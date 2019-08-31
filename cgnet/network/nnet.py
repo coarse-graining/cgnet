@@ -7,6 +7,7 @@ import numpy as np
 from .priors import ZscoreLayer, HarmonicLayer, RepulsionLayer
 from cgnet.feature import FeatureCombiner
 
+
 class ForceLoss(torch.nn.Module):
     """Loss function for force matching scheme."""
 
@@ -201,6 +202,6 @@ class CGnet(nn.Module):
         self.eval()  # set model to eval mode
         energy, force = self.forward(coord)
         loss = self.criterion.forward(force, force_labels,
-                                       embedding_property=embedding_property)
+                                      embedding_property=embedding_property)
         self.train()  # set model to train mode
         return loss.data
