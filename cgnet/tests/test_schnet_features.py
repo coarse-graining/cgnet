@@ -1,4 +1,5 @@
 # Author: Dominik Lemm
+# contributors: Nick Charron
 
 import numpy as np
 import torch
@@ -109,10 +110,12 @@ def test_shared_weights():
     schnet_feature_no_shared_weights = SchnetFeature(feature_size=feature_size,
                                                      embedding_layer=None,
                                                      n_interaction_blocks=2,
+                                                     n_beads = beads,
                                                      share_weights=False)
     schnet_feature_shared_weights = SchnetFeature(feature_size=feature_size,
                                                   embedding_layer=None,
                                                   n_interaction_blocks=2,
+                                                  n_beads = beads,
                                                   share_weights=True)
 
     # Loop over all parameters in both interaction blocks

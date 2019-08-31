@@ -9,7 +9,7 @@ from sklearn.metrics import mean_squared_error as mse
 from cgnet.network import (CGnet, ForceLoss, RepulsionLayer,
                            HarmonicLayer, ZscoreLayer, Simulation)
 from cgnet.feature import (GeometryStatistics, GeometryFeature,
-                           LinearLayer)
+                           LinearLayer, FeatureCombiner)
 
 # The following sets up data for linear regession comparison test
 x0 = torch.rand((50, 1), requires_grad=True)  # 50 1D input examples

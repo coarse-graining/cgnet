@@ -153,6 +153,7 @@ class Geometry():
 
         Parameters
         ----------
+        TODO : update docs
         distances: torch.Tensor or np.array
             Redundant distance matrix of shape (n_frames, n_beads, n_neighbors).
         cutoff: float (default=None)
@@ -169,7 +170,11 @@ class Geometry():
             Shape [n_frames, n_beads, n_neighbors]
 
         """
-        n_frames, n_beads, n_neighbors = distances.shape
+        # TODO @Dom we need an all torch version of this. is it possible?
+        if isinstance(distances, torch.Tensor):
+            n_frames, n_beads, n_neighbors = distances.size()
+        if isinstance(distances, np.ndarray):
+            n_frames, n_beads, n_neighbors = distances.shape
 
         # Create a simple neighbor list of shape [n_frames, n_beads, n_neighbors]
         # in which every bead sees each other but themselves.
@@ -182,9 +187,11 @@ class Geometry():
             n_beads,
             n_neighbors)
 
+        # TODO @Dom we need an all torch version of this. is it possible?
+        # it would be better to avoid detaching from the computational graph
         if cutoff is not None:
             if isinstance(distances, torch.Tensor):
-                distances = distances.numpy()
+                distances = distances.detach().numpy()
             # Create an index mask for neighbors that are inside the cutoff
             neighbor_mask = (distances < cutoff).astype(np.float32)
             # Set the indices of beads outside the cutoff to 0
