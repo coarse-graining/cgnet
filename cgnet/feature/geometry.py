@@ -220,6 +220,6 @@ class Geometry():
             neighbor_mask = self.to_type(neighbor_mask, self.float32)
         else:
             neighbor_mask = self.ones((n_frames, n_beads, n_neighbors),
-                                       dtype=self.float32)
+                                      dtype=self.float32)
 
         return neighbors, neighbor_mask
