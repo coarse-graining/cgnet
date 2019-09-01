@@ -69,6 +69,19 @@ class Geometry():
         self.bool = np.bool
         self.float32 = np.float32
 
+    def check_array_vs_tensor(self, object, name=None):
+        if name is None:
+            name = ''
+
+        if self.method == 'numpy' and type(object) is not np.ndarray:
+            raise ValueError(
+    "Input argument {} must be type np.ndarray for Geometry(method='numpy')".format(name)
+                )
+        if self.method == 'torch' and type(object) is not torch.Tensor:
+            raise ValueError(
+    "Input argument {} must be type torch.Tensor for Geometry(method='torch')".format(name)
+                )
+
     def get_distance_indices(self, n_beads, backbone_inds=[], backbone_map=None):
         """Determines indices of pairwise distance features.
         """
@@ -130,6 +143,8 @@ class Geometry():
     def get_distances(self, distance_inds, data, norm=True):
         """Calculates distances in a vectorized fashion.
         """
+        self.check_array_vs_tensor(data, 'data')
+
         distances = self.get_vectorize_inputs(distance_inds, data)
         if norm:
             distances = self.norm(distances, axis=2)
@@ -138,6 +153,8 @@ class Geometry():
     def get_angles(self, angle_inds, data):
         """Calculates angles in a vectorized fashion.
         """
+        self.check_array_vs_tensor(data, 'data')
+
         base, offset = self.get_vectorize_inputs(angle_inds, data)
 
         angles = self.arccos(self.sum(base*offset, axis=2)/self.norm(
@@ -155,6 +172,8 @@ class Geometry():
         way to do this, I think using two lists of angles, but for now
         this has the correct functionality.
         """
+        self.check_array_vs_tensor(data, 'data')
+
         angle_inds = np.concatenate([[(f[i], f[i+1], f[i+2])
                                       for i in range(2)] for f in dihed_inds])
         base, offset = self.get_vectorize_inputs(angle_inds, data)
@@ -199,6 +218,8 @@ class Geometry():
             Shape [n_frames, n_beads, n_neighbors]
 
         """
+        self.check_array_vs_tensor(distances, 'distances')
+
         n_frames, n_beads, n_neighbors = distances.shape
 
         # Create a simple neighbor list of shape [n_frames, n_beads, n_neighbors]

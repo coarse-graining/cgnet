@@ -44,7 +44,11 @@ def test_tile_methods_numpy_vs_torch():
     A = A.reshape(*shape_one).astype(np.float32)
 
     # Test whether the tiling is equivalent to the second shape
+    # Add in the standard check for fun
+    g_numpy.check_array_vs_tensor(A)
     tile_numpy = g_numpy.tile(A, shape_two)
+
+    g_torch.check_array_vs_tensor(torch.Tensor(A))
     tile_torch = g_torch.tile(torch.Tensor(A), shape_two)
 
     np.testing.assert_array_equal(tile_numpy, tile_torch)
