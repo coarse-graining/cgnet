@@ -25,9 +25,37 @@ redundant_distance_mapping = g_numpy.get_redundant_distance_mapping(
 neighbor_cutoff = np.random.uniform(0, 1)
 
 
+def test_tile_methods_numpy_vs_torch():
+    # Test to make sure geometry.tile is still equivalent between numpy
+    # and pytorch
+
+    # Create inputs for a 3d array that will have 24 elements
+    A = np.array([np.random.randint(10) for _ in range(24)])
+
+    # Make two likely different shapes for the array and the tiling
+    # with friendly factors
+    shape_one = [2,3,4]
+    np.random.shuffle(shape_one)
+
+    shape_two = [2,3,4]
+    np.random.shuffle(shape_two)
+
+    # Reshape A with the first shape
+    A = A.reshape(*shape_one).astype(np.float32)
+
+    # Test whether the tiling is equivalent to the second shape
+    tile_numpy = g_numpy.tile(A, shape_two)
+    tile_torch = g_torch.tile(torch.Tensor(A), shape_two)
+
+    np.testing.assert_array_equal(tile_numpy, tile_torch)
+
+
 def test_distances_and_neighbors_numpy_vs_torch():
     # Comparison of numpy and torch outputs for getting geometry.get_distances
     # and geometry.get_neighbors
+
+    # Calculate distances, neighbors, and neighbor mask using the numpy
+    # version of Geometry
     distances_numpy = g_numpy.get_distances(_distance_pairs,
                                             coords,
                                             norm=True)
@@ -36,6 +64,8 @@ def test_distances_and_neighbors_numpy_vs_torch():
         distances_numpy,
         cutoff=neighbor_cutoff)
 
+    # Calculate distances, neighbors, and neighbor mask using the torch
+    # version of Geometry
     distances_torch = g_torch.get_distances(_distance_pairs,
                                             torch.from_numpy(coords),
                                             norm=True)
