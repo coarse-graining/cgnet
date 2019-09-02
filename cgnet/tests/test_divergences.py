@@ -41,13 +41,14 @@ def _get_uniform_histograms():
     # We verify that that the two bin arrays are the same. This is necessary
     # for proper histogram comparison, which is done bin-wise
     np.testing.assert_array_equal(bins_1, bins_2)
-    return histogram_1, histogram_2, _bins, bins_1
+    np.testing.assert_array_equal(bins_1, _bins)
+    return histogram_1, histogram_2, bins_1
 
 
 # We use the above two functions to generate random distributions
 # and histogram/bin pairs suitable for comparison using CGnet feature tools
 dist1, dist2 = _get_random_distr()
-hist1, hist2, bins_, bins = _get_uniform_histograms()
+hist1, hist2, bins = _get_uniform_histograms()
 
 
 def test_zero_kl_divergence():
@@ -149,7 +150,7 @@ def test_histogram_intersection():
     # uniform distributions
 
     manual_intersection = 0.  # intersection accumulator
-    intervals = np.diff(bins_)  # intervals betweem histogram bins
+    intervals = np.diff(bins)  # intervals betweem histogram bins
 
     # Here we loop though the common histogram intervals and accumulate
     # the intersection of the two histograms
@@ -159,7 +160,7 @@ def test_histogram_intersection():
 
     # Here we verify that the manual calculation matches the output of
     # the historam_intersection function
-    cgnet_intersection = histogram_intersection(hist1, hist2, bins_)
+    cgnet_intersection = histogram_intersection(hist1, hist2, bins)
     np.testing.assert_allclose(manual_intersection, cgnet_intersection)
 
 
@@ -168,6 +169,6 @@ def test_histogram_intersection_no_bins():
     # uniform distributions. The histogram intersection should fill in
     # the bins uniformly if none are supplied
 
-    cgnet_intersection = histogram_intersection(hist1, hist2, bins_)
+    cgnet_intersection = histogram_intersection(hist1, hist2, bins)
     nobins_intersection = histogram_intersection(hist1, hist2, bins=None)
     np.testing.assert_allclose(cgnet_intersection, nobins_intersection)
