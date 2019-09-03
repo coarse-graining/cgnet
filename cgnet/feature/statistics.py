@@ -685,8 +685,8 @@ def histogram_intersection(dist_1, dist_2, bins=None):
     """
     if len(dist_1) != len(dist_2):
         raise ValueError('Distributions must be of equal length')
-    if bins is not None and len(dist_1) != len(bins):
-        raise ValueError('Bins length equal distribution length')
+    if bins is not None and len(dist_1) + 1 != len(bins):
+        raise ValueError('Bins length must be 1 more than distribution length')
 
     if bins is None:
         intervals = np.repeat(1/len(dist_1), len(dist_1))
