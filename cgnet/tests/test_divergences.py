@@ -191,9 +191,11 @@ def test_histogram_intersection_norm():
     np.testing.assert_allclose(norm_intersection, cgnet_intersection)
 
 
-def test_nonuniform_histogram_intersections():
-    # Tests nonuniform histogram intersections
-    factor = np.random.randint(2,6)
+def test_histogram_intersection_norm_2():
+    # Tests norm functionality for computing histogram intersections
+    # of uniform distributions multipled by an arbitrary factor with manually
+    # specified bins
+    factor = np.random.randint(2, 6)
     hist1_mult = factor*hist1
     hist2_mult = factor*hist2
 
@@ -202,7 +204,15 @@ def test_nonuniform_histogram_intersections():
     constant = np.random.randint(2, 10)
     bins_no_norm = np.linspace(constant, len(hist1)+constant, len(hist1) + 1)
 
-    intersection_mult = histogram_intersection(hist1_mult, hist2_mult, bins_no_norm)
-    intersection = histogram_intersection(hist1, hist2)
+    intersection_mult = histogram_intersection(hist1_mult, hist2_mult,
+                                               bins_no_norm)
+    intersection = histogram_intersection(hist1, hist2, bins=None, norm=True)
 
     np.testing.assert_allclose(intersection_mult, factor*intersection)
+
+
+def test_histogram_intersection_norm_3():
+    # Test whether the intersection of a histogram with itself is 
+    # the length of the histogram when no norm is used on the bins
+    self_no_norm = histogram_intersection(hist1, hist1, norm=False)
+    np.testing.assert_allclose(self_no_norm, len(hist1))
