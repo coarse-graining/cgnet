@@ -7,7 +7,7 @@ Dependencies
 ---
 Required:
 + ``numpy``
-+ ``pytorch`` (1.0 or higher)
++ ``pytorch`` (1.2 or higher)
 + ``scipy``
 
 Optional:

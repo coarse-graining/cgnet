@@ -25,6 +25,13 @@ class Geometry():
         else:
             raise RuntimeError("Allowed methods are 'torch' and 'numpy'")
 
+    def torch_eye(self, n, dtype):
+        if dtype == torch.bool:
+            # Only in pytorch>=1.2!
+            return torch.BoolTensor(np.eye(n, dtype=np.bool))
+        else:
+            return torch.eye(n, dtype=dtype)
+
     def setup_torch(self):
         self.arccos = torch.acos
 
@@ -32,12 +39,48 @@ class Geometry():
         self.norm = lambda x, axis: torch.norm(x, dim=axis)
         self.sum = lambda x, axis: torch.sum(x, dim=axis)
 
+        self.arange = lambda n: torch.arange(n)
+        self.tile = lambda x, shape: x.repeat(*shape)
+        # As of pytorch 1.2.0, BoolTensors are implemented. However,
+        # torch.eye does not take dtype=torch.bool on CPU devices yet.
+        # Watch pytorch PR #24148 for the implementation, which would
+        # enable self.eye = lambda n, dtype: torch.eye(n, dtype=dtype)
+        # For now, we do this:
+        self.eye = lambda n, dtype: self.torch_eye(n, dtype)
+        self.ones = lambda shape, dtype: torch.ones(*shape, dtype=dtype)
+
+        self.to_type = lambda x, dtype: x.type(dtype)
+        self.bool = torch.bool
+        self.float32 = torch.float32
+
     def setup_numpy(self):
         self.arccos = np.arccos
 
         self.cross = lambda x, y, axis: np.cross(x, y, axis=axis)
         self.norm = lambda x, axis: np.linalg.norm(x, axis=axis)
         self.sum = lambda x, axis: np.sum(x, axis=axis)
+
+        self.arange = lambda n: np.arange(n)
+        self.tile = lambda x, shape: np.tile(x, shape)
+        self.eye = lambda n, dtype: np.eye(n, dtype=dtype)
+        self.ones = lambda shape, dtype: np.ones(shape, dtype=dtype)
+
+        self.to_type = lambda x, dtype: x.astype(dtype)
+        self.bool = np.bool
+        self.float32 = np.float32
+
+    def check_array_vs_tensor(self, object, name=None):
+        if name is None:
+            name = ''
+
+        if self.method == 'numpy' and type(object) is not np.ndarray:
+            raise ValueError(
+    "Input argument {} must be type np.ndarray for Geometry(method='numpy')".format(name)
+                )
+        if self.method == 'torch' and type(object) is not torch.Tensor:
+            raise ValueError(
+    "Input argument {} must be type torch.Tensor for Geometry(method='torch')".format(name)
+                )
 
     def get_distance_indices(self, n_beads, backbone_inds=[], backbone_map=None):
         """Determines indices of pairwise distance features.
@@ -100,6 +143,8 @@ class Geometry():
     def get_distances(self, distance_inds, data, norm=True):
         """Calculates distances in a vectorized fashion.
         """
+        self.check_array_vs_tensor(data, 'data')
+
         distances = self.get_vectorize_inputs(distance_inds, data)
         if norm:
             distances = self.norm(distances, axis=2)
@@ -108,6 +153,8 @@ class Geometry():
     def get_angles(self, angle_inds, data):
         """Calculates angles in a vectorized fashion.
         """
+        self.check_array_vs_tensor(data, 'data')
+
         base, offset = self.get_vectorize_inputs(angle_inds, data)
 
         angles = self.arccos(self.sum(base*offset, axis=2)/self.norm(
@@ -125,6 +172,8 @@ class Geometry():
         way to do this, I think using two lists of angles, but for now
         this has the correct functionality.
         """
+        self.check_array_vs_tensor(data, 'data')
+
         angle_inds = np.concatenate([[(f[i], f[i+1], f[i+2])
                                       for i in range(2)] for f in dihed_inds])
         base, offset = self.get_vectorize_inputs(angle_inds, data)
@@ -169,31 +218,29 @@ class Geometry():
             Shape [n_frames, n_beads, n_neighbors]
 
         """
+        self.check_array_vs_tensor(distances, 'distances')
+
         n_frames, n_beads, n_neighbors = distances.shape
 
         # Create a simple neighbor list of shape [n_frames, n_beads, n_neighbors]
         # in which every bead sees each other but themselves.
         # First, create a matrix that contains all indices.
-        neighbors = np.tile(np.arange(n_beads), (n_frames, n_beads, 1))
+        neighbors = self.tile(self.arange(n_beads), (n_frames, n_beads, 1))
         # To remove the self interaction of beads, an inverted identity matrix
         # is used to exclude the respective indices in the neighbor list.
-        neighbors = neighbors[:, ~np.eye(n_beads, dtype=np.bool)].reshape(
+        neighbors = neighbors[:, ~self.eye(n_beads, dtype=self.bool)].reshape(
             n_frames,
             n_beads,
             n_neighbors)
 
         if cutoff is not None:
-            if isinstance(distances, torch.Tensor):
-                distances = distances.numpy()
             # Create an index mask for neighbors that are inside the cutoff
-            neighbor_mask = (distances < cutoff).astype(np.float32)
+            neighbor_mask = distances < cutoff
             # Set the indices of beads outside the cutoff to 0
-            neighbors[~neighbor_mask.astype(np.bool)] = 0
+            neighbors[~neighbor_mask] = 0
+            neighbor_mask = self.to_type(neighbor_mask, self.float32)
         else:
-            neighbor_mask = np.ones((n_frames, n_beads, n_neighbors),
-                                    dtype=np.float32)
+            neighbor_mask = self.ones((n_frames, n_beads, n_neighbors),
+                                      dtype=self.float32)
 
-        if self.method == 'torch':
-            return torch.from_numpy(neighbors), torch.from_numpy(neighbor_mask)
-        else:
-            return neighbors, neighbor_mask
+        return neighbors, neighbor_mask
