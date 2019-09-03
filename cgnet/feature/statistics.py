@@ -664,7 +664,7 @@ def js_divergence(dist_1, dist_2):
     return divergence
 
 
-def histogram_intersection(dist_1, dist_2, bins=None):
+def histogram_intersection(dist_1, dist_2, bins=None, norm=True):
     """Compute the intersection between two histograms
 
     Parameters
@@ -677,11 +677,16 @@ def histogram_intersection(dist_1, dist_2, bins=None):
         bins for both dist1 and dist2; must be identical for both
         distributions of shape [k,] for k bins. If None,
         uniform bins are assumed
+    norm : Boolean (default=True)
+        Whether to normalize the bins so that the distance from
+        the first bin to the last bin is 1.
 
     Returns
     -------
     intersect : float
-        The intersection of the two histograms; i.e., the overlapping density
+        The intersection of the two histograms; i.e., the overlapping density.
+        If the distributions sum to 1, a full overlap returns 1 and zero
+        overlap returns 0.
     """
     if len(dist_1) != len(dist_2):
         raise ValueError('Distributions must be of equal length')
@@ -689,9 +694,12 @@ def histogram_intersection(dist_1, dist_2, bins=None):
         raise ValueError('Bins length must be 1 more than distribution length')
 
     if bins is None:
-        intervals = np.repeat(1/len(dist_1), len(dist_1))
-    else:
-        intervals = np.diff(bins)
+        bins = np.linspace(0, len(dist_1), len(dist_1) + 1)
+
+    if norm:
+        bins /= (bins[-1] - bins[0])
+
+    intervals = np.diff(bins)
 
     dist_1m = np.ma.masked_where(dist_1*dist_2 == 0, dist_1)
     dist_2m = np.ma.masked_where(dist_1*dist_2 == 0, dist_2)

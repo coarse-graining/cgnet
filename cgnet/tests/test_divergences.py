@@ -167,8 +167,42 @@ def test_histogram_intersection():
 def test_histogram_intersection_no_bins():
     # Tests the calculation of intersection for histograms drawn from
     # uniform distributions. The histogram intersection should fill in
-    # the bins uniformly if none are supplied
+    # the bins uniformly if none are supplied and norm=True (default).
 
     cgnet_intersection = histogram_intersection(hist1, hist2, bins)
-    nobins_intersection = histogram_intersection(hist1, hist2, bins=None)
+    nobins_intersection = histogram_intersection(hist1, hist2, bins=None,
+                                                 norm=True)
     np.testing.assert_allclose(cgnet_intersection, nobins_intersection)
+
+
+def test_histogram_intersection_norm():
+    # Tests the functionalit of the norm=True option for histogram
+    # intersection calculations when bins do not have a range of 1.
+
+    # Create bins that are spaced by length 1 and offset by an arbitrary
+    # constant
+    constant = np.random.randint(2, 10)
+    bins_no_norm = np.linspace(constant, len(hist1)+constant, len(hist1) + 1)
+
+    norm_intersection = histogram_intersection(hist1, hist2,
+                                               bins_no_norm, norm=True)
+    cgnet_intersection = histogram_intersection(hist1, hist2, bins)
+
+    np.testing.assert_allclose(norm_intersection, cgnet_intersection)
+
+
+def test_nonuniform_histogram_intersections():
+    # Tests nonuniform histogram intersections
+    factor = np.random.randint(2,6)
+    hist1_mult = factor*hist1
+    hist2_mult = factor*hist2
+
+    # Create bins that are spaced by length 1 and offset by an arbitrary
+    # constant
+    constant = np.random.randint(2, 10)
+    bins_no_norm = np.linspace(constant, len(hist1)+constant, len(hist1) + 1)
+
+    intersection_mult = histogram_intersection(hist1_mult, hist2_mult, bins_no_norm)
+    intersection = histogram_intersection(hist1, hist2)
+
+    np.testing.assert_allclose(intersection_mult, factor*intersection)
