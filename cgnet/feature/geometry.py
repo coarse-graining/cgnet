@@ -202,7 +202,6 @@ class Geometry():
 
         Parameters
         ----------
-        TODO : update docs
         distances: torch.Tensor or np.array
             Redundant distance matrix of shape (n_frames, n_beads, n_neighbors).
         cutoff: float (default=None)
@@ -219,6 +218,10 @@ class Geometry():
             Shape [n_frames, n_beads, n_neighbors]
 
         """
+        # TODO In future releases of PyTorch, support for torch.eye using
+        # dtype=torch.bool (currently being addressed in pytorch PR 24148)
+        # will be extended. When this happens, changes should be made to
+        # this method to complete full native torch manipulation.
         self.check_array_vs_tensor(distances, 'distances')
 
         n_frames, n_beads, n_neighbors = distances.shape
@@ -234,8 +237,6 @@ class Geometry():
             n_beads,
             n_neighbors)
 
-        # TODO @Dom we need an all torch version of this. is it possible?
-        # it would be better to avoid detaching from the computational graph
         if cutoff is not None:
             # Create an index mask for neighbors that are inside the cutoff
             neighbor_mask = distances < cutoff
