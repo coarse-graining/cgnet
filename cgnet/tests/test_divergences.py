@@ -179,7 +179,7 @@ def test_histogram_intersection_no_bins():
 
 
 def test_histogram_intersection_norm():
-    # Tests the functionalit of the norm=True option for histogram
+    # Tests the functionality of the norm=True option for histogram
     # intersection calculations when bins do not have a range of 1.
 
     # Create bins that are spaced by length 1 and offset by an arbitrary
