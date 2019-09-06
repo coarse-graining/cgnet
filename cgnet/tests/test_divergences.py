@@ -30,7 +30,9 @@ def _get_uniform_histograms():
     nbins = np.random.randint(2, high=50)  # Random number of bins
     _bins = np.linspace(0, 1, nbins)  # Equally space bins
 
-    # Here, we produce the two histogram/bin pairs
+    # Here, we produce the two histogram/bin pairs. We explicitly use
+    # the same _bins, so we check that bins_1 and bins_2 are both equal
+    # to our specified _bins post histogram creation.
     histogram_1, bins_1 = np.histogram(np.random.uniform(size=nbins),
                                        bins=_bins,
                                        density=True)
@@ -38,8 +40,9 @@ def _get_uniform_histograms():
                                        bins=_bins,
                                        density=True)
 
-    # We verify that that the two bin arrays are the same. This is necessary
-    # for proper histogram comparison, which is done bin-wise
+    # We verify that that the two bin arrays are the same as each other and
+    # as our input _bins. This is necessary for proper histogram comparison,
+    # which is done bin-wise
     np.testing.assert_array_equal(bins_1, bins_2)
     np.testing.assert_array_equal(bins_1, _bins)
     return histogram_1, histogram_2, bins_1
@@ -170,7 +173,7 @@ def test_histogram_intersection_no_bins():
     # the bins uniformly if none are supplied and norm=True (default).
 
     cgnet_intersection = histogram_intersection(hist1, hist2, bins)
-    nobins_intersection = histogram_intersection(hist1, hist2, bins=None,
+    nobins_intersection = histogram_intersection(hist1, hist2, bin_edges=None,
                                                  norm=True)
     np.testing.assert_allclose(cgnet_intersection, nobins_intersection)
 
@@ -206,7 +209,8 @@ def test_histogram_intersection_norm_2():
 
     intersection_mult = histogram_intersection(hist1_mult, hist2_mult,
                                                bins_no_norm)
-    intersection = histogram_intersection(hist1, hist2, bins=None, norm=True)
+    intersection = histogram_intersection(hist1, hist2, bin_edges=None,
+                                          norm=True)
 
     np.testing.assert_allclose(intersection_mult, factor*intersection)
 

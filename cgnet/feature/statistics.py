@@ -664,7 +664,7 @@ def js_divergence(dist_1, dist_2):
     return divergence
 
 
-def histogram_intersection(dist_1, dist_2, bins=None, norm=True):
+def histogram_intersection(dist_1, dist_2, bin_edges=None, norm=True):
     """Compute the intersection between two histograms
 
     Parameters
@@ -673,10 +673,11 @@ def histogram_intersection(dist_1, dist_2, bins=None, norm=True):
         first distribution of shape [n,] for n points
     dist_2 : numpy.array
         second distribution of shape [n,] for n points
-    bins : None or numpy.array (default=None)
-        bins for both dist1 and dist2; must be identical for both
-        distributions of shape [k,] for k bins. If None,
-        uniform bins are assumed
+    bin_edges : None or numpy.array (default=None)
+        Edges for (consecutive bins) for both dist1 and dist2; must be
+        identical for both distributions of shape [k + 1,] for k consecutive
+        bins with k+1 edges. If None, consecutive bins of uniform size are
+        assumed.
     norm : Boolean (default=True)
         Whether to normalize the bins so that the distance from
         the first bin to the last bin is 1.
@@ -690,16 +691,16 @@ def histogram_intersection(dist_1, dist_2, bins=None, norm=True):
     """
     if len(dist_1) != len(dist_2):
         raise ValueError('Distributions must be of equal length')
-    if bins is not None and len(dist_1) + 1 != len(bins):
-        raise ValueError('Bins length must be 1 more than distribution length')
+    if bin_edges is not None and len(dist_1) + 1 != len(bin_edges):
+        raise ValueError('bin_edges length must be 1 more than distribution length')
 
-    if bins is None:
-        bins = np.linspace(0, len(dist_1), len(dist_1) + 1)
+    if bin_edges is None:
+        bin_edges = np.linspace(0, len(dist_1), len(dist_1) + 1)
 
     if norm:
-        bins /= (bins[-1] - bins[0])
+        bin_edges /= (bin_edges[-1] - bin_edges[0])
 
-    intervals = np.diff(bins)
+    intervals = np.diff(bin_edges)
 
     dist_1m = np.ma.masked_where(dist_1*dist_2 == 0, dist_1)
     dist_2m = np.ma.masked_where(dist_1*dist_2 == 0, dist_2)
