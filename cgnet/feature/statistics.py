@@ -665,7 +665,7 @@ def js_divergence(dist_1, dist_2):
 
 
 def discrete_distribution_intersection(dist_1, dist_2, bin_edges=None,
-                                       norm=True, tol=1e-6):
+                                       tol=1e-6):
     """Compute the intersection between two discrete distributions
 
     Parameters
