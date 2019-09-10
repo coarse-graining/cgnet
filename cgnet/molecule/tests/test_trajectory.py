@@ -9,8 +9,10 @@ from cgnet.feature import GeometryFeature
 from cgnet.molecule import CGMolecule
 
 
-# make a peptide backbone with 1 to 5 non-cap residues
-residues = np.random.randint(2, 6)
+# make a peptide backbone with 3 to 6 non-cap residues
+# We need at least three for the angle test so we have
+# three CA atoms.
+residues = np.random.randint(3, 6)
 
 # each non-cap residue will have 3 backbone atoms
 names = ['C'] + ['N', 'CA', 'C'] * residues + ['N']
@@ -38,8 +40,8 @@ for b in range(beads-1):
 frames = np.random.randint(1, 10)
 dims = 3
 
-x = np.random.randn(frames, beads, dims)
-xt = torch.Tensor(x)
+data = np.random.randn(frames, beads, dims)
+data_tensor = torch.Tensor(data)
 
 
 def test_cg_topology_standard():
@@ -81,7 +83,7 @@ def test_cg_trajectory():
     # Make sure trajectory works like an mdtraj trajectory
 
     molecule = CGMolecule(names=names, resseq=resseq, resmap=resmap)
-    traj = molecule.make_trajectory(x)
+    traj = molecule.make_trajectory(data)
 
     # here we test that some mdtraj trajectory attibutes are right
     assert traj.n_frames == frames
@@ -93,13 +95,13 @@ def test_backbone_phi_dihedrals():
     # Make sure backbone phi dihedrals are correct
 
     molecule = CGMolecule(names=names, resseq=resseq, resmap=resmap)
-    traj = molecule.make_trajectory(x)
+    traj = molecule.make_trajectory(data)
     _, mdtraj_phis = md.compute_phi(traj)
     mdtraj_phis = np.abs(mdtraj_phis)
 
     # manual calculation of phi angles
     phis = []
-    for frame_data in x:
+    for frame_data in data:
         dihed_list = []
         for i in range(residues):
             # we get the phi's by starting at the 'N', which is the first
@@ -131,13 +133,13 @@ def test_backbone_psi_dihedrals():
     # Make sure backbone psi dihedrals are correct
 
     molecule = CGMolecule(names=names, resseq=resseq, resmap=resmap)
-    traj = molecule.make_trajectory(x)
+    traj = molecule.make_trajectory(data)
     _, mdtraj_psis = md.compute_psi(traj)
     mdtraj_psis = np.abs(mdtraj_psis)
 
     # manual calculation of psi angles
     psis = []
-    for frame_data in x:
+    for frame_data in data:
         dihed_list = []
         for i in range(residues):
             # we get the psi's by starting at the 'CA', which is the second
@@ -169,11 +171,11 @@ def test_backbone_psi_dihedrals():
 def test_equality_with_cgnet_dihedrals():
     # Make sure dihedrals are consistent with GeometryFeature
 
-    f = GeometryFeature(n_beads=beads)
-    out = f.forward(xt)
+    geom_feature = GeometryFeature(n_beads=beads)
+    out = geom_feature.forward(data_tensor)
 
     molecule = CGMolecule(names=names, resseq=resseq, resmap=resmap)
-    traj = molecule.make_trajectory(x)
+    traj = molecule.make_trajectory(data)
 
     mdtraj_phis = md.compute_phi(traj)[1]
     mdtraj_psis = md.compute_psi(traj)[1]
@@ -189,11 +191,11 @@ def test_equality_with_cgnet_dihedrals():
     phi_inds = [i*3 for i in range(residues)] # ['N', 'CA', 'C', 'N'] dihedrals
     psi_inds = [i*3+1 for i in range(residues)] # ['CA', 'C', 'N', 'CA'] dihedrals
 
-    cgnet_phi_cosines = f.dihedral_cosines.numpy()[:, phi_inds]
-    cgnet_phi_sines = f.dihedral_sines.numpy()[:, phi_inds]
+    cgnet_phi_cosines = geom_feature.dihedral_cosines.numpy()[:, phi_inds]
+    cgnet_phi_sines = geom_feature.dihedral_sines.numpy()[:, phi_inds]
 
-    cgnet_psi_cosines = f.dihedral_cosines.numpy()[:, psi_inds]
-    cgnet_psi_sines = f.dihedral_sines.numpy()[:, psi_inds]
+    cgnet_psi_cosines = geom_feature.dihedral_cosines.numpy()[:, psi_inds]
+    cgnet_psi_sines = geom_feature.dihedral_sines.numpy()[:, psi_inds]
 
     np.testing.assert_allclose(mdtraj_phi_cosines, cgnet_phi_cosines,
                                rtol=1e-4)
@@ -208,11 +210,11 @@ def test_equality_with_cgnet_dihedrals():
 def test_equality_with_cgnet_distances():
     # Make sure CA distances are consistent with GeometryFeature
 
-    f = GeometryFeature(n_beads=beads)
-    out = f.forward(xt)
+    geom_feature = GeometryFeature(n_beads=beads)
+    out = geom_feature.forward(data_tensor)
 
     molecule = CGMolecule(names=names, resseq=resseq, resmap=resmap)
-    traj = molecule.make_trajectory(x)
+    traj = molecule.make_trajectory(data)
 
     # Calculate all pairs of CA distances
     CA_inds = [i for i, name in enumerate(names) if name == 'CA']
@@ -223,20 +225,22 @@ def test_equality_with_cgnet_distances():
     mdtraj_CA_dists = md.compute_distances(traj, CA_pairs)
 
     # map each CA distance feature tuple to  the integer index
-    CA_feature_tuple_dict = {key: i for i, key in enumerate(f.descriptions['Distances'])
-                   if key in CA_pairs}
+    CA_feature_tuple_dict = {key: i for i, key in
+                             enumerate(geom_feature.descriptions['Distances'])
+                             if key in CA_pairs}
 
     # retrieve CA distances only from the feature object
-    cgnet_CA_dists = f.distances.numpy()[:, [CA_feature_tuple_dict[key]
+    cgnet_CA_dists = geom_feature.distances.numpy()[:, [CA_feature_tuple_dict[key]
                                              for key in CA_pairs]]
 
     np.testing.assert_allclose(mdtraj_CA_dists, cgnet_CA_dists, rtol=1e-6)
 
 
 def test_equality_with_cnget_angles():
-    # Make sure CA distances caluclated internally are consistent with mdtraj
+    # Make sure CA distances caluclated internally are consistent with mdtraj.
+    # This test appears here because it requires an mdtraj dependency.
     molecule = CGMolecule(names=names, resseq=resseq, resmap=resmap)
-    traj = molecule.make_trajectory(x)
+    traj = molecule.make_trajectory(data)
 
     # Grab the CA inds only to get the backbone angles and compute them
     # with mdtraj
@@ -247,8 +251,8 @@ def test_equality_with_cnget_angles():
 
     # Get the GeometryFeature for just the 
     geom_feature = GeometryFeature(feature_tuples=backbone_angles)
-    out = geom_feature.forward(xt)
+    out = geom_feature.forward(data_tensor)
 
     cgnet_angles = geom_feature.angles
 
-    np.testing.assert_allclose(mdtraj_angles, cgnet_angles)
+    np.testing.assert_allclose(mdtraj_angles, cgnet_angles, rtol=1e-5)
