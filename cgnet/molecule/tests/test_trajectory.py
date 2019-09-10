@@ -52,7 +52,7 @@ def test_cg_topology_standard():
 
     # Here we just make sure mdtraj.topology attributes have the right values
     assert molecule.top.n_atoms == beads
-    assert molecule.top.n_bonds == beads-1 # 'standard' fills in the bonds
+    assert molecule.top.n_bonds == beads-1  # 'standard' fills in the bonds
     assert molecule.top.n_chains == 1
 
 
@@ -64,7 +64,7 @@ def test_cg_topology_no_bonds():
 
     # Here we just make sure mdtraj.topology attributes have the right values
     assert molecule.top.n_atoms == beads
-    assert molecule.top.n_bonds == 0 # no bonds!
+    assert molecule.top.n_bonds == 0  # no bonds!
     assert molecule.top.n_chains == 1
 
 
@@ -75,7 +75,7 @@ def test_cg_topology_custom_bonds():
                           bonds=bonds)
 
     assert molecule.top.n_atoms == beads
-    assert molecule.top.n_bonds == beads-1 # manual number of bonds
+    assert molecule.top.n_bonds == beads-1  # manual number of bonds
     assert molecule.top.n_chains == 1
 
 
@@ -186,10 +186,12 @@ def test_equality_with_cgnet_dihedrals():
     mdtraj_psi_cosines = np.cos(mdtraj_psis)
     mdtraj_psi_sines = np.sin(mdtraj_psis)
 
-    # To get phi's and psi's out of cgnet, wen eed to specify which 
+    # To get phi's and psi's out of cgnet, we need to specify which
     # indices they correspond to along the backbone
-    phi_inds = [i*3 for i in range(residues)] # ['N', 'CA', 'C', 'N'] dihedrals
-    psi_inds = [i*3+1 for i in range(residues)] # ['CA', 'C', 'N', 'CA'] dihedrals
+    # ['N', 'CA', 'C', 'N'] dihedrals
+    phi_inds = [i*3 for i in range(residues)]
+    # ['CA', 'C', 'N', 'CA'] dihedrals
+    psi_inds = [i*3+1 for i in range(residues)]
 
     cgnet_phi_cosines = geom_feature.dihedral_cosines.numpy()[:, phi_inds]
     cgnet_phi_sines = geom_feature.dihedral_sines.numpy()[:, phi_inds]
@@ -218,7 +220,7 @@ def test_equality_with_cgnet_distances():
 
     # Calculate all pairs of CA distances
     CA_inds = [i for i, name in enumerate(names) if name == 'CA']
-    CA_pairs = [] # these are feature tuples
+    CA_pairs = []  # these are feature tuples
     for i, ind1 in enumerate(CA_inds[:-1]):
         for j, ind2 in enumerate(CA_inds[i+1:]):
             CA_pairs.append((ind1, ind2))
@@ -231,7 +233,7 @@ def test_equality_with_cgnet_distances():
 
     # retrieve CA distances only from the feature object
     cgnet_CA_dists = geom_feature.distances.numpy()[:, [CA_feature_tuple_dict[key]
-                                             for key in CA_pairs]]
+                                                        for key in CA_pairs]]
 
     np.testing.assert_allclose(mdtraj_CA_dists, cgnet_CA_dists, rtol=1e-6)
 
@@ -246,10 +248,10 @@ def test_equality_with_cnget_angles():
     # with mdtraj
     CA_inds = [i for i, name in enumerate(names) if name == 'CA']
     backbone_angles = [(CA_inds[i], CA_inds[i+1], CA_inds[i+2])
-                        for i in range(len(CA_inds)-2)]
+                       for i in range(len(CA_inds)-2)]
     mdtraj_angles = md.compute_angles(traj, backbone_angles)
 
-    # Get the GeometryFeature for just the 
+    # Get the GeometryFeature for just the
     geom_feature = GeometryFeature(feature_tuples=backbone_angles)
     out = geom_feature.forward(data_tensor)
 
