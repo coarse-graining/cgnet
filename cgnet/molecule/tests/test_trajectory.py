@@ -231,3 +231,24 @@ def test_equality_with_cgnet_distances():
                                              for key in CA_pairs]]
 
     np.testing.assert_allclose(mdtraj_CA_dists, cgnet_CA_dists, rtol=1e-6)
+
+
+def test_equality_with_cnget_angles():
+    # Make sure CA distances caluclated internally are consistent with mdtraj
+    molecule = CGMolecule(names=names, resseq=resseq, resmap=resmap)
+    traj = molecule.make_trajectory(x)
+
+    # Grab the CA inds only to get the backbone angles and compute them
+    # with mdtraj
+    CA_inds = [i for i, name in enumerate(names) if name == 'CA']
+    backbone_angles = [(CA_inds[i], CA_inds[i+1], CA_inds[i+2])
+                        for i in range(len(CA_inds)-2)]
+    mdtraj_angles = md.compute_angles(traj, backbone_angles)
+
+    # Get the GeometryFeature for just the 
+    geom_feature = GeometryFeature(feature_tuples=backbone_angles)
+    out = geom_feature.forward(xt)
+
+    cgnet_angles = geom_feature.angles
+
+    np.testing.assert_allclose(mdtraj_angles, cgnet_angles)
