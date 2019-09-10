@@ -82,7 +82,7 @@ def test_backbone_angle_features():
             b = frame_data[i+1]
             c = frame_data[i+2]
 
-            ba = b-a
+            ba = a-b
             cb = c-b
 
             cos_angle = np.dot(ba, cb) / (np.linalg.norm(ba)

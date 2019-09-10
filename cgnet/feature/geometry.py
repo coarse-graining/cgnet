@@ -108,6 +108,7 @@ class Geometry():
         """Calculates angles in a vectorized fashion.
         """
         base, offset = self.get_vectorize_inputs(angle_inds, data)
+        base *= -1
 
         angles = self.arccos(self.sum(base*offset, axis=2)/self.norm(
             base, axis=2)/self.norm(offset, axis=2))
