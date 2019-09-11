@@ -62,8 +62,8 @@ def test_backbone_angle_features():
     # For spatial coordinates a, b, c, the angle \theta describing a-b-c
     # is calculated using the following formula:
     #
-    # \overline{ba} = b - a
-    # \overline{cb} = c - a
+    # \overline{ba} = a - b
+    # \overline{cb} = c - b
     # \cos(\theta) = (\frac{\overline{ba} \dot \overline{cb}}
     #                      {||\overline{ba}|| ||\overline{cb}||}
     # \theta = \arccos(\theta)
@@ -82,8 +82,8 @@ def test_backbone_angle_features():
             b = frame_data[i+1]
             c = frame_data[i+2]
 
-            ba = b-a
-            cb = c-b
+            ba = a - b
+            cb = c - b
 
             cos_angle = np.dot(ba, cb) / (np.linalg.norm(ba)
                                           * np.linalg.norm(cb))
