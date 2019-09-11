@@ -108,10 +108,13 @@ class Geometry():
         """Calculates angles in a vectorized fashion.
         """
         base, offset = self.get_vectorize_inputs(angle_inds, data)
-        # This convention assumes that the middle index of the angle triplet
-        # is the vertex, and multiplying by -1 switches distances to always be
-        # the vertex point subtracte dfrom the non-vertex point. See
-        # 
+        #  This convention assumes that the middle index of the angle triplet
+        # is the angle vertex. Scalar multiplication of the first vector
+        # of the angle triplet by -1 means that the vertex point is
+        # subtracted from the non-vertex point for the first vector.
+        # This ensures that the arccos operation returns the acute angle
+        #  at the vertex. See test_geometry_features for a non-parallel
+        # formulation.
         base *= -1
 
         angles = self.arccos(self.sum(base*offset, axis=2)/self.norm(
