@@ -10,6 +10,22 @@ g = Geometry(method='torch')
 class FeatureCombiner(nn.Module):
     """Class for combining GeometryFeatures and SchnetFeatures
 
+
+    Parameters
+    ----------
+    layer_list : list of nn.Module objects
+        feature layers with which data is transformed before being passed to
+        densely/fully connected layers prior to sum pooling and energy
+        prediction/force generation.
+    save_geometry : boolean (default=True)
+        specifies whether or not to save the output of GeometryFeature
+        layers. It is important to set this to true if CGnet priors
+        are to be used, and need to callback to GeometryFeature outputs.
+    distance_indices : list or np.ndarray of int (default=None)
+        Indices of distances output from a GeometryFeature layer, used
+        to isolate distances for redundant re-indexing for Schnet utilities
+
+
     Attributes
     ----------
     layer_list : nn.ModuleList
@@ -17,9 +33,12 @@ class FeatureCombiner(nn.Module):
         densely/fully connected layers prior to sum pooling and energy
         prediction/force generation.
     transforms : list of None or method types
-        inter-featurelayer transforms that may be needed during the forward
-        method. For example, SchnetFeature tools require a redundant form for
-        distances, so outputs from a previous GeometryFeature layer must be
+        inter-feature transforms that may be needed during the forward
+        method. These functions take the output of a previous feature layer and
+        transform/reindex it so that it may be used as input for the next
+        feature layer. The length of this list is equal to the length of the
+        layer_list. For example, SchnetFeature tools require a redundant form
+        for distances, so outputs from a previous GeometryFeature layer must be
         re-indexed.
     save_geometry  : boolean
         specifies whether or not to save the output of GeometryFeature
@@ -35,23 +54,6 @@ class FeatureCombiner(nn.Module):
     """
 
     def __init__(self, layer_list, save_geometry=True, distance_indices=None):
-        """Initialization
-
-        Parameters
-        ----------
-        layer_list : list of nn.Module objects
-            feature layers with which data is transformed before being passed to
-            densely/fully connected layers prior to sum pooling and energy
-            prediction/force generation.
-        save_geometry : boolean (default=True)
-            specifies whether or not to save the output of GeometryFeature
-            layers. It is important to set this to true if CGnet priors
-            are to be used, and need to callback to GeometryFeature outputs.
-        distance_indices : list or np.ndarray of int (default=None)
-            Indices of distances output from a GeometryFeature layer, used
-            to isolate distances for redundant re-indexing for Schnet utilities
-        """
-
         super(FeatureCombiner, self).__init__()
         self.layer_list = nn.ModuleList(layer_list)
         if type(save_geometry) == bool:
