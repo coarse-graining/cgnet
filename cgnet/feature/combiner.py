@@ -32,7 +32,7 @@ class FeatureCombiner(nn.Module):
         feature layers with which data is transformed before being passed to
         densely/fully connected layers prior to sum pooling and energy
         prediction/force generation.
-    transforms : list of None or method types
+    interfeature_transforms : list of None or method types
         inter-feature transforms that may be needed during the forward
         method. These functions take the output of a previous feature layer and
         transform/reindex it so that it may be used as input for the next
@@ -44,7 +44,7 @@ class FeatureCombiner(nn.Module):
         specifies whether or not to save the output of GeometryFeature
         layers. It is important to set this to true if CGnet priors
         are to be used, and need to callback to GeometryFeature outputs.
-    mappings : dictionary of strings
+    transform_dictionary : dictionary of strings
         dictionary of mappings to provide for specified inter-feature
         transforms. Keys are strings which describe the mapping, and values
         are mapping objects. For example, a redundant distance mapping may be
@@ -58,8 +58,8 @@ class FeatureCombiner(nn.Module):
         self.layer_list = nn.ModuleList(layer_list)
         if type(save_geometry) == bool:
             self.save_geometry = save_geometry
-        self.transforms = []
-        self.mappings = {}
+        self.interfeature_transforms = []
+        self.transform_dictionary = {}
         self.distance_indices = distance_indices
         for layer in self.layer_list:
             if isinstance(layer, SchnetFeature):
@@ -71,7 +71,7 @@ class FeatureCombiner(nn.Module):
                                    "preceding this SchnetFeature with a GeometryFeature "
                                    "in order to prevent unnecessarily repeated pairwsie "
                                    "distance calculations"))
-                    self.transforms.append(None)
+                    self.interfeature_transforms.append(None)
                 elif layer.calculate_geometry:
                     self.transforms.append(None)
                 else:
@@ -79,15 +79,16 @@ class FeatureCombiner(nn.Module):
                         raise RuntimeError(("Distance indices must be "
                                             "supplied to FeatureCombiner "
                                             "for redundant re-indexing."))
-                    self.mappings['redundant_distance_mapping'] = (
+                    self.transform_dictionary['redundant_distance_mapping'] = (
                         g.get_redundant_distance_mapping(layer._distance_pairs))
-                    self.transforms.append([self.distance_reindex])
+                    self.interfeature_transforms.append([self.distance_reindex])
             else:
-                self.transforms.append(None)
+                self.interfeature_transforms.append(None)
 
     def distance_reindex(self, geometry_output):
         """Reindexes GeometryFeature distance outputs to redundant form for
-        SchnetFeatures and related tools.
+        SchnetFeatures and related tools. See
+        Geometry.get_redundant_distance_mapping
 
         Parameters
         ----------
@@ -102,7 +103,7 @@ class FeatureCombiner(nn.Module):
             [n_frames, n_beads, n_beads-1].
         """
         distances = geometry_output[:, self.distance_indices]
-        return distances[:, self.mappings['redundant_distance_mapping']]
+        return distances[:, self.transform_dictionary['redundant_distance_mapping']]
 
     def forward(self, coords, embedding_property=None):
         """Forward method through specified feature layers. The forward
@@ -132,7 +133,7 @@ class FeatureCombiner(nn.Module):
         feature_output = coords
         geometry_features = None
         for num, (layer, transform) in enumerate(zip(self.layer_list,
-                                                     self.transforms)):
+                                                 self.interfeature_transforms)):
             if transform != None:
                 # apply transform(s) before the layer if specified
                 for sub_transform in transform:
