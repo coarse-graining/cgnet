@@ -40,7 +40,7 @@ class FeatureCombiner(nn.Module):
         layer_list. For example, SchnetFeature tools require a redundant form
         for distances, so outputs from a previous GeometryFeature layer must be
         re-indexed.
-    save_geometry  : boolean
+    save_geometry  : boolean (default=True)
         specifies whether or not to save the output of GeometryFeature
         layers. It is important to set this to true if CGnet priors
         are to be used, and need to callback to GeometryFeature outputs.
