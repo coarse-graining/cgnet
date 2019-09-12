@@ -93,7 +93,7 @@ class FeatureCombiner(nn.Module):
         Parameters
         ----------
         geometry_output : torch.Tensor
-            geometrical feature output frome a GeometryFeature layer, of shape
+            geometrical feature output frome a GeometryFeature layer, of size
             [n_frames, n_features].
 
         Returns
