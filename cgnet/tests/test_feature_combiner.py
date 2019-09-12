@@ -51,7 +51,7 @@ def test_combiner_geometry_feature():
     # should return feature_ouput, geometry_output, with geometry_features
     # equal to None
     feature_output, geometry_output = feature_combiner(coords_torch)
-    assert feature_combiner.transforms == [None]
+    assert feature_combiner.interfeature_transforms == [None]
     np.testing.assert_equal(list(feature_output.size()), list((n_frames,
                             len(geom_stats.master_description_tuples))))
     assert geometry_output is None
@@ -92,7 +92,7 @@ def test_combiner_zscore():
     # equal to None
     feature_output, geometry_output = feature_combiner(coords_torch)
     # Both transfroms should be None
-    assert feature_combiner.transforms == [None, None]
+    assert feature_combiner.interfeature_transforms == [None, None]
     np.testing.assert_equal(list(feature_output.size()), list((n_frames,
                             len(geom_stats.master_description_tuples))))
     np.testing.assert_equal(list(geometry_output.size()), list((n_frames,

@@ -73,7 +73,7 @@ class FeatureCombiner(nn.Module):
                                    "distance calculations"))
                     self.interfeature_transforms.append(None)
                 elif layer.calculate_geometry:
-                    self.transforms.append(None)
+                    self.interfeature_transforms.append(None)
                 else:
                     if self.distance_indices is None:
                         raise RuntimeError(("Distance indices must be "
