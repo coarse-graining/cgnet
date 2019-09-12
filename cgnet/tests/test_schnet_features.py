@@ -1,5 +1,5 @@
 # Author: Dominik Lemm
-# contributors: Nick Charron
+# Contributors: Nick Charron
 
 import numpy as np
 import torch
