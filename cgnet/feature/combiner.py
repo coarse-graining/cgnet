@@ -58,8 +58,6 @@ class FeatureCombiner(nn.Module):
         self.layer_list = nn.ModuleList(layer_list)
         if type(save_geometry) == bool:
             self.save_geometry = save_geometry
-        else:
-            raise ValueError("save_geometry must be a boolean value")
         self.transforms = []
         self.mappings = {}
         self.distance_indices = distance_indices
