@@ -218,10 +218,7 @@ class Geometry():
             Shape [n_frames, n_beads, n_neighbors]
 
         """
-        # TODO In future releases of PyTorch, support for torch.eye using
-        # dtype=torch.bool (currently being addressed in pytorch PR 24148)
-        # will be extended. When this happens, changes should be made to
-        # this method to complete full native torch manipulation.
+
         self.check_array_vs_tensor(distances, 'distances')
 
         n_frames, n_beads, n_neighbors = distances.shape
