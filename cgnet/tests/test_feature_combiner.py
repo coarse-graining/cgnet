@@ -100,8 +100,12 @@ def test_combiner_zscore():
 
 
 def test_combiner_priors():
-    # Test the combination of GeometryFeature, priors
-    # within a CGnet instance. First, we create our FeatureCombiner
+    # This test checks to see if the same energy/force results are obtained
+    # using a FeatureCombiner instantiated with just a Geometry feature 
+    # as with a cgnet that uses a normal GeometryFeature as the feature 
+    # __init__ kwarg
+
+    #First, we create our FeatureCombiner
     layer_list = [geometry_feature, zscore_layer]
     feature_combiner = FeatureCombiner(layer_list)
 
