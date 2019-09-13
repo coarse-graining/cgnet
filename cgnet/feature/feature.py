@@ -414,8 +414,31 @@ class SchnetFeature(nn.Module):
 
     Example
     -------
-    # TODO: Maybe add an exmaple here once it's functional?
+    # Basic example on how to initialize and use the SchnetFeature class.
+    # First, initialize an embedding.
+    embedding_size = 5
+    embedding_layer = CGBeadEmbedding(n_embeddings=5,
+                                      embedding_dim=10)
 
+    beads = 5  # example number of coarse-grain beads in the dataset
+    schnet_feature = SchnetFeature(feature_size=10,
+                                   embedding_layer=embedding_layer,
+                                   n_interaction_blocks=2,
+                                   calculate_geometry=True,
+                                   n_beads=beads,
+                                   neighbor_cutoff=5.0)
+
+    # To perform a forward pass, pass coordinates and properties to embed to
+    # schnet_feature.
+    # Properties should be integers, e.g. nuclear charge.
+
+    # coordinates is a torch.Tensor size [n_frames, n_beads, 3]
+    # embedding_properties is a torch.Tensor size [n_frames, n_beads]
+    schnet_features = schnet_feature(coordinates, embedding_properties)
+
+    # In case SchnetFeature is initialized with calculate_geometry=False,
+    # distances instead of coordinates can passed.
+    # Distances should have the size [n_frames, n_beads, n_beads-1].
     """
 
     def __init__(self,
@@ -530,7 +553,8 @@ class CGBeadEmbedding(torch.nn.Module):
             Some property that should be embedded. Can be nuclear charge
             or maybe an arbitrary number assigned for amino-acids. Passing a
             zero will produce an embedding vector filled with zeroes (necessary
-            in the case of zero padded batches).
+            in the case of zero padded batches). The properties to be embedded
+            should be integers (torch type long).
             Size [n_frames, n_beads]
 
         Returns
