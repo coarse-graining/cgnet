@@ -108,7 +108,7 @@ class FeatureCombiner(nn.Module):
     def forward(self, coords, embedding_property=None):
         """Forward method through specified feature layers. The forward
         operation proceeds through self.layer_list in that same order
-        as the input layer_list for __init__().
+        that was passed to the FeatureCombiner.
 
         Parameters
         ----------
