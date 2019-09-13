@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from .priors import ZscoreLayer, HarmonicLayer, RepulsionLayer
-from cgnet.feature import FeatureCombiner
+from cgnet.feature import FeatureCombiner, SchnetFeature
 
 
 class ForceLoss(torch.nn.Module):
@@ -164,14 +164,19 @@ class CGnet(nn.Module):
                     # sum energy over beads
                     energy = torch.sum(energy, axis=1)
             if not isinstance(self.feature, FeatureCombiner):
-                feat = self.feature(feat)
+                if embedding_property is not None:
+                    feat = self.feature(feat, embedding_property)
+                else:
+                    feat = self.feature(feat)
                 energy = self.arch(feat)
         else:
             energy = self.arch(feat)
         if self.priors:
             for prior in self.priors:
                 energy = energy + prior(feat[:, prior.callback_indices])
-
+        # Sum up energies along bead axis for Schnet outputs
+        if len(energy.size()) == 3 and isinstance(self.feature, SchnetFeature):
+            energy = torch.sum(energy, axis=-2)
         # Perform autograd to learn potential of conservative force field
         force = torch.autograd.grad(-torch.sum(energy),
                                     coord,
