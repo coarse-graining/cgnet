@@ -1,4 +1,5 @@
 # Author: Dominik Lemm
+# Contributors: Nick Charron
 
 import numpy as np
 import torch
@@ -32,7 +33,8 @@ test_rbf = torch.randn((frames, beads, beads - 1, n_gaussians))
 # beads see each other (shape [n_frames, n_beads, n_beads -1]).
 _distance_pairs, _ = g.get_distance_indices(beads, [], [])
 redundant_distance_mapping = g.get_redundant_distance_mapping(_distance_pairs)
-distances = g.get_distances(_distance_pairs, torch.from_numpy(coords), norm=True)
+distances = g.get_distances(
+    _distance_pairs, torch.from_numpy(coords), norm=True)
 distances = distances[:, redundant_distance_mapping]
 test_nbh, test_nbh_mask = g.get_neighbors(distances, cutoff=neighbor_cutoff)
 
@@ -109,10 +111,12 @@ def test_shared_weights():
     schnet_feature_no_shared_weights = SchnetFeature(feature_size=feature_size,
                                                      embedding_layer=None,
                                                      n_interaction_blocks=2,
+                                                     n_beads=beads,
                                                      share_weights=False)
     schnet_feature_shared_weights = SchnetFeature(feature_size=feature_size,
                                                   embedding_layer=None,
                                                   n_interaction_blocks=2,
+                                                  n_beads=beads,
                                                   share_weights=True)
 
     # Loop over all parameters in both interaction blocks
@@ -125,14 +129,15 @@ def test_shared_weights():
 
     # If the weights are not shared, the parameters should be different.
     for param1, param2 in zip(
-            schnet_feature_no_shared_weights.interaction_blocks[0].parameters(),
+            schnet_feature_no_shared_weights.interaction_blocks[0].parameters(
+            ),
             schnet_feature_no_shared_weights.interaction_blocks[1].parameters()):
         assert not np.array_equal(param1.detach().numpy(),
                                   param2.detach().numpy())
 
 
 def test_schnet_feature_geometry():
-    # Tests SchnetFeature's calls to the Geometry class for 
+    # Tests SchnetFeature's calls to the Geometry class for
     # distance calculations
     # First, we instance a SchnetFeature that can call to Geometry
     schnet_feature = SchnetFeature(feature_size=n_feats,
@@ -224,5 +229,6 @@ def test_cg_embedding():
     assert np.all(same_embedding)
 
     # Test if passing different values produce different embeddings
-    random_embedding = embedding_layer.forward(random_properties).detach().numpy()
+    random_embedding = embedding_layer.forward(
+        random_properties).detach().numpy()
     assert not np.all(random_embedding)

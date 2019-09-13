@@ -218,6 +218,7 @@ class Geometry():
             Shape [n_frames, n_beads, n_neighbors]
 
         """
+
         self.check_array_vs_tensor(distances, 'distances')
 
         n_frames, n_beads, n_neighbors = distances.shape

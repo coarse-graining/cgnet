@@ -454,7 +454,7 @@ class SchnetFeature(nn.Module):
             self.redundant_distance_mapping = g.get_redundant_distance_mapping(
                 self._distance_pairs)
         else:
-            self._distance_pairs = None
+            self._distance_pairs, _ = g.get_distance_indices(n_beads, [], [])
             self.redundant_distance_mapping = None
 
     def forward(self, in_features, embedding_property):
@@ -514,6 +514,7 @@ class CGBeadEmbedding(torch.nn.Module):
     embedding_dim: int
         Size of the embedding vector.
     """
+
     def __init__(self, n_embeddings, embedding_dim):
         super(CGBeadEmbedding, self).__init__()
         self.embedding = nn.Embedding(num_embeddings=n_embeddings,
