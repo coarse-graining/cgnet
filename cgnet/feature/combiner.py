@@ -31,7 +31,8 @@ class FeatureCombiner(nn.Module):
     layer_list : nn.ModuleList
         feature layers with which data is transformed before being passed to
         densely/fully connected layers prior to sum pooling and energy
-        prediction/force generation.
+        prediction/force generation. The length of layer_list is the number
+        of layers.
     interfeature_transforms : list of None or method types
         inter-feature transforms that may be needed during the forward
         method. These functions take the output of a previous feature layer and

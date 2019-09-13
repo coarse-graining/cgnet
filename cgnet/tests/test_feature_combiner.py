@@ -48,7 +48,7 @@ def _get_random_schnet_feature(calc_geom=False):
                                    neighbor_cutoff=neighbor_cutoff)
     return schnet_feature, embedding_property, feature_size
 
-def _get_random_arch(input_size):
+def _get_random_architecture(input_size):
     """ Helper function to generate random hidden architecture for CGnet
 
     Parameters
@@ -148,7 +148,7 @@ def test_combiner_schnet_in_cgnet():
     feature_combiner = FeatureCombiner(layer_list)
 
     # Next, we make aa CGnet with a random hidden architecture
-    arch = _get_random_arch(feature_size)
+    arch = _get_random_architecture(feature_size)
     model = CGnet(arch, ForceLoss(), feature=feature_combiner)
 
     # Next, we forward the random protein data through the model
@@ -202,7 +202,7 @@ def test_combiner_priors():
 
     # Next, we create CGnet and use the bond_potential prior and
     # feature_combiner.
-    arch = _get_random_arch(len(geom_stats.master_description_tuples))
+    arch = _get_random_architecture(len(geom_stats.master_description_tuples))
     model = CGnet(arch, ForceLoss(), feature=feature_combiner,
                   priors=[bond_potential])
 
