@@ -9,3 +9,4 @@ dist
 *.egg
 debug/*
 *.swp
+*.pt
