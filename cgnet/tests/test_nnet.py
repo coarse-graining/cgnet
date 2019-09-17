@@ -9,7 +9,7 @@ from sklearn.metrics import mean_squared_error as mse
 from cgnet.network import (CGnet, ForceLoss, RepulsionLayer,
                            HarmonicLayer, ZscoreLayer, Simulation)
 from cgnet.feature import (GeometryStatistics, GeometryFeature,
-                           LinearLayer)
+                           LinearLayer, FeatureCombiner)
 
 # The following sets up data for linear regession comparison test
 x0 = torch.rand((50, 1), requires_grad=True)  # 50 1D input examples
@@ -151,7 +151,7 @@ def test_harmonic_layer():
     geom_feat = GeometryFeature(n_beads=beads)
     output_features = geom_feat(coords)
     energy = harmonic_potential(output_features[:,
-                                 harmonic_potential.callback_indices])
+                                harmonic_potential.callback_indices])
 
     # Test to see if HarmonicLayer output is scalar energy
     np.testing.assert_equal(energy.size(), (frames, 1))
@@ -169,7 +169,7 @@ def test_harmonic_layer():
                           [stat['mean']]])), dim=1)
     energy_check = torch.sum(harmonic_parameters[0, :] *
                              (output_features[:, bonds_idx] -
-                             harmonic_parameters[1, :]) ** 2,
+                              harmonic_parameters[1, :]) ** 2,
                              1).reshape(len(output_features), 1) / 2
 
     np.testing.assert_array_equal(energy.detach().numpy(),
@@ -188,7 +188,7 @@ def test_prior_callback_order_1():
 
     # Next, we create a shuffled harmonic potential using shuffled statistics
     bonds_interactions, _ = geom_stats.get_prior_statistics(features=list(bonds_tuples),
-                                                       as_list=True)
+                                                            as_list=True)
     harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
 
     # Test to see if callback indices are correctly embedded
@@ -209,13 +209,13 @@ def test_prior_callback_order_2():
     np.random.shuffle(bonds_tuples)
     bonds_idx = geom_stats.return_indices(bonds_tuples)
     bonds_interactions, _ = geom_stats.get_prior_statistics(features=list(bonds_tuples),
-                                                       as_list=True)
+                                                            as_list=True)
     harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
 
     # Here, we test the energy of the shuffled HarmonicLayer with a manual
     # calculation according to the default GeometryStatistics bond order
     energy = harmonic_potential(output_features[:,
-                                harmonic_potential.callback_indices])
+                                                harmonic_potential.callback_indices])
     feature_stats = geom_stats.get_prior_statistics('Bonds')
     feature_idx = geom_stats.return_indices('Bonds')
     harmonic_parameters = torch.tensor([])
@@ -226,7 +226,7 @@ def test_prior_callback_order_2():
                           [stat['mean']]])), dim=1)
     energy_check = torch.sum(harmonic_parameters[0, :] *
                              (output_features[:, feature_idx] -
-                             harmonic_parameters[1, :]) ** 2,
+                              harmonic_parameters[1, :]) ** 2,
                              1).reshape(len(output_features), 1) / 2
     np.testing.assert_allclose(np.sum(energy.detach().numpy()),
                                np.sum(energy_check.detach().numpy()), rtol=1e-4)
@@ -242,15 +242,15 @@ def test_prior_with_stats_dropout():
     feature_bools = [1] + [np.random.randint(0, high=1) for _ in range(2)]
     np.random.shuffle(feature_bools)
     dropout_stats = GeometryStatistics(coords,
-                               get_all_distances=feature_bools[0],
-                               get_backbone_angles=feature_bools[1],
-                               get_backbone_dihedrals=feature_bools[2])
+                                       get_all_distances=feature_bools[0],
+                                       get_backbone_angles=feature_bools[1],
+                                       get_backbone_dihedrals=feature_bools[2])
 
     # Here we construct priors on available features and test the callback order
     if 'Distances' in dropout_stats.descriptions:
         # HarmonicLayer bonds test with random constants & means
         bonds_interactions, _ = dropout_stats.get_prior_statistics(features='Bonds',
-                                                           as_list=True)
+                                                                   as_list=True)
         bonds_idx = dropout_stats.return_indices('Bonds')
         harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
         np.testing.assert_array_equal(bonds_idx,
@@ -271,7 +271,7 @@ def test_prior_with_stats_dropout():
     for name in ['Angles', 'Dihedral_cosines', 'Dihedral_sines']:
         if name in dropout_stats.descriptions:
             feat_interactions, _ = dropout_stats.get_prior_statistics(features=name,
-                                                              as_list=True)
+                                                                      as_list=True)
             feat_idx = dropout_stats.return_indices(name)
             harmonic_potential = HarmonicLayer(feat_idx, feat_interactions)
             np.testing.assert_array_equal(feat_idx,

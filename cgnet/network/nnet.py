@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from .priors import ZscoreLayer, HarmonicLayer, RepulsionLayer
+from cgnet.feature import FeatureCombiner, SchnetFeature
 
 
 class ForceLoss(torch.nn.Module):
@@ -111,6 +112,7 @@ class CGnet(nn.Module):
             if isinstance(layer, ZscoreLayer):
                 self.register_buffer('zscores_{}'.format(zscore_idx),
                                      layer.zscores)
+
                 zscore_idx += 1
         self.arch = nn.Sequential(*arch)
         if priors:
@@ -131,13 +133,17 @@ class CGnet(nn.Module):
         self.criterion = criterion
         self.feature = feature
 
-    def forward(self, coord):
+    def forward(self, coord, embedding_property=None):
         """Forward pass through the network ending with autograd layer.
 
         Parameters
         ----------
         coord : torch.Tensor (grad enabled)
             input trajectory/data of size [n_frames, n_degrees_of_freedom].
+        embedding_property: torch.Tensor (default=None)
+            Some property that should be embedded. Can be nuclear charge
+            or maybe an arbitrary number assigned for amino-acids.
+            Size [n_frames, n_properties]
 
         Returns
         -------
@@ -150,15 +156,27 @@ class CGnet(nn.Module):
         """
         feat = coord
         if self.feature:
-            feat = self.feature(feat)
-
-        # forward pass through the hidden architecture of the CGnet
-        energy = self.arch(feat)
-        # addition of external priors to form total energy
+            if isinstance(self.feature, FeatureCombiner):
+                forward_feat, feat = self.feature(feat,
+                                     embedding_property=embedding_property)
+                energy = self.arch(forward_feat)
+                if len(energy.size()) == 3:
+                    # sum energy over beads
+                    energy = torch.sum(energy, axis=1)
+            if not isinstance(self.feature, FeatureCombiner):
+                if embedding_property is not None:
+                    feat = self.feature(feat, embedding_property)
+                else:
+                    feat = self.feature(feat)
+                energy = self.arch(feat)
+        else:
+            energy = self.arch(feat)
         if self.priors:
             for prior in self.priors:
                 energy = energy + prior(feat[:, prior.callback_indices])
-
+        # Sum up energies along bead axis for Schnet outputs
+        if len(energy.size()) == 3 and isinstance(self.feature, SchnetFeature):
+            energy = torch.sum(energy, axis=-2)
         # Perform autograd to learn potential of conservative force field
         force = torch.autograd.grad(-torch.sum(energy),
                                     coord,
@@ -166,7 +184,7 @@ class CGnet(nn.Module):
                                     retain_graph=True)
         return energy, force[0]
 
-    def predict(self, coord, force_labels):
+    def predict(self, coord, force_labels, embedding_property=None):
         """Prediction over test/validation batch.
 
         Parameters
@@ -175,7 +193,10 @@ class CGnet(nn.Module):
             input trajectory/data of size [n_frames, n_degrees_of_freedom]
         force_labels: torch.Tensor
             force labels of size [n_frames, n_degrees_of_freedom]
-
+        embedding_property: torch.Tensor (default=None)
+            Some property that should be embedded. Can be nuclear charge
+            or maybe an arbitrary number assigned for amino-acids.
+            Size [n_frames, n_properties]
         Returns
         -------
         loss.data : torch.Tensor
@@ -185,6 +206,7 @@ class CGnet(nn.Module):
 
         self.eval()  # set model to eval mode
         energy, force = self.forward(coord)
-        loss = self.criterion.forward(force, force_labels)
+        loss = self.criterion.forward(force, force_labels,
+                                      embedding_property=embedding_property)
         self.train()  # set model to train mode
         return loss.data

@@ -9,7 +9,7 @@ from sklearn.metrics import mean_squared_error as mse
 from cgnet.network import (CGnet, ForceLoss,
                            RepulsionLayer, HarmonicLayer, ZscoreLayer)
 from cgnet.feature import (GeometryStatistics, GeometryFeature,
-                           MoleculeDataset)
+                           MoleculeDataset, LinearLayer)
 from torch.utils.data import DataLoader
 from nose.exc import SkipTest
 
@@ -20,16 +20,19 @@ width = np.random.randint(2, high=10)
 
 
 def test_model_gpu_mount():
+    # Tests to see if forwarding through CGnet mounted on GPU runs properly
     if not torch.cuda.is_available():
         raise SkipTest("GPU not available for testing.")
     coords = np.random.randn(num_examples, num_beads, 3).astype('float32')
     forces = np.random.randn(num_examples, num_beads, 3).astype('float32')
     stats = GeometryStatistics(coords)
+    feat_layer = GeometryFeature(feature_tuples=stats.feature_tuples)
+
 
     bonds_list, _ = stats.get_prior_statistsics('Bonds')
     bonds_idx = stats.return_indices('Bonds')
 
-    repul_distances = [i for i in stats.descriptions['Distances']
+    repul_tuples = [i for i in stats.descriptions['Distances']
                        if abs(i[0]-i[1]) > 2]
     repul_idx = stats.return_indices(features=repul_distances)
     ex_vols = np.random.uniform(2, 8, len(repul_distances))
