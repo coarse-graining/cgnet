@@ -37,12 +37,16 @@ class GeometryFeature(nn.Module):
         List of three-bead angles according to descriptions['Angles']
     dihedrals : torch.Tensor
         List of four-bead torsions according to descriptions['Torsions']
+    device : torch.device (default=torch.device('cpu'))
+        Device upon which tensors are mounted. Default device is the local
+        CPU.
     """
 
-    def __init__(self, feature_tuples='all', n_beads=None):
+    def __init__(self, feature_tuples='all', n_beads=None, device=torch.device('cpu')):
         super(GeometryFeature, self).__init__()
 
         self._n_beads = n_beads
+        self.device = device
         if feature_tuples is not 'all':
             _temp_dict = dict(
                 zip(feature_tuples, np.arange(len(feature_tuples))))
@@ -129,7 +133,7 @@ class GeometryFeature(nn.Module):
 
         self.descriptions = {}
         self.description_order = []
-        out = torch.Tensor([])
+        out = torch.Tensor([], device=self.device)
 
         if len(self._distance_pairs) > 0:
             self.compute_distances(data)
