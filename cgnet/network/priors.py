@@ -145,6 +145,7 @@ class RepulsionLayer(_PriorLayer):
                 self.repulsion_parameters,
                 torch.tensor([[param_dict['ex_vol']],
                               [param_dict['exp']]])), dim=1)
+        self.register_buffer('repulsion_parameters', repulsion_parameters)
 
     def forward(self, in_feat):
         """Calculates repulsion interaction contributions to energy
@@ -225,6 +226,7 @@ class HarmonicLayer(_PriorLayer):
             self.harmonic_parameters = torch.cat((self.harmonic_parameters,
                                        torch.tensor([[param_dict['k']],
                                        [param_dict['mean']]])), dim=1)
+        self.register_buffer('harmonic_parameters', harmonic_parameters)
 
     def forward(self, in_feat):
         """Calculates harmonic contribution of bond/angle interactions to energy
@@ -273,7 +275,7 @@ class ZscoreLayer(nn.Module):
 
     def __init__(self, zscores):
         super(ZscoreLayer, self).__init__()
-        self.zscores = zscores
+        self.register_buffer('zscores', zscores)
 
     def forward(self, in_feat):
         """Normalizes each feature by subtracting its mean and dividing by
