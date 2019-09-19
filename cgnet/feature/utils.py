@@ -85,7 +85,7 @@ class RadialBasisFunction(nn.Module):
         self.centers = torch.linspace(0.0, cutoff, num_gaussians)
         self.variance = variance
         self.register_buffer('centers', self.centers)
-        self.variance('variance', self.variance)
+        self.register_buffer('variance', self.variance)
 
     def forward(self, distances):
         """Calculate Gaussian expansion

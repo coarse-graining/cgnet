@@ -239,7 +239,8 @@ class SchnetFeature(nn.Module):
                  n_gaussians=50,
                  variance=1.0,
                  n_interaction_blocks=1,
-                 share_weights=False):
+                 share_weights=False,
+                 device=torch.device('cpu')):
         super(SchnetFeature, self).__init__()
         self.embedding_layer = embedding_layer
         self.rbf_layer = RadialBasisFunction(cutoff=rbf_cutoff,
