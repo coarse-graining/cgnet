@@ -139,10 +139,10 @@ class RepulsionLayer(_PriorLayer):
                 raise KeyError(
                     'Missing or incorrect key for repulsion parameters'
                 )
-        self.repulsion_parameters = torch.tensor([])
+        repulsion_parameters = torch.tensor([])
         for param_dict in self.interaction_parameters:
-            self.repulsion_parameters = torch.cat((
-                self.repulsion_parameters,
+            repulsion_parameters = torch.cat((
+                repulsion_parameters,
                 torch.tensor([[param_dict['ex_vol']],
                               [param_dict['exp']]])), dim=1)
         self.register_buffer('repulsion_parameters', repulsion_parameters)
@@ -221,9 +221,9 @@ class HarmonicLayer(_PriorLayer):
                 pass
             else:
                 KeyError('Missing or incorrect key for harmonic parameters')
-        self.harmonic_parameters = torch.tensor([])
+        harmonic_parameters = torch.tensor([])
         for param_dict in self.interaction_parameters:
-            self.harmonic_parameters = torch.cat((self.harmonic_parameters,
+            harmonic_parameters = torch.cat((harmonic_parameters,
                                        torch.tensor([[param_dict['k']],
                                        [param_dict['mean']]])), dim=1)
         self.register_buffer('harmonic_parameters', harmonic_parameters)

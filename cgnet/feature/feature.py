@@ -244,7 +244,7 @@ class SchnetFeature(nn.Module):
         super(SchnetFeature, self).__init__()
         self.embedding_layer = embedding_layer
         self.rbf_layer = RadialBasisFunction(cutoff=rbf_cutoff,
-                                             n_gaussians=n_gaussians,
+                                             num_gaussians=n_gaussians,
                                              variance=variance)
         if share_weights:
             # Lets the interaction blocks share the weights
