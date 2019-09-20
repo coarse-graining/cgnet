@@ -300,8 +300,8 @@ class SchnetFeature(nn.Module):
 
         neighbors, neighbor_mask = g.get_neighbors(distances,
                                                    cutoff=self.neighbor_cutoff)
-        neighbors.to(self.device)
-        neighbor_mask.to(self.device)
+        neighbors = neighbors.to(self.device)
+        neighbor_mask = neighbor_mask.to(self.device)
         features = self.embedding_layer(embedding_property)
         rbf_expansion = self.rbf_layer(distances=distances)
 
