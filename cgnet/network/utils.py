@@ -51,9 +51,9 @@ def lipschitz_projection(model, strength=10.0, mask=None):
         if not isinstance(mask, list):
             raise ValueError("Lipschitz mask must be list of booleans")
         if len(weight_layers) != len(mask):
-           raise ValueError("Lipshitz mask must have the same number " \
-                            "of elements as the number of nn.Linear " \
-                            "modules in the model.")
+            raise ValueError("Lipshitz mask must have the same number "
+                             "of elements as the number of nn.Linear "
+                             "modules in the model.")
     if mask is None:
         mask = [True for _ in weight_layers]
     for mask_element, layer in zip(mask, weight_layers):
@@ -229,16 +229,16 @@ class Simulation():
         if self.verbose:
             i = 1
             print(
-            "Generating {} simulations of length {} at {}-step intervals".format(
-                self.n_sims, self.length, self.save_interval)
+                "Generating {} simulations of length {} at {}-step intervals".format(
+                    self.n_sims, self.length, self.save_interval)
             )
         save_size = int(self.length/self.save_interval)
 
         self.simulated_traj = torch.zeros((save_size, self.n_sims, self.n_beads,
-                                        self.n_dims))
+                                           self.n_dims))
         if self.save_forces:
             self.simulated_forces = torch.zeros((save_size, self.n_sims,
-                                              self.n_beads, self.n_dims))
+                                                 self.n_beads, self.n_dims))
         else:
             self.simulated_forces = None
 
@@ -274,8 +274,9 @@ class Simulation():
                         potential_dims = ([save_size, self.n_sims] +
                                           [potential.shape[j]
                                            for j in range(1,
-                                           len(potential.shape))])
-                        self.simulated_potential = torch.zeros((potential_dims))
+                                                          len(potential.shape))])
+                        self.simulated_potential = torch.zeros(
+                            (potential_dims))
 
                     self.simulated_potential[
                         t//self.save_interval] = potential
@@ -294,12 +295,14 @@ class Simulation():
         self.simulated_traj = self.simulated_traj.permute(*axes).numpy()
 
         if self.save_forces:
-            self.simulated_forces = self.simulated_forces.permute(*axes).numpy()
+            self.simulated_forces = self.simulated_forces.permute(
+                *axes).numpy()
 
         if self.save_potential:
             axes = list(range(len(self.simulated_potential.size())))
             axes[0] = 1
             axes[1] = 0
-            self.simulated_potential =  self.simulated_potential.permute(*axes).numpy()
+            self.simulated_potential = self.simulated_potential.permute(
+                *axes).numpy()
 
         return self.simulated_traj
