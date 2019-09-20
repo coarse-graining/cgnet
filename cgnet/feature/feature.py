@@ -133,7 +133,7 @@ class GeometryFeature(nn.Module):
 
         self.descriptions = {}
         self.description_order = []
-        out = torch.Tensor([], device=self.device)
+        out = torch.Tensor([]).to(self.device)
 
         if len(self._distance_pairs) > 0:
             self.compute_distances(data)
