@@ -206,6 +206,28 @@ class Simulation():
             self.rng.manual_seed(random_seed)
         self.random_seed = random_seed
 
+    def swap_axes(self, data):
+        """Helper method to exchange the zeroth and first axes of tensors after
+        simulations have finished
+
+        Parameters
+        ----------
+        data : torch.Tensor
+            Tensor to perform the axis swtich upon. Size
+            [n_timesteps, n_simulations, n_beads, n_dims]
+
+        Returns
+        -------
+        swapped_data : torch.Tensor
+            Axes-swapped tensor. Size
+            [n_timesteps, n_simulations, n_beads, n_dims]
+        """
+        axes = list(range(len(data.size())))
+        axes[0] = 1
+        axes[1] = 0
+        swapped_data = data.permute(*axes)
+        return swapped_data
+
     def simulate(self):
         """Generates independent simulations.
 
@@ -289,20 +311,12 @@ class Simulation():
 
         if self.verbose:
             print('100% finished.')
-        axes = list(range(len(self.simulated_traj.size())))
-        axes[0] = 1
-        axes[1] = 0
-        self.simulated_traj = self.simulated_traj.permute(*axes).numpy()
+        self.simulated_traj = self.swap_axes(self.simulated_traj).numpy()
 
         if self.save_forces:
-            self.simulated_forces = self.simulated_forces.permute(
-                *axes).numpy()
+            self.simulated_forces = self.swap_axes(self.simulated_forces).numpy()
 
         if self.save_potential:
-            axes = list(range(len(self.simulated_potential.size())))
-            axes[0] = 1
-            axes[1] = 0
-            self.simulated_potential = self.simulated_potential.permute(
-                *axes).numpy()
+            self.simulated_potential = self.swap_axes(self.simulated_potential).numpy()
 
         return self.simulated_traj
