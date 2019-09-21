@@ -202,8 +202,7 @@ class Simulation():
         if random_seed is None:
             self.rng = torch.default_generator
         else:
-            self.rng = torch.Generator()
-            self.rng.manual_seed(random_seed)
+            self.rng = torch.Generator().manual_seed(random_seed)
         self.random_seed = random_seed
 
     def swap_axes(self, data):
