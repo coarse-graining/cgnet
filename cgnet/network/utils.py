@@ -274,14 +274,18 @@ class Simulation():
 
         dtau = self.diffusion * self.dt
         for t in range(self.length):
+            # Here we must deatch tensors below in order to prevent
+            # dragging the computational graph through stochastic Langevin
+            # update, and tracking unecessary derivatives
             potential, forces = self.model(x_old)
             potential = potential.detach()
             forces = forces.detach()
             noise = torch.randn(self.n_sims,
                                 self.n_beads,
-                                self.n_dims, generator=self.rng).to(self.device)
+                                self.n_dims,
+                                generator=self.rng).to(self.device)
             x_new = (x_old.detach() + forces*dtau +
-                     np.sqrt(2*dtau/self.beta)*noise)
+                    np.sqrt(2*dtau/self.beta)*noise)
             if t % self.save_interval == 0:
                 self.simulated_traj[t//self.save_interval, :, :] = x_new
                 if self.save_forces:
