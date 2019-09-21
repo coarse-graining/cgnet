@@ -269,6 +269,8 @@ class Simulation():
 
         self.simulated_potential = None
 
+        # Here if the input is numpy.ndarray, it must be converted to a
+        # torch.Tensor with requires_grad=True
         if isinstance(self.initial_coordinates, torch.Tensor):
             x_old = self.initial_coordinates.clone().detach().requires_grad_(True).to(self.device)
         if isinstance(self.initial_coordinates, np.ndarray):
