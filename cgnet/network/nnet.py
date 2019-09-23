@@ -184,6 +184,29 @@ class CGnet(nn.Module):
                                     retain_graph=True)
         return energy, force[0]
 
+    def mount(self, device):
+        """Wrapper for device mounting
+
+        Parameters
+        ----------
+        device : torch.device
+            Device upon which model can be mounted for computation/training
+        """
+
+        # Buffers and parameters
+        self.to(device)
+        # Non parameters/buffers
+        for layer in self.layers:
+            if layer.device:
+                layer.device = device
+        if self.feature:
+           if isinstance(self.feature, FeatureCombiner):
+               for layer in self.feature.layer_list:
+                   if layer.device:
+                       layer.device = device
+           if isinstance(self.feature, (GeometryFeature, SchnetFeature)):
+               self.feature.device = device
+
     def predict(self, coord, force_labels, embedding_property=None):
         """Prediction over test/validation batch.
 
