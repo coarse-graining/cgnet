@@ -56,12 +56,24 @@ class FeatureCombiner(nn.Module):
     Notes
     -----
         There are several cases for combinations of GeometryFeature and
-        SchnetFeature. By default, a SchnetFeature is assumed to follow
-        a GeometryFeature in sequence. However, a SchnetFeature can also
-        use the geometry() backend directly (via the calculate_geometry
-        =True kwarg) if only distances are used as input. The former method
-        is more general, as prior callbacks can be placed on non-distance
-        features. The specific case ultimately depends on the problem context.
+        SchnetFeature.
+
+        1. Geometry Feature alone
+        2. Geometry Feature followed by SchnetFeature
+        3. SchnetFeature alone
+
+        1. corresponds to classic CGnet architecture, as proposed by
+        Wang et. al. (2019). 2. is a general combination that allows for
+        prior callbacks to non-distance features to add functional
+        energy constraints (e.g., angle/bond/repulsion constraints) that
+        supplement the classic SchNet architecture as proposed by Schutt et.
+        al. (2018). In this case, SchnetFeature should be initialized with
+        calculate_geometry=False, as the preceding GeometryFeature layer
+        already computes a geometrical featurization. 3. corresponds to
+        classic pairwise distance-based SchNet. In this case, the
+        SchnetFeature should be initialized with calculate_geometry=True
+        so that it can use Geometry() tools to calculate distances on the
+        fly.
 
     """
 
