@@ -52,6 +52,17 @@ class FeatureCombiner(nn.Module):
         represented as:
 
             {'redundant_distance_maping' : self.redundant_distance_mapping}
+
+    Notes
+    -----
+        There are several cases for combinations of GeometryFeature and
+        SchnetFeature. By default, a SchnetFeature is assumed to follow
+        a GeometryFeature in sequence. However, a SchnetFeature can also
+        use the geometry() backend directly (via the calculate_geometry
+        =True kwarg) if only distances are used as input. The former method
+        is more general, as prior callbacks can be placed on non-distance
+        features. The specific case ultimately depends on the problem context.
+
     """
 
     def __init__(self, layer_list, save_geometry=True, distance_indices=None):
