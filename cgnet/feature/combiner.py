@@ -55,26 +55,40 @@ class FeatureCombiner(nn.Module):
 
     Notes
     -----
-        There are several cases for combinations of GeometryFeature and
-        SchnetFeature.
+    There are several cases for combinations of GeometryFeature and
+    SchnetFeature.
 
-        1. Geometry Feature alone
-        2. Geometry Feature followed by SchnetFeature
-        3. SchnetFeature alone
+    (1) Geometry Feature alone
+    (2) Geometry Feature followed by SchnetFeature
+    (3) SchnetFeature alone
 
-        1. corresponds to classic CGnet architecture, as proposed by
-        Wang et. al. (2019). 2. is a general combination that allows for
-        prior callbacks to non-distance features to add functional
-        energy constraints (e.g., angle/bond/repulsion constraints) that
-        supplement the classic SchNet architecture as proposed by Schutt et.
-        al. (2018). In this case, SchnetFeature should be initialized with
-        calculate_geometry=False, as the preceding GeometryFeature layer
-        already computes a geometrical featurization. 3. corresponds to
-        classic pairwise distance-based SchNet. In this case, the
-        SchnetFeature should be initialized with calculate_geometry=True
-        so that it can use Geometry() tools to calculate distances on the
-        fly.
+    (1) corresponds to classic CGnet architecture, as proposed by
+    Wang et. al. (2019).
 
+    (2) is a general combination that allows for prior callbacks to
+    non-distance features to add functional energy constraints (e.g.,
+    angle/bond/repulsion constraints) that supplement the classic SchNet
+    architecture as proposed by Schutt et. al. (2018). In this case,
+    SchnetFeature should be initialized with calculate_geometry=False,
+    as the preceding GeometryFeature layer already computes a geometrical
+    featurization.
+
+    (3) corresponds to classic pairwise distance-based SchNet. In this case,
+    the SchnetFeature must be initialized with calculate_geometry=True
+    so that it can use Geometry() tools to calculate distances on the fly.
+
+
+    References
+    ----------
+    Wang, J., Olsson, S., Wehmeyer, C., Pérez, A., Charron, N. E.,
+        de Fabritiis, G., Noé, F., Clementi, C. (2019). Machine Learning
+        of Coarse-Grained Molecular Dynamics Force Fields. ACS Central Science.
+        https://doi.org/10.1021/acscentsci.8b00913
+    K.T. Schütt. P.-J. Kindermans, H. E. Sauceda, S. Chmiela,
+        A. Tkatchenko, K.-R. Müller. (2018)
+        SchNet - a deep learning architecture for molecules and materials.
+        The Journal of Chemical Physics.
+        https://doi.org/10.1063/1.5019779
     """
 
     def __init__(self, layer_list, save_geometry=True, distance_indices=None):
