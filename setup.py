@@ -20,7 +20,7 @@ setup(
     name=NAME,
     version=VERSION,
     author="Nick Charron, Brooke Husic, Dominik Lemm, Jiang Wang",
-    author_email="bhusic@stanford.edu",
+    author_email="husic@zedat.fu-berlin.de",
     url='https://github.com/coarse-graining/cgnet',
     #download_url='https://github.com/coarse-graining/cgnet/tarball/master',
     #long_description=read('README.md'),
