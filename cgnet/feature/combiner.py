@@ -76,6 +76,10 @@ class FeatureCombiner(nn.Module):
     (3) corresponds to classic pairwise distance-based SchNet. In this case,
     the SchnetFeature must be initialized with calculate_geometry=True
     so that it can use Geometry() tools to calculate distances on the fly.
+    If calculate_geometry=False, the input to the network must be pairwise
+    distances of size [n_frames, n_beads, n_neighbors], and the terminal
+    CGnet autograd function will compute derivates with respect to pairwise
+    distances instead of cartesian coordinates.
 
 
     References
