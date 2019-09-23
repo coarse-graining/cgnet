@@ -52,6 +52,47 @@ class FeatureCombiner(nn.Module):
         represented as:
 
             {'redundant_distance_maping' : self.redundant_distance_mapping}
+
+    Notes
+    -----
+    There are several cases for combinations of GeometryFeature and
+    SchnetFeature.
+
+    (1) Geometry Feature alone
+    (2) Geometry Feature followed by SchnetFeature
+    (3) SchnetFeature alone
+
+    (1) corresponds to classic CGnet architecture, as proposed by
+    Wang et. al. (2019).
+
+    (2) is a general combination that allows for prior callbacks to
+    non-distance features to add functional energy constraints (e.g.,
+    angle/bond/repulsion constraints) that supplement the classic SchNet
+    architecture as proposed by Schutt et. al. (2018). In this case,
+    SchnetFeature should be initialized with calculate_geometry=False,
+    as the preceding GeometryFeature layer already computes a geometrical
+    featurization.
+
+    (3) corresponds to classic pairwise distance-based SchNet. In this case,
+    the SchnetFeature must be initialized with calculate_geometry=True
+    so that it can use Geometry() tools to calculate distances on the fly.
+    If calculate_geometry=False, the input to the network must be pairwise
+    distances of size [n_frames, n_beads, n_neighbors], and the terminal
+    CGnet autograd function will compute derivates with respect to pairwise
+    distances instead of cartesian coordinates.
+
+
+    References
+    ----------
+    Wang, J., Olsson, S., Wehmeyer, C., Pérez, A., Charron, N. E.,
+        de Fabritiis, G., Noé, F., Clementi, C. (2019). Machine Learning
+        of Coarse-Grained Molecular Dynamics Force Fields. ACS Central Science.
+        https://doi.org/10.1021/acscentsci.8b00913
+    K.T. Schütt. P.-J. Kindermans, H. E. Sauceda, S. Chmiela,
+        A. Tkatchenko, K.-R. Müller. (2018)
+        SchNet - a deep learning architecture for molecules and materials.
+        The Journal of Chemical Physics.
+        https://doi.org/10.1063/1.5019779
     """
 
     def __init__(self, layer_list, save_geometry=True, distance_indices=None):
@@ -66,13 +107,20 @@ class FeatureCombiner(nn.Module):
             if isinstance(layer, SchnetFeature):
                 if (layer.calculate_geometry and any(isinstance(layer,
                     GeometryFeature) for layer in self.layer_list)):
-                    warnings.warn(("This SchnetFeature has been set to "
+                    warnings.warn("This SchnetFeature has been set to "
                                    "calculate pairwise distances. Set "
                                    "SchnetFeature.calculate_geometry=False if you are "
                                    "preceding this SchnetFeature with a GeometryFeature "
                                    "in order to prevent unnecessarily repeated pairwsie "
-                                   "distance calculations"))
+                                   "distance calculations")
                     self.interfeature_transforms.append(None)
+                if (not layer.calculate_geometry and not any(isinstance(layer,
+                    GeometryFeature) for layer in self.layer_list)):
+                    warnings.warn("This SchnetFeature has not been designated "
+                                  "to calculate pairwise distances, but no "
+                                  "GeometryFeature was found in the layer "
+                                  "list. Please ensure that network input is "
+                                  "formulated as pairwise distances.")
                 elif layer.calculate_geometry:
                     self.interfeature_transforms.append(None)
                 else:
@@ -85,7 +133,7 @@ class FeatureCombiner(nn.Module):
                     self.interfeature_transforms.append([self.distance_reindex])
             else:
                 self.interfeature_transforms.append(None)
-
+    
     def distance_reindex(self, geometry_output):
         """Reindexes GeometryFeature distance outputs to redundant form for
         SchnetFeatures and related tools. See
