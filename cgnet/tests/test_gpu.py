@@ -26,7 +26,7 @@ def test_cgnet_mount_method():
     # Next, we gather the statistics for Bond/Repulsion priors
     stats = GeometryStatistics(coords)
 
-    bonds_list, _ = stats.get_prior_statistsics('Bonds')
+    bonds_list, _ = stats.get_prior_statistsics('Bonds', as_list=True)
     bonds_idx = stats.return_indices('Bonds')
 
     repul_tuples = [i for i in stats.descriptions['Distances']
@@ -80,7 +80,7 @@ def test_cgnet_mount_method():
     model.mount(device)
 
     # Next, we check to see if each layer is mounted correctly
-    # This is done by checking if paramters/buffers are mapped to the correct
+    # This is done by checking if parameters/buffers are mapped to the correct
     # device, or that feature classes are imbued with the appropriate device 
     # First, we check features
     for layer in model.feature.layer_list:
