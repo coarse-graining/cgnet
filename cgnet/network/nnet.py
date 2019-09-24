@@ -158,7 +158,7 @@ class CGnet(nn.Module):
         if self.feature:
             if isinstance(self.feature, FeatureCombiner):
                 forward_feat, feat = self.feature(feat,
-                                     embedding_property=embedding_property)
+                                                  embedding_property=embedding_property)
                 energy = self.arch(forward_feat)
                 if len(energy.size()) == 3:
                     # sum energy over beads
@@ -197,14 +197,14 @@ class CGnet(nn.Module):
         self.to(device)
         # Non parameters/buffers
         if self.feature:
-           if isinstance(self.feature, FeatureCombiner):
-               for layer in self.feature.layer_list:
-                   if isinstance(layer, (GeometryFeature, SchnetFeature)):
-                       layer.device = device
-                   if isinstance(layer, ZscoreLayer):
-                       layer.to(device)
-           if isinstance(self.feature, (GeometryFeature, SchnetFeature)):
-               self.feature.device = device
+            if isinstance(self.feature, FeatureCombiner):
+                for layer in self.feature.layer_list:
+                    if isinstance(layer, (GeometryFeature, SchnetFeature)):
+                        layer.device = device
+                    if isinstance(layer, ZscoreLayer):
+                        layer.to(device)
+            if isinstance(self.feature, (GeometryFeature, SchnetFeature)):
+                self.feature.device = device
 
     def predict(self, coord, force_labels, embedding_property=None):
         """Prediction over test/validation batch.

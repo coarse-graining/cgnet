@@ -14,6 +14,7 @@ from cgnet.feature import (GeometryStatistics, GeometryFeature,
 from torch.utils.data import DataLoader
 from nose.exc import SkipTest
 
+
 def generate_model():
     # Generate random CGnet model and coordinates
     n_frames = np.random.randint(10, 30)
@@ -34,11 +35,10 @@ def generate_model():
     repul_idx = stats.return_indices(features=repul_distances)
     ex_vols = np.random.uniform(2, 8, len(repul_distances))
     exps = np.random.randint(1, 6, len(repul_distances))
-    repul_list = [{'ex_vol' : ex_vol, 'exp' : exp}
+    repul_list = [{'ex_vol': ex_vol, 'exp': exp}
                   for ex_vol, exp in zip(ex_vols, exps)]
     # Next, we also grab the Zscores
     zscores, _ = stats.get_zscore_array()
-
 
     # Here, we assemble the priors list
     priors = [HarmonicLayer(bonds_idx, bonds_list)]
@@ -67,7 +67,8 @@ def generate_model():
     distance_idx = stats.return_indices("Distances")
     geometry_feature = GeometryFeature(feature_tuples=stats.feature_tuples)
     features = [geometry_feature, ZscoreLayer(zscores), schnet_feature]
-    combined_features = FeatureCombiner(features, distance_indices=distance_idx)
+    combined_features = FeatureCombiner(
+        features, distance_indices=distance_idx)
 
     # Next, we create the hidden architecture of CGnet
     arch = LinearLayer(feature_size, width)
@@ -78,6 +79,7 @@ def generate_model():
                   priors=priors).float()
     return model, coords, embedding_property
 
+
 def test_cgnet_mount():
     if not torch.cuda.is_available:
         raise nose.SkipTest("GPU not available for testing.")
@@ -85,20 +87,20 @@ def test_cgnet_mount():
 
     # This test asseses CUDA mounting for an entire CGnet model
     # First we create a random model with random protein data
-    model, coords, embedding_property  = generate_model()
+    model, coords, embedding_property = generate_model()
 
     # Next, we mount the model to GPU
     model.mount(device)
 
     # Next, we check to see if each layer is mounted correctly
     # This is done by checking if parameters/buffers are mapped to the correct
-    # device, or that feature classes are imbued with the appropriate device 
+    # device, or that feature classes are imbued with the appropriate device
     # First, we check features
     for layer in model.feature.layer_list:
-       if isinstance(layer, (GeometryFeature, SchnetFeature)):
-           assert layer.device == device
-       if isinstance(layer, ZscoreLayer):
-           assert layer.zscores.device.type == device.type
+        if isinstance(layer, (GeometryFeature, SchnetFeature)):
+            assert layer.device == device
+        if isinstance(layer, ZscoreLayer):
+            assert layer.zscores.device.type == device.type
     # Next, we check priors
     for prior in model.priors:
         if isinstance(prior, HarmonicLayer):
@@ -110,11 +112,12 @@ def test_cgnet_mount():
         assert param.device.type == device.type
 
     # Lastly, we perform a forward pass over the data and
-    coords = torch.tensor(coords,requires_grad=True).to(device)
+    coords = torch.tensor(coords, requires_grad=True).to(device)
     embedding_property = embedding_property.to(device)
     pot, pred_force = model.forward(coords, embedding_property)
     assert pot.device.type == device.type
     assert pred_force.device.type == device.type
+
 
 def test_cgnet_dismount():
     if not torch.cuda.is_available:
@@ -123,9 +126,9 @@ def test_cgnet_dismount():
 
     # This test asseses the ability of an entire CGnet to dismount from GPU
     # First we create a random model with random protein data
-    model, coords, embedding_property  = generate_model()
+    model, coords, embedding_property = generate_model()
 
-    # First, we mount the model to GPU 
+    # First, we mount the model to GPU
     model.mount(device)
 
     # Here we dismount the model from GPU
@@ -134,13 +137,13 @@ def test_cgnet_dismount():
 
     # Next, we check to see if each layer is dismounted correctly
     # This is done by checking if parameters/buffers are mapped to the correct
-    # device, or that feature classes are imbued with the appropriate device 
+    # device, or that feature classes are imbued with the appropriate device
     # First, we check features
     for layer in model.feature.layer_list:
-       if isinstance(layer, (GeometryFeature, SchnetFeature)):
-           assert layer.device.type == device.type
-       if isinstance(layer, ZscoreLayer):
-           assert layer.zscores.device.type == device.type
+        if isinstance(layer, (GeometryFeature, SchnetFeature)):
+            assert layer.device.type == device.type
+        if isinstance(layer, ZscoreLayer):
+            assert layer.zscores.device.type == device.type
     # Next, we check priors
     for prior in model.priors:
         if isinstance(prior, HarmonicLayer):
@@ -155,4 +158,3 @@ def test_cgnet_dismount():
     pot, pred_force = model.forward(coords, embedding_property)
     assert pot.device.type == device.type
     assert pred_force.device.type == device.type
-
