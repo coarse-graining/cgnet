@@ -242,9 +242,10 @@ class SchnetFeature(nn.Module):
                  share_weights=False,
                  device=torch.device('cpu')):
         super(SchnetFeature, self).__init__()
+        self.device = device
         self.embedding_layer = embedding_layer
         self.rbf_layer = RadialBasisFunction(cutoff=rbf_cutoff,
-                                             num_gaussians=n_gaussians,
+                                             n_gaussians=n_gaussians,
                                              variance=variance)
         if share_weights:
             # Lets the interaction blocks share the weights
