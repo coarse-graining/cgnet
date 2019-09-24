@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from .priors import ZscoreLayer, HarmonicLayer, RepulsionLayer
-from cgnet.feature import FeatureCombiner, SchnetFeature
+from cgnet.feature import FeatureCombiner, SchnetFeature, GeometryFeature
 
 
 class ForceLoss(torch.nn.Module):
@@ -196,14 +196,13 @@ class CGnet(nn.Module):
         # Buffers and parameters
         self.to(device)
         # Non parameters/buffers
-        for layer in self.layers:
-            if layer.device:
-                layer.device = device
         if self.feature:
            if isinstance(self.feature, FeatureCombiner):
                for layer in self.feature.layer_list:
-                   if layer.device:
+                   if isinstance(layer, (GeometryFeature, SchnetFeature)):
                        layer.device = device
+                   if isinstance(layer, ZscoreLayer):
+                       layer.to(device)
            if isinstance(self.feature, (GeometryFeature, SchnetFeature)):
                self.feature.device = device
 
