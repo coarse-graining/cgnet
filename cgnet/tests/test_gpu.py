@@ -84,7 +84,7 @@ def test_cgnet_mount_method():
     # device, or that feature classes are imbued with the appropriate device 
     # First, we check features
     for layer in model.feature.layer_list:
-       if isinstance(layer, (GeometryFeature, SchnetFeature):
+       if isinstance(layer, (GeometryFeature, SchnetFeature)):
            assert layer.device == device
        if isinstance(layer, ZscoreLayer):
            assert layer.zscores.device == device
