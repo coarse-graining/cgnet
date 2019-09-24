@@ -37,12 +37,16 @@ class GeometryFeature(nn.Module):
         List of three-bead angles according to descriptions['Angles']
     dihedrals : torch.Tensor
         List of four-bead torsions according to descriptions['Torsions']
+    device : torch.device (default=torch.device('cpu'))
+        Device upon which tensors are mounted. Default device is the local
+        CPU.
     """
 
-    def __init__(self, feature_tuples='all', n_beads=None):
+    def __init__(self, feature_tuples='all', n_beads=None, device=torch.device('cpu')):
         super(GeometryFeature, self).__init__()
 
         self._n_beads = n_beads
+        self.device = device
         if feature_tuples is not 'all':
             _temp_dict = dict(
                 zip(feature_tuples, np.arange(len(feature_tuples))))
@@ -129,7 +133,7 @@ class GeometryFeature(nn.Module):
 
         self.descriptions = {}
         self.description_order = []
-        out = torch.Tensor([])
+        out = torch.Tensor([]).to(self.device)
 
         if len(self._distance_pairs) > 0:
             self.compute_distances(data)
@@ -235,8 +239,10 @@ class SchnetFeature(nn.Module):
                  n_gaussians=50,
                  variance=1.0,
                  n_interaction_blocks=1,
-                 share_weights=False):
+                 share_weights=False,
+                 device=torch.device('cpu')):
         super(SchnetFeature, self).__init__()
+        self.device = device
         self.embedding_layer = embedding_layer
         self.rbf_layer = RadialBasisFunction(cutoff=rbf_cutoff,
                                              n_gaussians=n_gaussians,
@@ -295,7 +301,8 @@ class SchnetFeature(nn.Module):
 
         neighbors, neighbor_mask = g.get_neighbors(distances,
                                                    cutoff=self.neighbor_cutoff)
-
+        neighbors = neighbors.to(self.device)
+        neighbor_mask = neighbor_mask.to(self.device)
         features = self.embedding_layer(embedding_property)
         rbf_expansion = self.rbf_layer(distances=distances)
 
