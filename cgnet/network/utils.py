@@ -320,13 +320,13 @@ class Simulation():
 
         if self.verbose:
             print('100% finished.')
-        self.simulated_traj = self.swap_axes(self.simulated_traj,0,1).numpy()
+        self.simulated_traj = self.swap_axes(self.simulated_traj,0,1).cpu().numpy()
 
         if self.save_forces:
             self.simulated_forces = self.swap_axes(self.simulated_forces,
-                                                   0, 1).numpy()
+                                                   0, 1).cpu().numpy()
 
         if self.save_potential:
             self.simulated_potential = self.swap_axes(self.simulated_potential,
-                                                      0, 1).numpy()
+                                                      0, 1).cpu().numpy()
         return self.simulated_traj
