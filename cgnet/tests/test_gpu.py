@@ -158,3 +158,46 @@ def test_cgnet_dismount():
     pot, pred_force = model.forward(coords, embedding_property)
     assert pot.device.type == device.type
     assert pred_force.device.type == device.type
+
+def test_save_load_model():
+    # This test asseses the ability to dismount models from GPU that are loaded
+    # from a saved .pt file
+    with tempfile.TeompraryDirectory() as tmp:
+        if not torch.cuda.is_available:
+            raise nose.SkipTest("GPU not available for testing.")
+        device = torch.device('cuda')
+
+        # This test asseses the ability of an entire CGnet to dismount from GPU
+        # First we create a random model with random protein data
+        model, coords, embedding_property = generate_model()
+
+        # First, we mount the model to GPU
+        model.mount(device)
+
+        # Next we save the model to the temporary directory and load it again
+        # to checkout if it can be dismounted from the GPU
+        torch.save(model, tmp+"/cgnet_gpu_test.pt")
+        del model
+        loaded_model = torch.load(tmp+"/cgnet_gpu_test.pt")
+        device = torch.device('cpu')
+        loaded.model.mount(torch.device('cpu'))
+        # First we check features 
+        for layer in model.feature.layer_list:
+            if isinstance(layer, (GeometryFeature, SchnetFeature)):
+                assert layer.device.type == device.type
+            if isinstance(layer, ZscoreLayer):
+                assert layer.zscores.device.type == device.type
+        # Next, we check priors
+        for prior in model.priors:
+            if isinstance(prior, HarmonicLayer):
+                assert prior.harmonic_parameters.device.type == device.type
+            if isinstance(prior, RepulsionLayer):
+                assert prior.repulsion_parameters.device.type == device.type
+        # Finally, we check the arch layers
+        for param in model.parameters():
+            assert param.device.type == device.type
+        # Lastly, we perform a forward pass over the data and
+        coords = torch.tensor(coords, requires_grad=True).to(device)
+        pot, pred_force = model.forward(coords, embedding_property)
+        assert pot.device.type == device.type
+        assert pred_force.device.type == device.type
