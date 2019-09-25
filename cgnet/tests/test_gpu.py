@@ -163,7 +163,7 @@ def test_cgnet_dismount():
 def test_save_load_model():
     # This test asseses the ability to dismount models from GPU that are loaded
     # from a saved .pt file
-    with tempfile.TeompraryDirectory() as tmp:
+    with tempfile.TemporaryDirectory() as tmp:
         if not torch.cuda.is_available:
             raise nose.SkipTest("GPU not available for testing.")
         device = torch.device('cuda')
@@ -181,24 +181,24 @@ def test_save_load_model():
         del model
         loaded_model = torch.load(tmp+"/cgnet_gpu_test.pt")
         device = torch.device('cpu')
-        loaded.model.mount(torch.device('cpu'))
+        loaded_model.mount(torch.device('cpu'))
         # First we check features 
-        for layer in model.feature.layer_list:
+        for layer in loaded_model.feature.layer_list:
             if isinstance(layer, (GeometryFeature, SchnetFeature)):
                 assert layer.device.type == device.type
             if isinstance(layer, ZscoreLayer):
                 assert layer.zscores.device.type == device.type
         # Next, we check priors
-        for prior in model.priors:
+        for prior in loaded_model.priors:
             if isinstance(prior, HarmonicLayer):
                 assert prior.harmonic_parameters.device.type == device.type
             if isinstance(prior, RepulsionLayer):
                 assert prior.repulsion_parameters.device.type == device.type
         # Finally, we check the arch layers
-        for param in model.parameters():
+        for param in loaded_model.parameters():
             assert param.device.type == device.type
         # Lastly, we perform a forward pass over the data and
         coords = torch.tensor(coords, requires_grad=True).to(device)
-        pot, pred_force = model.forward(coords, embedding_property)
+        pot, pred_force = loaded_model.forward(coords, embedding_property)
         assert pot.device.type == device.type
         assert pred_force.device.type == device.type
