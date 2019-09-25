@@ -2,6 +2,7 @@
 # Contributors: Brooke Husic, Dominik Lemm
 
 import numpy as np
+import tempfile
 import torch
 import torch.nn as nn
 from sklearn.linear_model import LinearRegression
