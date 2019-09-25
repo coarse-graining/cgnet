@@ -51,9 +51,9 @@ def lipschitz_projection(model, strength=10.0, mask=None):
         if not isinstance(mask, list):
             raise ValueError("Lipschitz mask must be list of booleans")
         if len(weight_layers) != len(mask):
-           raise ValueError("Lipshitz mask must have the same number " \
-                            "of elements as the number of nn.Linear " \
-                            "modules in the model.")
+            raise ValueError("Lipshitz mask must have the same number "
+                             "of elements as the number of nn.Linear "
+                             "modules in the model.")
     if mask is None:
         mask = [True for _ in weight_layers]
     for mask_element, layer in zip(mask, weight_layers):
@@ -120,7 +120,7 @@ class Simulation():
     ----------
     model : cgnet.network.CGNet() instance
         Trained model used to generate simulation data
-    initial_coordinates : np.ndarray
+    initial_coordinates : np.ndarray or torch.Tensor
         Coordinate data of dimension [n_simulations, n_atoms, n_dimensions].
         Each entry in the first dimension represents the first frame of an
         independent simulation.
@@ -150,6 +150,8 @@ class Simulation():
     random_seed : int or None (default=None)
         Seed for random number generator; if seeded, results always will be
         identical for the same random seed
+    device : torch.device (default=torch.device('cpu'))
+        Device upon which simulation compuation will be carried out
 
     Notes
     -----
@@ -169,24 +171,19 @@ class Simulation():
 
     def __init__(self, model, initial_coordinates, save_forces=False,
                  save_potential=False, length=100, save_interval=10, dt=5e-4,
-                 diffusion=1.0, beta=1.0, verbose=False, random_seed=None):
+                 diffusion=1.0, beta=1.0, verbose=False, random_seed=None,
+                 device=torch.device('cpu')):
         if length % save_interval != 0:
             raise ValueError(
                 'The save_interval must be a factor of the simulation length'
             )
 
         self.model = model
-
+        self.device = device
         if len(initial_coordinates.shape) != 3:
             raise ValueError(
                 'initial_coordinates shape must be [frames, atoms, dimensions]'
             )
-
-        if type(initial_coordinates) is not torch.Tensor:
-            initial_coordinates = torch.tensor(initial_coordinates,
-                                               requires_grad=True)
-        elif initial_coordinates.requires_grad is False:
-            initial_coordinates.requires_grad = True
 
         self.initial_coordinates = initial_coordinates
         self.n_sims = self.initial_coordinates.shape[0]
@@ -203,10 +200,36 @@ class Simulation():
         self.verbose = verbose
 
         if random_seed is None:
-            self.rng = np.random
+            self.rng = torch.default_generator
         else:
-            self.rng = np.random.RandomState(random_seed)
+            self.rng = torch.Generator().manual_seed(random_seed)
         self.random_seed = random_seed
+
+    def swap_axes(self, data, axis1, axis2):
+        """Helper method to exchange the zeroth and first axes of tensors after
+        simulations have finished
+
+        Parameters
+        ----------
+        data : torch.Tensor
+            Tensor to perform the axis swtich upon. Size
+            [n_timesteps, n_simulations, n_beads, n_dims]
+        axis1 : int
+            Zero-based index of the first axis to swap
+        axis2 : int
+            Zero-based index of the second axis to swap
+
+        Returns
+        -------
+        swapped_data : torch.Tensor
+            Axes-swapped tensor. Size
+            [n_timesteps, n_simulations, n_beads, n_dims]
+        """
+        axes = list(range(len(data.size())))
+        axes[axis1] = axis2
+        axes[axis2] = axis1
+        swapped_data = data.permute(*axes)
+        return swapped_data
 
     def simulate(self):
         """Generates independent simulations.
@@ -214,49 +237,60 @@ class Simulation():
         Returns
         -------
         simulated_traj : np.ndarray
-            Dimensions [n_simulations, n_frames, n_atoms, n_dimensions]
+            Shape [n_simulations, n_frames, n_atoms, n_dimensions]
             Also an attribute; stores the simulation coordinates
 
         Attributes
         ----------
         simulated_forces : np.ndarray or None
-            Dimensions [n_simulations, n_frames, n_atoms, n_dimensions]
+            Shape [n_simulations, n_frames, n_atoms, n_dimensions]
             If simulated_forces is True, stores the simulation forces
         simulated_potential : np.ndarray or None
-            Dimensions [n_simulations, n_frames, [potential dimensions]]
+            Shape [n_simulations, n_frames, [potential dimensions]]
             If simulated_potential is True, stores the potential calculated
-            for each frame in simulation 
+            for each frame in simulation
 
         """
         if self.verbose:
             i = 1
             print(
-            "Generating {} simulations of length {} at {}-step intervals".format(
-                self.n_sims, self.length, self.save_interval)
+                "Generating {} simulations of length {} at {}-step intervals".format(
+                    self.n_sims, self.length, self.save_interval)
             )
         save_size = int(self.length/self.save_interval)
 
-        self.simulated_traj = np.zeros((save_size, self.n_sims, self.n_beads,
-                                        self.n_dims))
+        self.simulated_traj = torch.zeros((save_size, self.n_sims, self.n_beads,
+                                           self.n_dims))
         if self.save_forces:
-            self.simulated_forces = np.zeros((save_size, self.n_sims,
-                                              self.n_beads, self.n_dims))
+            self.simulated_forces = torch.zeros((save_size, self.n_sims,
+                                                 self.n_beads, self.n_dims))
         else:
             self.simulated_forces = None
 
         self.simulated_potential = None
 
-        x_old = self.initial_coordinates
+        # Here if the input is numpy.ndarray, it must be converted to a
+        # torch.Tensor with requires_grad=True
+        if isinstance(self.initial_coordinates, torch.Tensor):
+            x_old = self.initial_coordinates.clone().detach().requires_grad_(True).to(self.device)
+        if isinstance(self.initial_coordinates, np.ndarray):
+            x_old = torch.tensor(self.initial_coordinates,
+                                 requires_grad=True).to(self.device)
+
         dtau = self.diffusion * self.dt
         for t in range(self.length):
+            # Here we must deatch tensors below in order to prevent
+            # dragging the computational graph through stochastic Langevin
+            # update, and tracking unecessary derivatives
             potential, forces = self.model(x_old)
-            potential = potential.detach().numpy()
-            forces = forces.detach().numpy()
-            noise = self.rng.randn(self.n_sims,
-                                   self.n_beads,
-                                   self.n_dims)
-            x_new = (x_old.detach().numpy() + forces*dtau +
-                     np.sqrt(2*dtau/self.beta)*noise)
+            potential = potential.detach()
+            forces = forces.detach()
+            noise = torch.randn(self.n_sims,
+                                self.n_beads,
+                                self.n_dims,
+                                generator=self.rng).to(self.device)
+            x_new = (x_old.detach() + forces*dtau +
+                    np.sqrt(2*dtau/self.beta)*noise)
             if t % self.save_interval == 0:
                 self.simulated_traj[t//self.save_interval, :, :] = x_new
                 if self.save_forces:
@@ -271,12 +305,13 @@ class Simulation():
                         potential_dims = ([save_size, self.n_sims] +
                                           [potential.shape[j]
                                            for j in range(1,
-                                           len(potential.shape))])
-                        self.simulated_potential = np.zeros((potential_dims))
+                                                          len(potential.shape))])
+                        self.simulated_potential = torch.zeros(
+                            (potential_dims))
 
                     self.simulated_potential[
                         t//self.save_interval] = potential
-            x_old = torch.tensor(x_new,requires_grad=True).float()
+            x_old = x_new.clone().detach().requires_grad_(True).to(self.device)
 
             if self.verbose:
                 if t % (self.length/10) == 0 and t > 0:
@@ -285,14 +320,13 @@ class Simulation():
 
         if self.verbose:
             print('100% finished.')
-
-        self.simulated_traj = np.swapaxes(self.simulated_traj, 0, 1)
+        self.simulated_traj = self.swap_axes(self.simulated_traj,0,1).cpu().numpy()
 
         if self.save_forces:
-            self.simulated_forces = np.swapaxes(self.simulated_forces, 0, 1)
+            self.simulated_forces = self.swap_axes(self.simulated_forces,
+                                                   0, 1).cpu().numpy()
 
         if self.save_potential:
-            self.simulated_potential = np.swapaxes(
-            self.simulated_potential, 0, 1)
-
+            self.simulated_potential = self.swap_axes(self.simulated_potential,
+                                                      0, 1).cpu().numpy()
         return self.simulated_traj
