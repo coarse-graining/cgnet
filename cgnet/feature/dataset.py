@@ -48,20 +48,20 @@ class MoleculeDataset(Dataset):
     def __getitem__(self, index):
         if self.embeddings is None:
             return (
-                    torch.tensor(self.coordinates[index],
-                        requires_grad=True, device=self.device),
-                    torch.tensor(self.forces[index],
-                        device=self.device)
-                    )
+                torch.tensor(self.coordinates[index],
+                             requires_grad=True, device=self.device),
+                torch.tensor(self.forces[index],
+                             device=self.device)
+            )
         else:
             return (
-                    torch.tensor(self.coordinates[index],
-                        requires_grad=True, device=self.device),
-                    torch.tensor(self.forces[index],
-                        device=self.device),
-                    torch.tensor(self.embeddings[index],
-                        requires_grad=True, device=self.device) # do embeddings require grad?
-                    )
+                torch.tensor(self.coordinates[index],
+                             requires_grad=True, device=self.device),
+                torch.tensor(self.forces[index],
+                             device=self.device),
+                torch.tensor(self.embeddings[index],
+                             requires_grad=True, device=self.device)  # do embeddings require grad?
+            )
 
     def __len__(self):
         return self.len
@@ -81,7 +81,8 @@ class MoleculeDataset(Dataset):
         if embeddings is not None:
             new_embeddings = self._make_array(embeddings, selection)
 
-        self.coordinates = np.concatenate([self.coordinates, new_coords], axis=0)
+        self.coordinates = np.concatenate(
+            [self.coordinates, new_coords], axis=0)
         self.forces = np.concatenate([self.forces, new_forces], axis=0)
         if self.embeddings is not None:
             self.embeddings = np.concatenate([self.embeddings, new_embeddings],
@@ -96,5 +97,5 @@ class MoleculeDataset(Dataset):
         if self.embeddings is not None:
             if len(self.coordinates) != len(self.embeddings):
                 raise ValueError(
-                "Coordinates, forces, and embeddings must have equal lengths"
-                                )
+                    "Coordinates, forces, and embeddings must have equal lengths"
+                )
