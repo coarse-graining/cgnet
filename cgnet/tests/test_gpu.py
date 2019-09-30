@@ -77,7 +77,7 @@ def generate_model():
 
     # Finally, we assemble the model
     model = CGnet(arch, ForceLoss(), feature=combined_features,
-                  priors=priors).float()
+                  priors=priors)
     return model, coords, embedding_property
 
 
