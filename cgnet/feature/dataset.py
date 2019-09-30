@@ -60,7 +60,7 @@ class MoleculeDataset(Dataset):
                 torch.tensor(self.forces[index],
                              device=self.device),
                 torch.tensor(self.embeddings[index],
-                             requires_grad=True, device=self.device)  # do embeddings require grad?
+                             device=self.device)
             )
 
     def __len__(self):
