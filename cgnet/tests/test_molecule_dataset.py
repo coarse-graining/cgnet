@@ -84,6 +84,8 @@ def test_one_dimensional_embedding_shape():
 
     # Test that the embeddings shape output from the ds object is appropriate
     assert ds[:][2].shape == (frames, beads, 1)
+    np.testing.assert_array_equal(ds.embeddings,
+                                  embeddings.reshape(frames, beads, 1))
 
 
 def test_multi_dimensional_embedding_shape():
@@ -95,3 +97,4 @@ def test_multi_dimensional_embedding_shape():
     ds = MoleculeDataset(coords, forces, embeddings)
 
     assert ds[:][2].shape == (frames, beads, n_properties)
+    np.testing.assert_array_equal(ds.embeddings, embeddings)
