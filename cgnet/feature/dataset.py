@@ -48,6 +48,10 @@ class MoleculeDataset(Dataset):
         self.device = device
 
     def __getitem__(self, index):
+        """This will always return 3 items: coordinates, frames, embeddings.
+        If embeddings are not given, then the third object returned will
+        be an empty tensor.
+        """
         if self.embeddings is None:
             # Still returns three objects, but the third is an empty tensor
             return (
@@ -80,6 +84,11 @@ class MoleculeDataset(Dataset):
             return data[::self.stride]
 
     def add_data(self, coordinates, forces, embeddings=None, selection=None):
+        """We add data to the dataset with a custom selection and the stride
+        specified upon object instantiation, ensuring that the embeddings
+        have a shape length of 3, and that everything has the same number
+        of frames.
+        """
         new_coords = self._make_array(coordinates, selection)
         new_forces = self._make_array(forces, selection)
         if embeddings is not None:
@@ -88,6 +97,7 @@ class MoleculeDataset(Dataset):
         self.coordinates = np.concatenate(
             [self.coordinates, new_coords], axis=0)
         self.forces = np.concatenate([self.forces, new_forces], axis=0)
+
         if self.embeddings is not None:
             embeddings = self._check_embedding_dimension(embeddings)
             self.embeddings = np.concatenate([self.embeddings, new_embeddings],
@@ -96,6 +106,9 @@ class MoleculeDataset(Dataset):
         self.len = len(self.coordinates)
 
     def _check_size_consistency(self):
+        """When we create or add data, we need to make sure that everything
+        has the same number of frames.
+        """
         if len(self.coordinates) != len(self.forces):
             raise ValueError("Coordinates and forces must have equal lengths")
 
@@ -106,6 +119,11 @@ class MoleculeDataset(Dataset):
                 )
 
     def _check_embedding_dimension(self, embeddings):
+        """We want to ensure that, even if we are only embedding one property,
+        the shape of the embeddings tensor is (n_frames, n_beads, n_properties).
+        Thus, we add a dimension if the embeddings are input and only have
+        shape length 2.
+        """
         if len(embeddings.shape) == 3:
             return embeddings
         else:
@@ -113,8 +131,8 @@ class MoleculeDataset(Dataset):
             embeddings = embeddings.reshape(*old_shape, 1)
             warnings.warn(
                 "The embeddings have been reshaped from {} to {}".format(
-                                                                old_shape,
-                                                                embeddings.shape
-                                                                )
+                    old_shape,
+                    embeddings.shape
                 )
+            )
             return embeddings
