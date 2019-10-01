@@ -2,9 +2,9 @@
 
 import numpy as np
 import torch
+import warnings
 
 from cgnet.feature import MoleculeDataset
-from nose.exc import SkipTest
 
 # We create an artificial dataset with a random number of 
 # frames, beads, and dimensions. Since we aren't actually
@@ -51,7 +51,7 @@ def test_stride():
 
 
 def test_indexing():
-    # Make sure dataset indexing works
+    # Make sure dataset indexing works (no embeddings)
 
     # Make a random slice with possible repeats
     selection = [np.random.randint(frames)
@@ -70,3 +70,28 @@ def test_indexing():
     np.testing.assert_array_equal(forces_tensor_from_numpy,
                                   forces_tensor_from_ds.detach().numpy())
     assert len(empty_tensor) == 0
+
+
+def test_one_dimensional_embedding_shape():
+    # Test reshaping of integer embeddings of shape (n_frames, n_beads)
+    embeddings = np.abs(np.floor(np.random.randn(frames, beads))).astype(int)
+
+    # This will raise a warning to reshape the embeddings unless we suppress
+    # them, but it should work
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        ds = MoleculeDataset(coords, forces, embeddings)
+
+    # Test that the embeddings shape output from the ds object is appropriate
+    assert ds[:][2].shape == (frames, beads, 1)
+
+
+def test_multi_dimensional_embedding_shape():
+    # Test shape of multidimensional embeddings
+    n_properties = np.random.randint(2, 5)
+    embeddings = np.abs(np.floor(np.random.randn(
+        frames, beads, n_properties))).astype(int)
+
+    ds = MoleculeDataset(coords, forces, embeddings)
+
+    assert ds[:][2].shape == (frames, beads, n_properties)
