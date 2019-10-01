@@ -5,6 +5,7 @@
 import numpy as np
 import torch
 import scipy.spatial
+import warnings
 
 from torch.utils.data import Dataset, DataLoader
 
@@ -37,6 +38,7 @@ class MoleculeDataset(Dataset):
         self.coordinates = self._make_array(coordinates, selection)
         self.forces = self._make_array(forces, selection)
         if embeddings is not None:
+            embeddings = self._check_embedding_dimension(embeddings)
             self.embeddings = self._make_array(embeddings, selection)
         else:
             self.embeddings = None
@@ -47,11 +49,13 @@ class MoleculeDataset(Dataset):
 
     def __getitem__(self, index):
         if self.embeddings is None:
+            # Still returns three objects, but the third is an empty tensor
             return (
                 torch.tensor(self.coordinates[index],
                              requires_grad=True, device=self.device),
                 torch.tensor(self.forces[index],
-                             device=self.device)
+                             device=self.device),
+                torch.Tensor([])
             )
         else:
             return (
@@ -85,6 +89,7 @@ class MoleculeDataset(Dataset):
             [self.coordinates, new_coords], axis=0)
         self.forces = np.concatenate([self.forces, new_forces], axis=0)
         if self.embeddings is not None:
+            embeddings = self._check_embedding_dimension(embeddings)
             self.embeddings = np.concatenate([self.embeddings, new_embeddings],
                                              axis=0)
         self._check_size_consistency()
@@ -99,3 +104,17 @@ class MoleculeDataset(Dataset):
                 raise ValueError(
                     "Coordinates, forces, and embeddings must have equal lengths"
                 )
+
+    def _check_embedding_dimension(self, embeddings):
+        if len(embeddings.shape) == 3:
+            return embeddings
+        else:
+            old_shape = embeddings.shape
+            embeddings = embeddings.reshape(*old_shape, 1)
+            warnings.warn(
+                "The embeddings have been reshaped from {} to {}".format(
+                                                                old_shape,
+                                                                embeddings.shape
+                                                                )
+                )
+            return embeddings

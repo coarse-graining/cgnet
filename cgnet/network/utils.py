@@ -101,7 +101,7 @@ def dataset_loss(model, loader):
     num_batch = 0
     ref_numel = 0
     for num, batch in enumerate(loader):
-        coords, force = batch
+        coords, force, _ = batch
         if num == 0:
             ref_numel = coords.numel()
         potential, pred_force = model.forward(coords)

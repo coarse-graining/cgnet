@@ -60,10 +60,13 @@ def test_indexing():
 
     coords_tensor_from_numpy = torch.from_numpy(coords[selection])
     forces_tensor_from_numpy = torch.from_numpy(forces[selection])
-    coords_tensor_from_ds, forces_tensor_from_ds = ds[selection]
+    # The third argument is an empty tensor because no embeddings have been
+    # specified
+    coords_tensor_from_ds, forces_tensor_from_ds, empty_tensor = ds[selection]
 
     assert coords_tensor_from_ds.requires_grad
     np.testing.assert_array_equal(coords_tensor_from_numpy,
                                   coords_tensor_from_ds.detach().numpy())
     np.testing.assert_array_equal(forces_tensor_from_numpy,
                                   forces_tensor_from_ds.detach().numpy())
+    assert len(empty_tensor) == 0
