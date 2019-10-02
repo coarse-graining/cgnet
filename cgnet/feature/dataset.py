@@ -86,7 +86,7 @@ class MoleculeDataset(Dataset):
     def add_data(self, coordinates, forces, embeddings=None, selection=None):
         """We add data to the dataset with a custom selection and the stride
         specified upon object instantiation, ensuring that the embeddings
-        have a shape length of 3, and that everything has the same number
+        have a shape length of 2, and that everything has the same number
         of frames.
         """
         new_coords = self._make_array(coordinates, selection)
@@ -124,15 +124,16 @@ class MoleculeDataset(Dataset):
         Thus, we add a dimension if the embeddings are input and only have
         shape length 2.
         """
-        if len(embeddings.shape) == 3:
+        if len(embeddings.shape) == 2:
             return embeddings
         else:
-            old_shape = embeddings.shape
-            embeddings = embeddings.reshape(*old_shape, 1)
-            warnings.warn(
-                "The embeddings have been reshaped from {} to {}".format(
-                    old_shape,
-                    embeddings.shape
-                )
-            )
-            return embeddings
+            raise ValueError("Embeddings must be of shape (n_frames, n_features)")
+            # old_shape = embeddings.shape
+            # embeddings = embeddings.reshape(*old_shape, 1)
+            # warnings.warn(
+            #     "The embeddings have been reshaped from {} to {}".format(
+            #         old_shape,
+            #         embeddings.shape
+            #     )
+            # )
+            # return embeddings

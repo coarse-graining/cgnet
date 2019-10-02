@@ -72,29 +72,11 @@ def test_indexing():
     assert len(empty_tensor) == 0
 
 
-def test_one_dimensional_embedding_shape():
-    # Test reshaping of integer embeddings of shape (n_frames, n_beads)
-    embeddings = np.abs(np.floor(np.random.randn(frames, beads))).astype(int)
-
-    # This will raise a warning to reshape the embeddings unless we suppress
-    # them, but it should work
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        ds = MoleculeDataset(coords, forces, embeddings)
-
-    # Test that the embeddings shape output from the ds object is appropriate
-    assert ds[:][2].shape == (frames, beads, 1)
-    np.testing.assert_array_equal(ds.embeddings,
-                                  embeddings.reshape(frames, beads, 1))
-
-
-def test_multi_dimensional_embedding_shape():
+def test_embedding_shape():
     # Test shape of multidimensional embeddings
-    n_properties = np.random.randint(2, 5)
-    embeddings = np.abs(np.floor(np.random.randn(
-        frames, beads, n_properties))).astype(int)
+    embeddings = np.abs(np.floor(np.random.randn(frames, beads))).astype(int)
 
     ds = MoleculeDataset(coords, forces, embeddings)
 
-    assert ds[:][2].shape == (frames, beads, n_properties)
+    assert ds[:][2].shape == (frames, beads)
     np.testing.assert_array_equal(ds.embeddings, embeddings)
