@@ -14,9 +14,15 @@ class Geometry():
     Parameters
     ----------
     method : 'torch' or 'numpy' (default='torch')
+        Library used for compuations
+    device : torch.device (default=torch.device('cpu'))
+        Device upon which geometrical calculations will take place. When
+        embedded as an attribute for a feature class, the device will inherit
+        from the feature device attribute
     """
 
-    def __init__(self, method='torch'):
+    def __init__(self, method='torch', device=torch.device('cpu')):
+        self.device = device
         self.method = method
         if method == 'torch':
             self.setup_torch()
@@ -46,8 +52,9 @@ class Geometry():
         # Watch pytorch PR #24148 for the implementation, which would
         # enable self.eye = lambda n, dtype: torch.eye(n, dtype=dtype)
         # For now, we do this:
-        self.eye = lambda n, dtype: self.torch_eye(n, dtype)
-        self.ones = lambda shape, dtype: torch.ones(*shape, dtype=dtype)
+        self.eye = lambda n, dtype: self.torch_eye(n, dtype).to(self.device)
+        self.ones = lambda shape, dtype: torch.ones(*shape,
+                                                dtype=dtype).to(self.device)
 
         self.to_type = lambda x, dtype: x.type(dtype)
         self.bool = torch.bool

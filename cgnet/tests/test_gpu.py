@@ -77,13 +77,13 @@ def generate_model():
 
     # Finally, we assemble the model
     model = CGnet(arch, ForceLoss(), feature=combined_features,
-                  priors=priors).float()
+                  priors=priors)
     return model, coords, embedding_property
 
 
 def test_cgnet_mount():
-    if not torch.cuda.is_available:
-        raise nose.SkipTest("GPU not available for testing.")
+    if not torch.cuda.is_available():
+        raise SkipTest("GPU not available for testing.")
     device = torch.device('cuda')
 
     # This test asseses CUDA mounting for an entire CGnet model
@@ -121,8 +121,8 @@ def test_cgnet_mount():
 
 
 def test_cgnet_dismount():
-    if not torch.cuda.is_available:
-        raise nose.SkipTest("GPU not available for testing.")
+    if not torch.cuda.is_available():
+        raise SkipTest("GPU not available for testing.")
     device = torch.device('cuda')
 
     # This test asseses the ability of an entire CGnet to dismount from GPU
@@ -163,9 +163,9 @@ def test_cgnet_dismount():
 def test_save_load_model():
     # This test asseses the ability to dismount models from GPU that are loaded
     # from a saved .pt file
+    if not torch.cuda.is_available():
+        raise SkipTest("GPU not available for testing.")
     with tempfile.TemporaryDirectory() as tmp:
-        if not torch.cuda.is_available:
-            raise nose.SkipTest("GPU not available for testing.")
         device = torch.device('cuda')
 
         # This test asseses the ability of an entire CGnet to dismount from GPU

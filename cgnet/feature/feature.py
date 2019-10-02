@@ -10,8 +10,6 @@ from .geometry import Geometry
 from .utils import RadialBasisFunction
 from .schnet_utils import InteractionBlock
 
-g = Geometry(method='torch')
-
 
 class GeometryFeature(nn.Module):
     """Featurization of coarse-grained beads into pairwise distances,
@@ -40,6 +38,9 @@ class GeometryFeature(nn.Module):
     device : torch.device (default=torch.device('cpu'))
         Device upon which tensors are mounted. Default device is the local
         CPU.
+    geometry : Geometry instance
+        Helper class which performs geometrical calculations. The device of
+        used is that same as the feature class device.
     """
 
     def __init__(self, feature_tuples='all', n_beads=None, device=torch.device('cpu')):
@@ -47,6 +48,7 @@ class GeometryFeature(nn.Module):
 
         self._n_beads = n_beads
         self.device = device
+        self.geometry = Geometry(method='torch', device=self.device)
         if feature_tuples is not 'all':
             _temp_dict = dict(
                 zip(feature_tuples, np.arange(len(feature_tuples))))
@@ -74,7 +76,7 @@ class GeometryFeature(nn.Module):
                 raise RuntimeError(
                     "Must specify n_beads if feature_tuples is 'all'."
                 )
-            self._distance_pairs, _ = g.get_distance_indices(n_beads)
+            self._distance_pairs, _ = self.geometry.get_distance_indices(n_beads)
             if n_beads > 2:
                 self._angle_trips = [(i, i+1, i+2)
                                      for i in range(n_beads-2)]
@@ -90,18 +92,20 @@ class GeometryFeature(nn.Module):
 
     def compute_distances(self, data):
         """Computes all pairwise distances."""
-        self.distances = g.get_distances(self._distance_pairs, data, norm=True)
+        self.distances = self.geometry.get_distances(self._distance_pairs,
+                                                     data, norm=True)
         self.descriptions["Distances"] = self._distance_pairs
 
     def compute_angles(self, data):
         """Computes planar angles."""
-        self.angles = g.get_angles(self._angle_trips, data)
+        self.angles = self.geometry.get_angles(self._angle_trips, data)
         self.descriptions["Angles"] = self._angle_trips
 
     def compute_dihedrals(self, data):
         """Computes four-term dihedral (torsional) angles."""
         (self.dihedral_cosines,
-         self.dihedral_sines) = g.get_dihedrals(self._dihedral_quads, data)
+         self.dihedral_sines) = self.geometry.get_dihedrals(self._dihedral_quads,
+                                                            data)
         self.descriptions["Dihedral_cosines"] = self._dihedral_quads
         self.descriptions["Dihedral_sines"] = self._dihedral_quads
 
@@ -243,6 +247,7 @@ class SchnetFeature(nn.Module):
                  device=torch.device('cpu')):
         super(SchnetFeature, self).__init__()
         self.device = device
+        self.geometry = Geometry(method='torch', device=self.device)
         self.embedding_layer = embedding_layer
         self.rbf_layer = RadialBasisFunction(cutoff=rbf_cutoff,
                                              n_gaussians=n_gaussians,
@@ -263,11 +268,13 @@ class SchnetFeature(nn.Module):
         self.neighbor_cutoff = neighbor_cutoff
         self.calculate_geometry = calculate_geometry
         if self.calculate_geometry:
-            self._distance_pairs, _ = g.get_distance_indices(n_beads, [], [])
-            self.redundant_distance_mapping = g.get_redundant_distance_mapping(
+            self._distance_pairs, _ = self.geometry.get_distance_indices(n_beads,
+                                                                          [], [])
+            self.redundant_distance_mapping = self.geometry.get_redundant_distance_mapping(
                 self._distance_pairs)
         else:
-            self._distance_pairs, _ = g.get_distance_indices(n_beads, [], [])
+            self._distance_pairs, _ = self.geometry.get_distance_indices(n_beads,
+                                                                          [], [])
             self.redundant_distance_mapping = None
 
     def forward(self, in_features, embedding_property):
@@ -293,13 +300,13 @@ class SchnetFeature(nn.Module):
         # coordinates. Otherwise, it is assumed that in_features are
         # pairwise distances in redundant form
         if self.calculate_geometry:
-            distances = g.get_distances(self._distance_pairs, in_features,
-                                        norm=True)
+            distances = self.geometry.get_distances(self._distance_pairs,
+                                                    in_features, norm=True)
             distances = distances[:, self.redundant_distance_mapping]
         else:
             distances = in_features
 
-        neighbors, neighbor_mask = g.get_neighbors(distances,
+        neighbors, neighbor_mask = self.geometry.get_neighbors(distances,
                                                    cutoff=self.neighbor_cutoff)
         neighbors = neighbors.to(self.device)
         neighbor_mask = neighbor_mask.to(self.device)

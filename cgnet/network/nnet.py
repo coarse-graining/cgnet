@@ -96,6 +96,13 @@ class CGnet(nn.Module):
     (criterion): ForceLoss()
     )
 
+    Mounting to GPU can be accomplished using the 'mount' method. For example,
+    given an instance of CGnet and a torch.device, the model may be mounted in
+    the follwing way:
+
+       my_cuda = torch.device('cuda')
+       model.mount(my_cuda)
+
     References
     ----------
     Wang, J., Olsson, S., Wehmeyer, C., Pérez, A., Charron, N. E.,
@@ -201,10 +208,12 @@ class CGnet(nn.Module):
                 for layer in self.feature.layer_list:
                     if isinstance(layer, (GeometryFeature, SchnetFeature)):
                         layer.device = device
+                        layer.geometry.device = device
                     if isinstance(layer, ZscoreLayer):
                         layer.to(device)
             if isinstance(self.feature, (GeometryFeature, SchnetFeature)):
                 self.feature.device = device
+                self.feature.geometry.device = device
 
     def predict(self, coord, force_labels, embedding_property=None):
         """Prediction over test/validation batch.
