@@ -23,58 +23,20 @@ class Geometry():
 
     def __init__(self, method='torch', device=torch.device('cpu')):
         self.device = device
-        self.method = method
-        if method == 'torch':
-            self.setup_torch()
-        elif method == 'numpy':
-            self.setup_numpy()
-        else:
+        if method not in ['torch', 'numpy']:
             raise RuntimeError("Allowed methods are 'torch' and 'numpy'")
+        self.method = method
 
-    def torch_eye(self, n, dtype):
-        if dtype == torch.bool:
-            # Only in pytorch>=1.2!
-            return torch.BoolTensor(np.eye(n, dtype=np.bool))
-        else:
-            return torch.eye(n, dtype=dtype)
+        # # # # # # # # # # # # #
+        # Define any types here #
+        # # # # # # # # # # # # #
+        if method == 'torch':
+            self.bool = torch.bool
+            self.float32 = torch.float32
 
-    def setup_torch(self):
-        self.arccos = torch.acos
-
-        self.cross = lambda x, y, axis: torch.cross(x, y, dim=axis)
-        self.norm = lambda x, axis: torch.norm(x, dim=axis)
-        self.sum = lambda x, axis: torch.sum(x, dim=axis)
-
-        self.arange = lambda n: torch.arange(n)
-        self.tile = lambda x, shape: x.repeat(*shape)
-        # As of pytorch 1.2.0, BoolTensors are implemented. However,
-        # torch.eye does not take dtype=torch.bool on CPU devices yet.
-        # Watch pytorch PR #24148 for the implementation, which would
-        # enable self.eye = lambda n, dtype: torch.eye(n, dtype=dtype)
-        # For now, we do this:
-        self.eye = lambda n, dtype: self.torch_eye(n, dtype).to(self.device)
-        self.ones = lambda shape, dtype: torch.ones(*shape,
-                                                dtype=dtype).to(self.device)
-
-        self.to_type = lambda x, dtype: x.type(dtype)
-        self.bool = torch.bool
-        self.float32 = torch.float32
-
-    def setup_numpy(self):
-        self.arccos = np.arccos
-
-        self.cross = lambda x, y, axis: np.cross(x, y, axis=axis)
-        self.norm = lambda x, axis: np.linalg.norm(x, axis=axis)
-        self.sum = lambda x, axis: np.sum(x, axis=axis)
-
-        self.arange = lambda n: np.arange(n)
-        self.tile = lambda x, shape: np.tile(x, shape)
-        self.eye = lambda n, dtype: np.eye(n, dtype=dtype)
-        self.ones = lambda shape, dtype: np.ones(shape, dtype=dtype)
-
-        self.to_type = lambda x, dtype: x.astype(dtype)
-        self.bool = np.bool
-        self.float32 = np.float32
+        elif self.method == 'numpy':
+            self.bool = np.bool
+            self.float32 = np.float32
 
     def check_array_vs_tensor(self, object, name=None):
         if name is None:
@@ -252,3 +214,76 @@ class Geometry():
                                       dtype=self.float32)
 
         return neighbors, neighbor_mask
+
+    def _torch_eye(self, n, dtype):
+        if dtype == torch.bool:
+            # Only in pytorch>=1.2!
+            return torch.BoolTensor(np.eye(n, dtype=np.bool))
+        else:
+            return torch.eye(n, dtype=dtype)
+
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    # # # # # # # # # # # # # # Versatile Methods # # # # # # # # # # # # # #
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+    # Methods defined: arccos, cross, norm, sum, arange, tile, eye, ones,
+    #                  to_type
+
+    def arccos(self, x):
+        if self.method == 'torch':
+            return torch.acos(x)
+        elif self.method == 'numpy':
+            return np.arccos(x)
+
+    def cross(self, x, y, axis):
+        if self.method == 'torch':
+            return torch.cross(x, y, dim=axis)
+        elif self.method == 'numpy':
+            return np.cross(x, y, axis=axis)
+
+    def norm(self, x, axis):
+        if self.method == 'torch':
+            return torch.norm(x, dim=axis)
+        elif self.method == 'numpy':
+            return np.linalg.norm(x, axis=axis)
+
+    def sum(self, x, axis):
+        if self.method == 'torch':
+            return torch.sum(x, dim=axis)
+        elif self.method == 'numpy':
+            return np.sum(x, axis=axis)
+
+    def arange(self, n):
+        if self.method == 'torch':
+            return torch.arange(n)
+        elif self.method == 'numpy':
+            return np.arange(n)
+
+    def tile(self, x, shape):
+        if self.method == 'torch':
+            return x.repeat(*shape)
+        elif self.method == 'numpy':
+            return np.tile(x, shape)
+
+    def eye(self, n, dtype):
+    # As of pytorch 1.2.0, BoolTensors are implemented. However,
+    # torch.eye does not take dtype=torch.bool on CPU devices yet.
+    # Watch pytorch PR #24148 for the implementation, which would
+    # enable self.eye = lambda n, dtype: torch.eye(n, dtype=dtype)
+    # For now, we do this:
+        if self.method == 'torch':
+            return self._torch_eye(n, dtype) #.to(self.device)
+        elif self.method == 'numpy':
+            return np.eye(n, dtype=dtype)
+
+    def ones(self, shape, dtype):
+        if self.method == 'torch':
+            return torch.ones(*shape, dtype=dtype).to(self.device)
+        elif self.method =='numpy':
+            return np.ones(shape, dtype=dtype)
+
+    def to_type(self, x, dtype):
+        if self.method == 'torch':
+            return x.type(dtype)
+        elif self.method == 'numpy':
+            return x.astype(dtype)
