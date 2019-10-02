@@ -208,10 +208,12 @@ class CGnet(nn.Module):
                 for layer in self.feature.layer_list:
                     if isinstance(layer, (GeometryFeature, SchnetFeature)):
                         layer.device = device
+                        layer.geometry.device = device
                     if isinstance(layer, ZscoreLayer):
                         layer.to(device)
             if isinstance(self.feature, (GeometryFeature, SchnetFeature)):
                 self.feature.device = device
+                self.feature.geometry.device = device
 
     def predict(self, coord, force_labels, embedding_property=None):
         """Prediction over test/validation batch.
