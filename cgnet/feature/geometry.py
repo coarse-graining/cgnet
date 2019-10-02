@@ -44,12 +44,14 @@ class Geometry():
 
         if self.method == 'numpy' and type(object) is not np.ndarray:
             raise ValueError(
-    "Input argument {} must be type np.ndarray for Geometry(method='numpy')".format(name)
-                )
+                "Input argument {} must be type np.ndarray for Geometry(method='numpy')".format(
+                    name)
+            )
         if self.method == 'torch' and type(object) is not torch.Tensor:
             raise ValueError(
-    "Input argument {} must be type torch.Tensor for Geometry(method='torch')".format(name)
-                )
+                "Input argument {} must be type torch.Tensor for Geometry(method='torch')".format(
+                    name)
+            )
 
     def get_distance_indices(self, n_beads, backbone_inds=[], backbone_map=None):
         """Determines indices of pairwise distance features.
@@ -266,20 +268,20 @@ class Geometry():
             return np.tile(x, shape)
 
     def eye(self, n, dtype):
-    # As of pytorch 1.2.0, BoolTensors are implemented. However,
-    # torch.eye does not take dtype=torch.bool on CPU devices yet.
-    # Watch pytorch PR #24148 for the implementation, which would
-    # enable self.eye = lambda n, dtype: torch.eye(n, dtype=dtype)
-    # For now, we do this:
+        # As of pytorch 1.2.0, BoolTensors are implemented. However,
+        # torch.eye does not take dtype=torch.bool on CPU devices yet.
+        # Watch pytorch PR #24148 for the implementation, which would
+        # enable self.eye = lambda n, dtype: torch.eye(n, dtype=dtype)
+        # For now, we do this:
         if self.method == 'torch':
-            return self._torch_eye(n, dtype) #.to(self.device)
+            return self._torch_eye(n, dtype).to(self.device)
         elif self.method == 'numpy':
             return np.eye(n, dtype=dtype)
 
     def ones(self, shape, dtype):
         if self.method == 'torch':
             return torch.ones(*shape, dtype=dtype).to(self.device)
-        elif self.method =='numpy':
+        elif self.method == 'numpy':
             return np.ones(shape, dtype=dtype)
 
     def to_type(self, x, dtype):
