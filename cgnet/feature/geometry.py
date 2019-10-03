@@ -271,7 +271,7 @@ class Geometry():
         # As of pytorch 1.2.0, BoolTensors are implemented. However,
         # torch.eye does not take dtype=torch.bool on CPU devices yet.
         # Watch pytorch PR #24148 for the implementation, which would
-        # enable self.eye = lambda n, dtype: torch.eye(n, dtype=dtype)
+        # allow us to return torch.eye(n, dtype=dtype)
         # For now, we do this:
         if self.method == 'torch':
             return self._torch_eye(n, dtype).to(self.device)
