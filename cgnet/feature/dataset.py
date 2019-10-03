@@ -38,7 +38,6 @@ class MoleculeDataset(Dataset):
         self.coordinates = self._make_array(coordinates, selection)
         self.forces = self._make_array(forces, selection)
         if embeddings is not None:
-            embeddings = self._check_embedding_dimension(embeddings)
             self.embeddings = self._make_array(embeddings, selection)
         else:
             self.embeddings = None
@@ -59,7 +58,7 @@ class MoleculeDataset(Dataset):
                              requires_grad=True, device=self.device),
                 torch.tensor(self.forces[index],
                              device=self.device),
-                torch.Tensor([])
+                torch.tensor([])
             )
         else:
             return (
@@ -99,7 +98,6 @@ class MoleculeDataset(Dataset):
         self.forces = np.concatenate([self.forces, new_forces], axis=0)
 
         if self.embeddings is not None:
-            embeddings = self._check_embedding_dimension(embeddings)
             self.embeddings = np.concatenate([self.embeddings, new_embeddings],
                                              axis=0)
         self._check_size_consistency()
@@ -109,31 +107,12 @@ class MoleculeDataset(Dataset):
         """When we create or add data, we need to make sure that everything
         has the same number of frames.
         """
-        if len(self.coordinates) != len(self.forces):
-            raise ValueError("Coordinates and forces must have equal lengths")
+        if self.coordinates.shape != self.forces.shape:
+            raise ValueError("Coordinates and forces must have equal shapes")
+
+        if len(self.coordinates.shape) != 3:
+            raise ValueError("Coordinates and forces must have three dimensions")
 
         if self.embeddings is not None:
-            if len(self.coordinates) != len(self.embeddings):
-                raise ValueError(
-                    "Coordinates, forces, and embeddings must have equal lengths"
-                )
-
-    def _check_embedding_dimension(self, embeddings):
-        """We want to ensure that, even if we are only embedding one property,
-        the shape of the embeddings tensor is (n_frames, n_beads, n_properties).
-        Thus, we add a dimension if the embeddings are input and only have
-        shape length 2.
-        """
-        if len(embeddings.shape) == 2:
-            return embeddings
-        else:
-            raise ValueError("Embeddings must be of shape (n_frames, n_features)")
-            # old_shape = embeddings.shape
-            # embeddings = embeddings.reshape(*old_shape, 1)
-            # warnings.warn(
-            #     "The embeddings have been reshaped from {} to {}".format(
-            #         old_shape,
-            #         embeddings.shape
-            #     )
-            # )
-            # return embeddings
+            if len(self.embeddings.shape) != 2:
+                raise ValueError("Embeddings must have two dimensions")
