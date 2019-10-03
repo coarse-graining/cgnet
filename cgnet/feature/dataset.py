@@ -5,7 +5,6 @@
 import numpy as np
 import torch
 import scipy.spatial
-import warnings
 
 from torch.utils.data import Dataset, DataLoader
 
