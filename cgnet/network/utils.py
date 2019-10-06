@@ -236,8 +236,15 @@ class Simulation():
             self.rng = np.random.RandomState(random_seed)
         self.random_seed = random_seed
 
-    def simulate(self):
+        self._simulated = False
+
+    def simulate(self, overwrite=False):
         """Generates independent simulations.
+
+        Parameters
+        ----------
+        overwrite : Bool (default=False)
+            Set to True if you wish to overwrite any saved simulation data
 
         Returns
         -------
@@ -256,6 +263,10 @@ class Simulation():
             for each frame in simulation 
 
         """
+        if self._simulated and not overwrite:
+            raise RuntimeError('Simulation results are already populated. ' \
+                               'To rerun, set overwrite=True.')
+
         if self.verbose:
             i = 1
             print(
@@ -322,5 +333,7 @@ class Simulation():
         if self.save_potential:
             self.simulated_potential = np.swapaxes(
             self.simulated_potential, 0, 1)
+
+        self._simulated = True
 
         return self.simulated_traj
