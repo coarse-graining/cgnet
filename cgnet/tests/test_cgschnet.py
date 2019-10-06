@@ -41,7 +41,7 @@ def _make_cgschnet_model(beads, n_embeddings, embedding_dim,
                                    neighbor_cutoff=None,
                                    n_gaussians=n_gaussians)
     layer_list = [geometry_feature, schnet_feature]
-    
+
     distance_indices = np.arange(beads * (beads-1) // 2)
     feature_combiner = FeatureCombiner(layer_list,
                                        distance_indices=distance_indices)
@@ -86,10 +86,10 @@ def test_cgschnet_simulation_shapes():
     traj = sim.simulate()
 
     np.testing.assert_array_equal(sim.simulated_traj.shape,
-                                 [frames, sim_length, beads, 3])
+                                  [frames, sim_length, beads, 3])
 
     np.testing.assert_array_equal(sim.simulated_forces.shape,
-                                 [frames, sim_length, beads, 3])
+                                  [frames, sim_length, beads, 3])
 
     np.testing.assert_array_equal(sim.simulated_potential.shape,
                                   [frames, sim_length, embedding_dim])
