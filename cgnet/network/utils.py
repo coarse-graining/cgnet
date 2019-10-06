@@ -1,9 +1,12 @@
 # Authors: Nick Charron, Brooke Husic, Jiang Wang
+# Contributors: Dominik Lemm
 
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 import numpy as np
+
+from cgnet.feature import SchnetFeature
 
 
 def lipschitz_projection(model, strength=10.0, mask=None):
@@ -121,9 +124,13 @@ class Simulation():
     model : cgnet.network.CGNet() instance
         Trained model used to generate simulation data
     initial_coordinates : np.ndarray
-        Coordinate data of dimension [n_simulations, n_atoms, n_dimensions].
+        Coordinate data of dimension [n_simulations, n_beads, n_dimensions].
         Each entry in the first dimension represents the first frame of an
         independent simulation.
+    embedding_property : np.ndarray or None (default=None)
+        Embedding data of dimension [n_simulations, n_beads]. Each entry
+        in the first dimension corresponds to the embeddings for the
+        initial_coordinates data. If no embeddings, use None.
     save_forces : bool (defalt=False)
         Whether to save forces at the same saved interval as the simulation
         coordinates
@@ -167,9 +174,10 @@ class Simulation():
     Long simulation lengths may take a significant amount of time.
     """
 
-    def __init__(self, model, initial_coordinates, save_forces=False,
-                 save_potential=False, length=100, save_interval=10, dt=5e-4,
-                 diffusion=1.0, beta=1.0, verbose=False, random_seed=None):
+    def __init__(self, model, initial_coordinates, embedding_property=None,
+                 save_forces=False, save_potential=False, length=100,
+                 save_interval=10, dt=5e-4, diffusion=1.0, beta=1.0,
+                 verbose=False, random_seed=None):
         if length % save_interval != 0:
             raise ValueError(
                 'The save_interval must be a factor of the simulation length'
@@ -179,8 +187,22 @@ class Simulation():
 
         if len(initial_coordinates.shape) != 3:
             raise ValueError(
-                'initial_coordinates shape must be [frames, atoms, dimensions]'
+                'initial_coordinates shape must be [frames, beads, dimensions]'
             )
+
+        if embedding_property is None:
+            if np.any([type(model.feature.layer_list[i]) == SchnetFeature
+                       for i in range(len(model.feature.layer_list))]):
+                raise RuntimeError('Since you have a SchnetFeature, you must \
+                                    provide an embedding_property array')
+
+        if embedding_property is not None:
+            if len(embedding_property.shape) != 2:
+                raise ValueError('embedding_property shape must be [frames, beads]')
+
+            if initial_coordinates.shape[:2] != embedding_property.shape:
+                raise ValueError('initial_coordinates and embedding_property ' \
+                                 'must have the same first two dimensions')
 
         if type(initial_coordinates) is not torch.Tensor:
             initial_coordinates = torch.tensor(initial_coordinates,
@@ -189,6 +211,7 @@ class Simulation():
             initial_coordinates.requires_grad = True
 
         self.initial_coordinates = initial_coordinates
+        self.embedding_property = embedding_property
         self.n_sims = self.initial_coordinates.shape[0]
         self.n_beads = self.initial_coordinates.shape[1]
         self.n_dims = self.initial_coordinates.shape[2]
@@ -249,7 +272,7 @@ class Simulation():
         x_old = self.initial_coordinates
         dtau = self.diffusion * self.dt
         for t in range(self.length):
-            potential, forces = self.model(x_old)
+            potential, forces = self.model(x_old, self.embedding_property)
             potential = potential.detach().numpy()
             forces = forces.detach().numpy()
             noise = self.rng.randn(self.n_sims,
