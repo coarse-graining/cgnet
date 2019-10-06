@@ -1,5 +1,5 @@
-# Authors: Brooke Husic, Dominik Lemm
-# Contributors: Nick Charron
+# Authors: Brooke Husic
+# Contributors: Dominik Lemm, Nick Charron
 
 import numpy as np
 import torch
@@ -7,7 +7,7 @@ import torch
 from cgnet.feature import (GeometryFeature, CGBeadEmbedding, SchnetFeature,
                            FeatureCombiner, LinearLayer, ShiftedSoftplus)
 
-from cgnet.network import CGnet, ForceLoss
+from cgnet.network import CGnet, ForceLoss, Simulation
 
 
 frames = np.random.randint(10, 30)  # Number of frames
@@ -20,7 +20,7 @@ embeddings = torch.randint(3, size=(coords.shape[:2]))
 
 # hyperparameters
 n_embeddings = np.random.randint(5, 10)
-embedding_dim = 100
+embedding_dim = np.random.randint(50, 100)
 # The number of interaction blocks must be less than or equal to the
 # number of embeddings
 n_interaction_blocks = np.random.randint(2, 5)
@@ -75,13 +75,21 @@ def test_cgschnet_shapes():
     np.testing.assert_array_equal(force.size(), [frames, beads, 3])
 
 
+def test_cgschnet_simulation_shapes():
+    # Test simulation with embeddings and make sure the shapes of
+    # the simulated coordinates, forces, and potential are correct
+    sim_length = np.random.randint(10, 20)
+    sim = Simulation(model, coords, embeddings, length=sim_length,
+                     save_interval=1, beta=1., save_forces=True,
+                     save_potential=True)
 
+    traj = sim.simulate()
 
+    np.testing.assert_array_equal(sim.simulated_traj.shape,
+                                 [frames, sim_length, beads, 3])
 
+    np.testing.assert_array_equal(sim.simulated_forces.shape,
+                                 [frames, sim_length, beads, 3])
 
-
-
-
-
-
-
+    np.testing.assert_array_equal(sim.simulated_potential.shape,
+                                  [frames, sim_length, embedding_dim])
