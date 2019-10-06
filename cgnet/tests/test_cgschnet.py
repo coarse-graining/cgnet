@@ -19,15 +19,17 @@ forces = torch.randn((frames, beads, 3), requires_grad=True)
 embeddings = torch.randint(3, size=(coords.shape[:2]))
 
 # hyperparameters
-n_embeddings = np.random.randint(2, 5)
-embedding_dim = np.random.randint(12, 24)
+n_embeddings = np.random.randint(5, 10)
+embedding_dim = 100
+# The number of interaction blocks must be less than or equal to the
+# number of embeddings
 n_interaction_blocks = np.random.randint(2, 5)
 n_gaussians = np.random.randint(12, 24)
 n_layers = np.random.randint(2, 5)
 
 
-def _make_cgschnet_model(n_embeddings, embedding_dim, n_interaction_blocks,
-                         n_gaussians, n_layers):
+def _make_cgschnet_model(beads, n_embeddings, embedding_dim,
+                         n_interaction_blocks, n_gaussians, n_layers):
     geometry_feature = GeometryFeature(n_beads=beads)
     embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
                                       embedding_dim=embedding_dim)
@@ -39,9 +41,10 @@ def _make_cgschnet_model(n_embeddings, embedding_dim, n_interaction_blocks,
                                    neighbor_cutoff=None,
                                    n_gaussians=n_gaussians)
     layer_list = [geometry_feature, schnet_feature]
-    # Let's say that the first 10 indices are the distance ones
+    
+    distance_indices = np.arange(beads * (beads-1) // 2)
     feature_combiner = FeatureCombiner(layer_list,
-                                       distance_indices=np.arange(10))
+                                       distance_indices=distance_indices)
     layers = LinearLayer(embedding_dim, embedding_dim,
                          activation=ShiftedSoftplus())
     for l in range(n_layers - 1):
@@ -54,17 +57,20 @@ def _make_cgschnet_model(n_embeddings, embedding_dim, n_interaction_blocks,
 
 
 # Create our cgschnet model
-model = _make_cgschnet_model(n_embeddings, embedding_dim, n_interaction_blocks,
-                             n_gaussians, n_layers)
+model = _make_cgschnet_model(beads, n_embeddings, embedding_dim,
+                             n_interaction_blocks,  n_gaussians, n_layers)
 
 
-def test_cgschnet_basics():
+def test_cgschnet_shapes():
+    # Test the architecture, output energy, and output force shapes of
+    # a CGSchnet model
     energy, force = model.forward(coords, embeddings)
 
     # The number of layers should be 2*n_layers because each "layer" results
     # in one linear layer and one nonlinearity in the archeticture object.
     assert len(model.arch) == 2*n_layers
 
+    # Test the shapes of the energy and force outputs
     np.testing.assert_array_equal(energy.size(), [frames, embedding_dim])
     np.testing.assert_array_equal(force.size(), [frames, beads, 3])
 
