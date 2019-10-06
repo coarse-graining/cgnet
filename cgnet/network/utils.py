@@ -6,7 +6,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 import numpy as np
 
-from cgnet.feature import SchnetFeature
+from cgnet.feature import GeometryFeature, SchnetFeature
 
 
 def lipschitz_projection(model, strength=10.0, mask=None):
@@ -191,10 +191,15 @@ class Simulation():
             )
 
         if embedding_property is None:
-            if np.any([type(model.feature.layer_list[i]) == SchnetFeature
+            try:
+                if np.any([type(model.feature.layer_list[i]) == SchnetFeature
                        for i in range(len(model.feature.layer_list))]):
-                raise RuntimeError('Since you have a SchnetFeature, you must \
-                                    provide an embedding_property array')
+                    raise RuntimeError('Since you have a SchnetFeature, you must \
+                                        provide an embedding_property array')
+            except:
+                if type(model.feature) == SchnetFeature:
+                    raise RuntimeError('Since you have a SchnetFeature, you must \
+                                        provide an embedding_property array')
 
         if embedding_property is not None:
             if len(embedding_property.shape) != 2:
