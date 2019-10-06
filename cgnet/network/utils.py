@@ -127,7 +127,7 @@ class Simulation():
         Coordinate data of dimension [n_simulations, n_beads, n_dimensions].
         Each entry in the first dimension represents the first frame of an
         independent simulation.
-    embedding_property : np.ndarray or None (default=None)
+    embeddings : np.ndarray or None (default=None)
         Embedding data of dimension [n_simulations, n_beads]. Each entry
         in the first dimension corresponds to the embeddings for the
         initial_coordinates data. If no embeddings, use None.
@@ -174,7 +174,7 @@ class Simulation():
     Long simulation lengths may take a significant amount of time.
     """
 
-    def __init__(self, model, initial_coordinates, embedding_property=None,
+    def __init__(self, model, initial_coordinates, embeddings=None,
                  save_forces=False, save_potential=False, length=100,
                  save_interval=10, dt=5e-4, diffusion=1.0, beta=1.0,
                  verbose=False, random_seed=None):
@@ -190,23 +190,23 @@ class Simulation():
                 'initial_coordinates shape must be [frames, beads, dimensions]'
             )
 
-        if embedding_property is None:
+        if embeddings is None:
             try:
                 if np.any([type(model.feature.layer_list[i]) == SchnetFeature
                        for i in range(len(model.feature.layer_list))]):
                     raise RuntimeError('Since you have a SchnetFeature, you must \
-                                        provide an embedding_property array')
+                                        provide an embeddings array')
             except:
                 if type(model.feature) == SchnetFeature:
                     raise RuntimeError('Since you have a SchnetFeature, you must \
-                                        provide an embedding_property array')
+                                        provide an embeddings array')
 
-        if embedding_property is not None:
-            if len(embedding_property.shape) != 2:
-                raise ValueError('embedding_property shape must be [frames, beads]')
+        if embeddings is not None:
+            if len(embeddings.shape) != 2:
+                raise ValueError('embeddings shape must be [frames, beads]')
 
-            if initial_coordinates.shape[:2] != embedding_property.shape:
-                raise ValueError('initial_coordinates and embedding_property ' \
+            if initial_coordinates.shape[:2] != embeddings.shape:
+                raise ValueError('initial_coordinates and embeddings ' \
                                  'must have the same first two dimensions')
 
         if type(initial_coordinates) is not torch.Tensor:
@@ -216,7 +216,7 @@ class Simulation():
             initial_coordinates.requires_grad = True
 
         self.initial_coordinates = initial_coordinates
-        self.embedding_property = embedding_property
+        self.embeddings = embeddings
         self.n_sims = self.initial_coordinates.shape[0]
         self.n_beads = self.initial_coordinates.shape[1]
         self.n_dims = self.initial_coordinates.shape[2]
@@ -277,7 +277,7 @@ class Simulation():
         x_old = self.initial_coordinates
         dtau = self.diffusion * self.dt
         for t in range(self.length):
-            potential, forces = self.model(x_old, self.embedding_property)
+            potential, forces = self.model(x_old, self.embeddings)
             potential = potential.detach().numpy()
             forces = forces.detach().numpy()
             noise = self.rng.randn(self.n_sims,
