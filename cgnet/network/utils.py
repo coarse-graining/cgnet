@@ -1,9 +1,12 @@
 # Authors: Nick Charron, Brooke Husic, Jiang Wang
+# Contributors: Dominik Lemm
 
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 import numpy as np
+
+from cgnet.feature import GeometryFeature, SchnetFeature
 
 
 def lipschitz_projection(model, strength=10.0, mask=None):
@@ -101,7 +104,7 @@ def dataset_loss(model, loader):
     num_batch = 0
     ref_numel = 0
     for num, batch in enumerate(loader):
-        coords, force = batch
+        coords, force, _ = batch
         if num == 0:
             ref_numel = coords.numel()
         potential, pred_force = model.forward(coords)
@@ -121,9 +124,13 @@ class Simulation():
     model : cgnet.network.CGNet() instance
         Trained model used to generate simulation data
     initial_coordinates : np.ndarray
-        Coordinate data of dimension [n_simulations, n_atoms, n_dimensions].
+        Coordinate data of dimension [n_simulations, n_beads, n_dimensions].
         Each entry in the first dimension represents the first frame of an
         independent simulation.
+    embeddings : np.ndarray or None (default=None)
+        Embedding data of dimension [n_simulations, n_beads]. Each entry
+        in the first dimension corresponds to the embeddings for the
+        initial_coordinates data. If no embeddings, use None.
     save_forces : bool (defalt=False)
         Whether to save forces at the same saved interval as the simulation
         coordinates
@@ -167,9 +174,10 @@ class Simulation():
     Long simulation lengths may take a significant amount of time.
     """
 
-    def __init__(self, model, initial_coordinates, save_forces=False,
-                 save_potential=False, length=100, save_interval=10, dt=5e-4,
-                 diffusion=1.0, beta=1.0, verbose=False, random_seed=None):
+    def __init__(self, model, initial_coordinates, embeddings=None,
+                 save_forces=False, save_potential=False, length=100,
+                 save_interval=10, dt=5e-4, diffusion=1.0, beta=1.0,
+                 verbose=False, random_seed=None):
         if length % save_interval != 0:
             raise ValueError(
                 'The save_interval must be a factor of the simulation length'
@@ -179,8 +187,27 @@ class Simulation():
 
         if len(initial_coordinates.shape) != 3:
             raise ValueError(
-                'initial_coordinates shape must be [frames, atoms, dimensions]'
+                'initial_coordinates shape must be [frames, beads, dimensions]'
             )
+
+        if embeddings is None:
+            try:
+                if np.any([type(model.feature.layer_list[i]) == SchnetFeature
+                       for i in range(len(model.feature.layer_list))]):
+                    raise RuntimeError('Since you have a SchnetFeature, you must \
+                                        provide an embeddings array')
+            except:
+                if type(model.feature) == SchnetFeature:
+                    raise RuntimeError('Since you have a SchnetFeature, you must \
+                                        provide an embeddings array')
+
+        if embeddings is not None:
+            if len(embeddings.shape) != 2:
+                raise ValueError('embeddings shape must be [frames, beads]')
+
+            if initial_coordinates.shape[:2] != embeddings.shape:
+                raise ValueError('initial_coordinates and embeddings ' \
+                                 'must have the same first two dimensions')
 
         if type(initial_coordinates) is not torch.Tensor:
             initial_coordinates = torch.tensor(initial_coordinates,
@@ -189,6 +216,7 @@ class Simulation():
             initial_coordinates.requires_grad = True
 
         self.initial_coordinates = initial_coordinates
+        self.embeddings = embeddings
         self.n_sims = self.initial_coordinates.shape[0]
         self.n_beads = self.initial_coordinates.shape[1]
         self.n_dims = self.initial_coordinates.shape[2]
@@ -208,8 +236,15 @@ class Simulation():
             self.rng = np.random.RandomState(random_seed)
         self.random_seed = random_seed
 
-    def simulate(self):
+        self._simulated = False
+
+    def simulate(self, overwrite=False):
         """Generates independent simulations.
+
+        Parameters
+        ----------
+        overwrite : Bool (default=False)
+            Set to True if you wish to overwrite any saved simulation data
 
         Returns
         -------
@@ -228,6 +263,10 @@ class Simulation():
             for each frame in simulation 
 
         """
+        if self._simulated and not overwrite:
+            raise RuntimeError('Simulation results are already populated. ' \
+                               'To rerun, set overwrite=True.')
+
         if self.verbose:
             i = 1
             print(
@@ -249,7 +288,7 @@ class Simulation():
         x_old = self.initial_coordinates
         dtau = self.diffusion * self.dt
         for t in range(self.length):
-            potential, forces = self.model(x_old)
+            potential, forces = self.model(x_old, self.embeddings)
             potential = potential.detach().numpy()
             forces = forces.detach().numpy()
             noise = self.rng.randn(self.n_sims,
@@ -294,5 +333,7 @@ class Simulation():
         if self.save_potential:
             self.simulated_potential = np.swapaxes(
             self.simulated_potential, 0, 1)
+
+        self._simulated = True
 
         return self.simulated_traj
