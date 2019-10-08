@@ -1,11 +1,12 @@
-# Authors: Nick Charron
+# Authors: Nick Charron, Brooke Husic
 
 import numpy as np
 import torch
 import torch.nn as nn
 from cgnet.feature import (FeatureCombiner, GeometryFeature, GeometryStatistics,
                            LinearLayer, SchnetFeature, CGBeadEmbedding)
-from cgnet.network import (CGnet, ForceLoss, HarmonicLayer, ZscoreLayer)
+from cgnet.network import (CGnet, ForceLoss, HarmonicLayer, ZscoreLayer,
+                           Simulation)
 
 
 def _get_random_schnet_feature(calc_geom=False):
@@ -253,3 +254,33 @@ def test_combiner_full():
     # Ensure CGnet output has the correct size
     np.testing.assert_array_equal(energy.size(), (n_frames, 1))
     np.testing.assert_array_equal(forces.size(), (n_frames, n_beads, 3))
+
+
+def test_cgschnet_simulation_shapes():
+    # Test simulation with embeddings and make sure the shapes of
+    # the simulated coordinates, forces, and potential are correct
+    schnet_feature, embedding_property, feature_size = _get_random_schnet_feature(
+        calc_geom=True)
+    layer_list = [schnet_feature]
+    feature_combiner = FeatureCombiner(layer_list)
+
+    # Next, we make aa CGnet with a random hidden architecture
+    arch = _get_random_architecture(feature_size)
+    model = CGnet(arch, ForceLoss(), feature=feature_combiner)
+
+    sim_length = np.random.randint(10, 20)
+    sim = Simulation(model, coords_torch, embedding_property, length=sim_length,
+                     save_interval=1, beta=1., save_forces=True,
+                     save_potential=True)
+
+    traj = sim.simulate()
+
+    np.testing.assert_array_equal(sim.simulated_traj.shape,
+                                  [n_frames, sim_length, n_beads, 3])
+
+    np.testing.assert_array_equal(sim.simulated_forces.shape,
+                                  [n_frames, sim_length, n_beads, 3])
+
+    np.testing.assert_array_equal(sim.simulated_potential.shape,
+                                  [n_frames, sim_length, 1])
+

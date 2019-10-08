@@ -4,7 +4,6 @@ import numpy as np
 import torch
 
 from cgnet.feature import MoleculeDataset
-from nose.exc import SkipTest
 
 # We create an artificial dataset with a random number of 
 # frames, beads, and dimensions. Since we aren't actually
@@ -51,7 +50,7 @@ def test_stride():
 
 
 def test_indexing():
-    # Make sure dataset indexing works
+    # Make sure dataset indexing works (no embeddings)
 
     # Make a random slice with possible repeats
     selection = [np.random.randint(frames)
@@ -60,10 +59,23 @@ def test_indexing():
 
     coords_tensor_from_numpy = torch.from_numpy(coords[selection])
     forces_tensor_from_numpy = torch.from_numpy(forces[selection])
-    coords_tensor_from_ds, forces_tensor_from_ds = ds[selection]
+    # The third argument is an empty tensor because no embeddings have been
+    # specified
+    coords_tensor_from_ds, forces_tensor_from_ds, empty_tensor = ds[selection]
 
     assert coords_tensor_from_ds.requires_grad
     np.testing.assert_array_equal(coords_tensor_from_numpy,
                                   coords_tensor_from_ds.detach().numpy())
     np.testing.assert_array_equal(forces_tensor_from_numpy,
                                   forces_tensor_from_ds.detach().numpy())
+    assert len(empty_tensor) == 0
+
+
+def test_embedding_shape():
+    # Test shape of multidimensional embeddings
+    embeddings = np.abs(np.floor(np.random.randn(frames, beads))).astype(int)
+
+    ds = MoleculeDataset(coords, forces, embeddings)
+
+    assert ds[:][2].shape == (frames, beads)
+    np.testing.assert_array_equal(ds.embeddings, embeddings)
