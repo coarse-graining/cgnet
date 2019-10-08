@@ -50,9 +50,9 @@ def test_linear_layer():
     linear_layer_list = [l for l in layers if isinstance(l, nn.Linear)]
     for layer, bias in zip(linear_layer_list, biases):
         if layer.bias is not None:
-            np.testing.assert_equal(bool(layer.bias.data[0]), bool(bias))
+            assert bool(layer.bias.data[0]) == bool(bias)
         else:
-            np.testing.assert_equal(bool(layer.bias), bool(bias))
+            assert bool(layer.bias) == bool(bias)
     # Next, we test the equality of the output and input sizes
     seq = nn.Sequential(*layers)
     y = seq(x0)
@@ -122,7 +122,7 @@ def test_repulsion_layer():
                                  repulsion_potential.callback_indices])
 
     # Test to see if RepulsionLayer ouput is scalar energy
-    np.testing.assert_equal(energy.size(), (frames, 1))
+    np.testing.assert_array_equal(energy.size(), (frames, 1))
     # Test to see if RepulsionLayer callback_indices are correct
     assert repul_idx == repulsion_potential.callback_indices
     # Next, we test to see if the manually calculated energy
@@ -154,7 +154,7 @@ def test_harmonic_layer():
                                 harmonic_potential.callback_indices])
 
     # Test to see if HarmonicLayer output is scalar energy
-    np.testing.assert_equal(energy.size(), (frames, 1))
+    np.testing.assert_array_equal(energy.size(), (frames, 1))
     # Test to see if HarmonicLayer callback_indices are correct
     assert bonds_idx == harmonic_potential.callback_indices
 
@@ -306,21 +306,21 @@ def test_cgnet():
                   priors=[harmonic_potential])
 
     # Test to see if the prior is embedded
-    np.testing.assert_equal(True, model.priors is not None)
+    assert model.priors is not None
 
     # Test to see if the hidden architexture has the correct length
-    np.testing.assert_equal(len(arch), model.arch.__len__())
+    assert len(arch) == len(model.arch)
 
     # Test to see if criterion is embedded correctly
-    np.testing.assert_equal(True, isinstance(model.criterion, ForceLoss))
+    assert isinstance(model.criterion, ForceLoss)
 
     # Next, we forward the test protein data from the preamble through
     # the model
     energy, force = model.forward(coords)
     # Here, we test to see if the predicted energy is scalar
     # and the predicted forces are the same dimension as the input coordinates
-    np.testing.assert_equal(energy.size(), (coords.size()[0], 1))
-    np.testing.assert_equal(force.size(), coords.size())
+    np.testing.assert_array_equal(energy.size(), (coords.size()[0], 1))
+    np.testing.assert_array_equal(force.size(), coords.size())
 
 
 def test_cgnet_simulation():
