@@ -86,7 +86,8 @@ def test_zscore_layer():
         zscores[1, i] = full_prior_stats[key]['std']
 
     # Then we create a feature layer and featurize our linear protein test data
-    geom_feat = GeometryFeature(n_beads=beads)
+    geom_feat = GeometryFeature(feature_tuples='all_backbone',
+                                n_beads=beads)
     feat = geom_feat(coords)
     rescaled_feat_truth = (feat - zscores[0, :])/zscores[1, :]
 
@@ -120,7 +121,8 @@ def test_repulsion_layer():
                   for ex_vol, exp in zip(ex_vols, exps)]
 
     repulsion_potential = RepulsionLayer(repul_idx, repul_list)
-    geom_feat = GeometryFeature(n_beads=beads)
+    geom_feat = GeometryFeature(feature_tuples='all_backbone',
+                                n_beads=beads)
     output_features = geom_feat(coords)
     energy = repulsion_potential(output_features[:,
                                  repulsion_potential.callback_indices])
@@ -152,7 +154,8 @@ def test_harmonic_layer():
     # HarmonicLayer. We pass the output of a feature layer to compare
     # HarmonicLayer forward method to manual energy calculation
     harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
-    geom_feat = GeometryFeature(n_beads=beads)
+    geom_feat = GeometryFeature(feature_tuples='all_backbone',
+                                n_beads=beads)
     output_features = geom_feat(coords)
     energy = harmonic_potential(output_features[:,
                                 harmonic_potential.callback_indices])
@@ -206,7 +209,8 @@ def test_prior_callback_order_2():
     # matches a manual calculation using the default order
     # We use the same setup as in test_prior_callback_order_1, but add further
     # add a GeometryFeature layer for comparing energy outputs
-    geom_feat = GeometryFeature(n_beads=beads)
+    geom_feat = GeometryFeature(feature_tuples='all_backbone',
+                                n_beads=beads)
     output_features = geom_feat(coords)
     bonds_tuples = [beads for beads in geom_stats.master_description_tuples
                     if len(beads) == 2 and abs(beads[0] - beads[1]) == 1]
@@ -292,7 +296,8 @@ def test_cgnet():
     bonds_interactions, _ = geom_stats.get_prior_statistics(
         features='Bonds', as_list=True)
     harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
-    feature_layer = GeometryFeature(n_beads=beads)
+    feature_layer = GeometryFeature(feature_tuples='all_backbone',
+                                    n_beads=beads)
     num_feats = feature_layer(coords).size()[1]
 
     # Next, we create a 4 layer hidden architecture with a random width
@@ -336,7 +341,8 @@ def test_cgnet_simulation():
     bonds_interactions, _ = geom_stats.get_prior_statistics(
         features='Bonds', as_list=True)
     harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
-    feature_layer = GeometryFeature(n_beads=beads)
+    feature_layer = GeometryFeature(feature_tuples='all_backbone',
+                                    n_beads=beads)
     num_feats = feature_layer(coords).size()[1]
 
     # Next, we create a 4 layer hidden architecture with a random width

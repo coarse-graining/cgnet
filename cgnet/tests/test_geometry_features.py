@@ -34,7 +34,8 @@ dihedral_inds = [(i, i+1, i+2, i+3) for i in range(beads-3)]
 def test_distance_features():
     # Make sure pairwise distance features are consistent with scipy
 
-    geom_feature = GeometryFeature(n_beads=beads)
+    geom_feature = GeometryFeature(feature_tuples='all_backbone',
+                                   n_beads=beads)
     # Forward pass calculates features (distances, angles, dihedrals)
     # and makes them accessible as attributes
     _ = geom_feature.forward(data_tensor)
@@ -68,7 +69,8 @@ def test_backbone_angle_features():
     #                      {||\overline{ba}|| ||\overline{cb}||}
     # \theta = \arccos(\theta)
 
-    geom_feature = GeometryFeature(n_beads=beads)
+    geom_feature = GeometryFeature(feature_tuples='all_backbone',
+                                   n_beads=beads)
     # Forward pass calculates features (distances, angles, dihedrals)
     # and makes them accessible as attributes
     _ = geom_feature.forward(data_tensor)
@@ -116,7 +118,8 @@ def test_dihedral_features():
     # \cos(\alpha) = n_2 \dot n_1
     # \alpha = \arctan{\frac{\sin(\alpha)}{\cos(\alpha)}}
 
-    geom_feature = GeometryFeature(n_beads=beads)
+    geom_feature = GeometryFeature(feature_tuples='all_backbone',
+                                   n_beads=beads)
     # Forward pass calculates features (distances, angles, dihedrals)
     # and makes them accessible as attributes
     _ = geom_feature.forward(data_tensor)

@@ -171,7 +171,8 @@ def test_backbone_psi_dihedrals():
 def test_equality_with_cgnet_dihedrals():
     # Make sure dihedrals are consistent with GeometryFeature
 
-    geom_feature = GeometryFeature(n_beads=beads)
+    geom_feature = GeometryFeature(feature_tuples='all_backbone',
+                                   n_beads=beads)
     out = geom_feature.forward(data_tensor)
 
     molecule = CGMolecule(names=names, resseq=resseq, resmap=resmap)
@@ -212,7 +213,8 @@ def test_equality_with_cgnet_dihedrals():
 def test_equality_with_cgnet_distances():
     # Make sure CA distances are consistent with GeometryFeature
 
-    geom_feature = GeometryFeature(n_beads=beads)
+    geom_feature = GeometryFeature(feature_tuples='all_backbone',
+                                   n_beads=beads)
     out = geom_feature.forward(data_tensor)
 
     molecule = CGMolecule(names=names, resseq=resseq, resmap=resmap)
@@ -257,4 +259,4 @@ def test_equality_with_cnget_angles():
 
     cgnet_angles = geom_feature.angles
 
-    np.testing.assert_allclose(mdtraj_angles, cgnet_angles, rtol=1e-5)
+    np.testing.assert_allclose(mdtraj_angles, cgnet_angles, rtol=1e-4)

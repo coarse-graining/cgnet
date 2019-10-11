@@ -49,6 +49,7 @@ def _get_random_schnet_feature(calc_geom=False):
                                    neighbor_cutoff=neighbor_cutoff)
     return schnet_feature, embedding_property, feature_size
 
+
 def _get_random_architecture(input_size):
     """ Helper function to generate random hidden architecture for CGnet
 
@@ -82,7 +83,9 @@ coords_torch = torch.tensor(coords_numpy, requires_grad=True).float()
 # Next, we recover the statistics of random protein data and we produce the
 # means, constants, and callback indices of bonds for a HarmonicLayer prior
 geom_stats = GeometryStatistics(coords_numpy, backbone_inds='all',
-                                get_all_distances=True)
+                                get_all_distances=True,
+                                get_backbone_angles=False,
+                                get_backbone_dihedrals=False)
 bonds_list, _ = geom_stats.get_prior_statistics('Bonds', as_list=True)
 bonds_idx = geom_stats.return_indices('Bonds')
 # Here we use the bond statistics to create a HarmonicLayer
@@ -93,7 +96,10 @@ zscores, _ = geom_stats.get_zscore_array()
 zscore_layer = ZscoreLayer(zscores)
 
 # Next, we create a GeometryFeature layer for the subsequent tests
-geometry_feature = GeometryFeature(n_beads=n_beads)
+# We only want it to calculate the distances, so we specify that
+# the feature tuples are the ones we calculated in GeometryStatistics
+geometry_feature = GeometryFeature(
+    feature_tuples=geom_stats.master_description_tuples)
 
 
 def test_combiner_geometry_feature():
@@ -109,15 +115,15 @@ def test_combiner_geometry_feature():
     feature_output, geometry_output = feature_combiner(coords_torch)
     assert feature_combiner.interfeature_transforms == [None]
     np.testing.assert_equal(list(feature_output.size()), list((n_frames,
-                            len(geom_stats.master_description_tuples))))
+                                                               len(geom_stats.master_description_tuples))))
     assert geometry_output is None
 
 
 def test_combiner_schnet_feature():
     # Tests FeatureCombiner for just single SchnetFeature.
-    # In this case, the geometry_output variable should be None. 
+    # In this case, the geometry_output variable should be None.
     # We also test to make sure the energy/force output matches
-    # that of a CGnet with the feature __init__ kwarg using the 
+    # that of a CGnet with the feature __init__ kwarg using the
     # SchnetFeature
     # First, we instantiate a FeatureCombiner with a SchnetFeature
     # That is capable of calculating pairwise distances (calculate_geometry
@@ -139,7 +145,7 @@ def test_combiner_schnet_feature():
 
 def test_combiner_schnet_in_cgnet():
     # Here we test to see if a FeatureCombiner using just a SchnetFeature
-    # produces the same output as a CGnet with a SchnetFeature for the 
+    # produces the same output as a CGnet with a SchnetFeature for the
     # feature __init__ kwarg
     # First, we instantiate a FeatureCombiner with a SchnetFeature
     # That is capable of calculating pairwise distances (calculate_geometry
@@ -162,7 +168,7 @@ def test_combiner_schnet_in_cgnet():
     # directly instead of using a FeatureCombiner
     model_2 = CGnet(arch, ForceLoss(), feature=schnet_feature)
     energy_2, forces_2 = model_2.forward(coords_torch,
-                                      embedding_property=embedding_property)
+                                         embedding_property=embedding_property)
 
     np.testing.assert_array_equal(energy.detach().numpy(),
                                   energy_2.detach().numpy())
@@ -186,9 +192,9 @@ def test_combiner_zscore():
     # Both transfroms should be None
     assert feature_combiner.interfeature_transforms == [None, None]
     np.testing.assert_equal(list(feature_output.size()), list((n_frames,
-                            len(geom_stats.master_description_tuples))))
+                                                               len(geom_stats.master_description_tuples))))
     np.testing.assert_equal(list(geometry_output.size()), list((n_frames,
-                            len(geom_stats.master_description_tuples))))
+                                                                len(geom_stats.master_description_tuples))))
     assert geometry_output is not None
 
 
@@ -284,4 +290,3 @@ def test_cgschnet_simulation_shapes():
 
     np.testing.assert_array_equal(sim.simulated_potential.shape,
                                   [n_frames, sim_length, 1])
-

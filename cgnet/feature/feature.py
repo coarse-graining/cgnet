@@ -17,9 +17,19 @@ class GeometryFeature(nn.Module):
 
     Parameters
     ----------
-    feature_tuples : list of tuples (default=[])
+    feature_tuples : list of tuples (default=None) or 'all_backbone'
         List of 2-, 3-, and 4-element tuples containing distance, angle, and
-        dihedral features to be calculated.
+        dihedral features to be calculated. If 'all_backbone', then
+        all beads are assumed to be the backbone, and all pairwise distances
+        and consecutive three-bead angles and four-bead dihedrals are
+        calculated. If 'all_backbone', then n_beads must be provided.
+    n_beads : int or None (default=None)
+        Number of beads; only needs to be provided if 'all_backbone' is used.
+        If a list of feature_tuples are provided and n_beads is provided
+        incorrectly, an error will be raised.
+    device : torch.device (default=torch.device('cpu'))
+        Device upon which tensors are mounted. Default device is the local
+        CPU.
 
     Attributes
     ----------
@@ -35,46 +45,48 @@ class GeometryFeature(nn.Module):
         List of three-bead angles according to descriptions['Angles']
     dihedrals : torch.Tensor
         List of four-bead torsions according to descriptions['Torsions']
-    device : torch.device (default=torch.device('cpu'))
-        Device upon which tensors are mounted. Default device is the local
-        CPU.
     geometry : Geometry instance
         Helper class which performs geometrical calculations. The device of
         used is that same as the feature class device.
     """
 
-    def __init__(self, feature_tuples='all', n_beads=None, device=torch.device('cpu')):
+    def __init__(self, feature_tuples=None, n_beads=None,
+                 device=torch.device('cpu')):
         super(GeometryFeature, self).__init__()
 
         self._n_beads = n_beads
         self.device = device
         self.geometry = Geometry(method='torch', device=self.device)
-        if feature_tuples is not 'all':
-            _temp_dict = dict(
-                zip(feature_tuples, np.arange(len(feature_tuples))))
-            if len(_temp_dict) < len(feature_tuples):
-                feature_tuples = list(_temp_dict.keys())
-                warnings.warn(
-                    "Some feature tuples are repeated and have been removed."
-                )
+        if feature_tuples is not 'all_backbone':
+            if feature_tuples is not None:
+                _temp_dict = dict(
+                    zip(feature_tuples, np.arange(len(feature_tuples))))
+                if len(_temp_dict) < len(feature_tuples):
+                    feature_tuples = list(_temp_dict.keys())
+                    warnings.warn(
+                        "Some feature tuples are repeated and have been removed."
+                    )
 
-            self.feature_tuples = feature_tuples
-            if (np.min([len(feat) for feat in feature_tuples]) < 2 or
-                    np.max([len(feat) for feat in feature_tuples]) > 4):
-                raise ValueError(
-                    "Custom features must be tuples of length 2, 3, or 4."
-                )
+                self.feature_tuples = feature_tuples
+                if (np.min([len(feat) for feat in feature_tuples]) < 2 or
+                        np.max([len(feat) for feat in feature_tuples]) > 4):
+                    raise ValueError(
+                        "Custom features must be tuples of length 2, 3, or 4."
+                    )
 
-            self._distance_pairs = [
-                feat for feat in feature_tuples if len(feat) == 2]
-            self._angle_trips = [
-                feat for feat in feature_tuples if len(feat) == 3]
-            self._dihedral_quads = [
-                feat for feat in feature_tuples if len(feat) == 4]
+                self._distance_pairs = [
+                    feat for feat in feature_tuples if len(feat) == 2]
+                self._angle_trips = [
+                    feat for feat in feature_tuples if len(feat) == 3]
+                self._dihedral_quads = [
+                    feat for feat in feature_tuples if len(feat) == 4]
+            else:
+                raise RuntimeError("Either a list of feature tuples or " \
+                                   "'all_backbone' must be specified.")
         else:
             if n_beads is None:
                 raise RuntimeError(
-                    "Must specify n_beads if feature_tuples is 'all'."
+                    "Must specify n_beads if feature_tuples is 'all_backone'."
                 )
             self._distance_pairs, _ = self.geometry.get_distance_indices(n_beads)
             if n_beads > 2:
