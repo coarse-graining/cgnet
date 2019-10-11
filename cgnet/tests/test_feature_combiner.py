@@ -81,7 +81,8 @@ coords_torch = torch.tensor(coords_numpy, requires_grad=True).float()
 
 # Next, we recover the statistics of random protein data and we produce the
 # means, constants, and callback indices of bonds for a HarmonicLayer prior
-geom_stats = GeometryStatistics(coords_numpy)
+geom_stats = GeometryStatistics(coords_numpy, backbone_inds='all',
+                                get_all_distances=True)
 bonds_list, _ = geom_stats.get_prior_statistics('Bonds', as_list=True)
 bonds_idx = geom_stats.return_indices('Bonds')
 # Here we use the bond statistics to create a HarmonicLayer

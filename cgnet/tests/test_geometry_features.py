@@ -91,7 +91,7 @@ def test_backbone_angle_features():
             angle_list.append(angle)
         angles.append(angle_list)
 
-    np.testing.assert_allclose(geom_feature.angles, angles, rtol=1e-5)
+    np.testing.assert_allclose(geom_feature.angles, angles, rtol=1e-4)
 
 
 def test_dihedral_features():

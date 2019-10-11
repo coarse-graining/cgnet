@@ -148,7 +148,9 @@ def test_schnet_feature_geometry():
 
     # Next we instance a geom_stats that only calculates distances
     # and compare distance pair tuples
-    geom_stats = GeometryStatistics(coords, get_backbone_angles=False,
+    geom_stats = GeometryStatistics(coords, backbone_inds='all',
+                                    get_all_distances=True,
+                                    get_backbone_angles=False,
                                     get_backbone_dihedrals=False,
                                     get_redundant_distance_mapping=True)
 

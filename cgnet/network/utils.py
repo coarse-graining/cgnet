@@ -325,13 +325,13 @@ class Simulation():
         dtau = self.diffusion * self.dt
         for t in range(self.length):
             potential, forces = self.model(x_old, self.embeddings)
-            potential = potential.detach().numpy()
-            forces = forces.detach().numpy()
-            noise = self.rng.randn(self.n_sims,
-                                   self.n_beads,
-                                   self.n_dims,
-                                   generator=self.rng).to(self.device)
-            x_new = (x_old.detach().numpy() + forces*dtau +
+            potential = potential.detach()
+            forces = forces.detach()
+            noise = torch.randn(self.n_sims,
+                                self.n_beads,
+                                self.n_dims,
+                                generator=self.rng).to(self.device)
+            x_new = (x_old.detach() + forces*dtau +
                      np.sqrt(2*dtau/self.beta)*noise)
 
             if t % self.save_interval == 0:
