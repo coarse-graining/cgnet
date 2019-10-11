@@ -87,6 +87,15 @@ class GeometryStatistics():
         else:
             self.beta = 1.0
 
+        if custom_feature_tuples is None:
+            if backbone_inds is None:
+                raise RuntimeError("You must specify either custom_feature_tuples ' \
+                                   'or backbone_inds='all'")
+            if backbone_inds == 'all':
+                if get_all_distances + get_backbone_angles + get_backbone_dihedrals == 0:
+                    raise RuntimeError('Without custom feature tuples, you must specify ' \
+                                       'any of get_all_distances, get_backbone_angles, or ' \
+                                       'get_backbone_dihedrals.')
         self._process_backbone(backbone_inds)
         self._process_custom_feature_tuples()
 
