@@ -24,7 +24,8 @@ dims = 3
 data = np.random.randn(frames, beads, dims)
 data_tensor = torch.Tensor(data)
 
-geom_feature = GeometryFeature(n_beads=beads)
+geom_feature = GeometryFeature(feature_tuples='all_backbone',
+                                 n_beads=beads)
 _ = geom_feature.forward(data_tensor)
 
 stats = GeometryStatistics(data_tensor, backbone_inds='all',

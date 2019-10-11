@@ -32,7 +32,7 @@ Dependency best practices
 
 Coding best practices (just a small subset!)
 --
-- *Always* use python 3 and `pytorch >= 1.0`!
+- *Always* use python 3 and `pytorch >= 1.2`!
 - Use `pep8` formatting! Packages like `autopep8` can help with this.
 - Add yourself to the contributors list at the top of the file.
 - Classes are `CamelCase`, and functions `use_underscores`.

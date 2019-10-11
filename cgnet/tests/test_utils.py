@@ -218,3 +218,27 @@ def test_simulation_seeding():
     np.testing.assert_array_equal(sim1.simulated_forces, sim2.simulated_forces)
     np.testing.assert_array_equal(sim1.simulated_potential,
                                   sim2.simulated_potential)
+
+
+def test_simulation_safety():
+    # Test whether the simulation indeed will refuse to overwrite
+    # existing data unless overwrite is set to true
+    initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
+
+    # Generate simulation
+    sim = Simulation(model, initial_coordinates, length=length,
+                     save_interval=save)
+    # Check that no simulation is stored
+    assert not sim._simulated
+
+    traj = sim.simulate()
+    # Check that a simulation is stored now
+    assert sim._simulated
+
+    # Check that it can't be overwritten by default
+    np.testing.assert_raises(RuntimeError, sim.simulate)
+
+    # Check that it can be overwritten with overwrite=True; i.e. that
+    # this command raises no error
+    traj2 = sim.simulate(overwrite=True)
+    assert sim._simulated
