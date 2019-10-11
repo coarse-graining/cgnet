@@ -127,6 +127,14 @@ class Geometry():
         self.check_array_vs_tensor(data, 'data')
 
         base, offset = self.get_vectorize_inputs(angle_inds, data)
+        #  This convention assumes that the middle index of the angle triplet
+        # is the angle vertex. Scalar multiplication of the first vector
+        # of the angle triplet by -1 means that the vertex point is
+        # subtracted from the non-vertex point for the first vector.
+        # This ensures that the arccos operation returns the acute angle
+        #  at the vertex. See test_geometry_features for a non-parallel
+        # formulation.
+        base *= -1
 
         angles = self.arccos(self.sum(base*offset, axis=2)/self.norm(
             base, axis=2)/self.norm(offset, axis=2))

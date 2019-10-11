@@ -24,7 +24,11 @@ dims = 3  # Number of dimensions
 
 # Create mock linear protein simulation data and create statistics
 coords = torch.randn((frames, beads, 3), requires_grad=True)
-geom_stats = GeometryStatistics(coords.detach().numpy())
+geom_stats = GeometryStatistics(coords.detach().numpy(),
+                                backbone_inds='all',
+                                get_all_distances=True,
+                                get_backbone_angles=True,
+                                get_backbone_dihedrals=True)
 
 
 def test_linear_layer():
@@ -241,10 +245,10 @@ def test_prior_with_stats_dropout():
     # and create an instance of GeometryStatistics
     feature_bools = [1] + [np.random.randint(0, high=1) for _ in range(2)]
     np.random.shuffle(feature_bools)
-    dropout_stats = GeometryStatistics(coords,
-                                       get_all_distances=feature_bools[0],
-                                       get_backbone_angles=feature_bools[1],
-                                       get_backbone_dihedrals=feature_bools[2])
+    dropout_stats = GeometryStatistics(coords, backbone_inds='all',
+                               get_all_distances=feature_bools[0],
+                               get_backbone_angles=feature_bools[1],
+                               get_backbone_dihedrals=feature_bools[2])
 
     # Here we construct priors on available features and test the callback order
     if 'Distances' in dropout_stats.descriptions:

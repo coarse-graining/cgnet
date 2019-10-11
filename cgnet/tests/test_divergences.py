@@ -3,7 +3,8 @@
 
 import numpy as np
 
-from cgnet.feature import kl_divergence, js_divergence, histogram_intersection
+from cgnet.feature import (kl_divergence, js_divergence,
+                           discrete_distribution_intersection)
 
 
 def _get_random_distr():
@@ -30,7 +31,9 @@ def _get_uniform_histograms():
     nbins = np.random.randint(2, high=50)  # Random number of bins
     _bins = np.linspace(0, 1, nbins)  # Equally space bins
 
-    # Here, we produce the two histogram/bin pairs
+    # Here, we produce the two histogram/bin pairs. We explicitly use
+    # the same _bins, so we check that bins_1 and bins_2 are both equal
+    # to our specified _bins post histogram creation.
     histogram_1, bins_1 = np.histogram(np.random.uniform(size=nbins),
                                        bins=_bins,
                                        density=True)
@@ -38,16 +41,26 @@ def _get_uniform_histograms():
                                        bins=_bins,
                                        density=True)
 
-    # We verify that that the two bin arrays are the same. This is necessary
-    # for proper histogram comparison, which is done bin-wise
+    # We verify that that the two bin arrays are the same as each other and
+    # as our input _bins. This is necessary for proper histogram comparison,
+    # which is done bin-wise
     np.testing.assert_array_equal(bins_1, bins_2)
-    return histogram_1, histogram_2, _bins, bins_1
+    np.testing.assert_array_equal(bins_1, _bins)
+
+    # Normalize histograms to create discrete distributions
+    histogram_1 /= np.sum(histogram_1)
+    histogram_2 /= np.sum(histogram_2)
+
+    # Create bins spaced by 1
+    bins_1 *= len(histogram_1)
+
+    return histogram_1, histogram_2, bins_1
 
 
 # We use the above two functions to generate random distributions
 # and histogram/bin pairs suitable for comparison using CGnet feature tools
 dist1, dist2 = _get_random_distr()
-hist1, hist2, bins_, bins = _get_uniform_histograms()
+hist1, hist2, bins = _get_uniform_histograms()
 
 
 def test_zero_kl_divergence():
@@ -128,28 +141,31 @@ def test_js_divergence_2():
     dist2_masked = np.ma.masked_where(dist2 == 0, dist2)
     elementwise_mean = 0.5 * (dist1_masked + dist2_masked)
     summand = 0.5 * (dist1_masked * np.ma.log(dist1_masked / elementwise_mean))
-    summand += 0.5 * (dist2_masked * np.ma.log(dist2_masked / elementwise_mean))
+    summand += 0.5 * ((dist2_masked * np.ma.log(dist2_masked / elementwise_mean)))
     manual_div = np.ma.sum(summand)
 
     cgnet_div = js_divergence(dist1, dist2)
     np.testing.assert_allclose(manual_div, cgnet_div)
 
 
-def test_full_histogram_intersection():
+def test_full_discrete_distr_intersection():
     # Tests the intersection of a uniform histogram with itself
     # The intersection of any histogram with itself should be unity
 
-    cgnet_intersection = histogram_intersection(hist1, hist1, bins)
-    np.testing.assert_allclose(cgnet_intersection, 1.)
+    cgnet_intersection = discrete_distribution_intersection(hist1, hist1)
     np.testing.assert_allclose(cgnet_intersection, 1.)
 
+    cgnet_intersection_bins = discrete_distribution_intersection(hist1, hist1,
+                                                                 bins)
+    np.testing.assert_allclose(cgnet_intersection_bins, 1.)
 
-def test_histogram_intersection():
+
+def test_discrete_distr_intersection():
     # Tests the calculation of intersection for histograms drawn from
     # uniform distributions
 
     manual_intersection = 0.  # intersection accumulator
-    intervals = np.diff(bins_)  # intervals betweem histogram bins
+    intervals = np.diff(bins)  # intervals betweem histogram bins
 
     # Here we loop though the common histogram intervals and accumulate
     # the intersection of the two histograms
@@ -159,15 +175,20 @@ def test_histogram_intersection():
 
     # Here we verify that the manual calculation matches the output of
     # the historam_intersection function
-    cgnet_intersection = histogram_intersection(hist1, hist2, bins_)
+    cgnet_intersection = discrete_distribution_intersection(hist1, hist2)
     np.testing.assert_allclose(manual_intersection, cgnet_intersection)
 
 
-def test_histogram_intersection_no_bins():
+def test_discrete_distr_intersection_no_bins():
     # Tests the calculation of intersection for histograms drawn from
     # uniform distributions. The histogram intersection should fill in
-    # the bins uniformly if none are supplied
+    # the bins uniformly if none are supplied.
 
-    cgnet_intersection = histogram_intersection(hist1, hist2, bins_)
-    nobins_intersection = histogram_intersection(hist1, hist2, bins=None)
+    hist1n = hist1 / np.sum(hist1)
+    hist2n = hist2 / np.sum(hist2)
+
+    cgnet_intersection = discrete_distribution_intersection(
+        hist1n, hist2n, bins)
+    nobins_intersection = discrete_distribution_intersection(hist1, hist2,
+                                                             bin_edges=None)
     np.testing.assert_allclose(cgnet_intersection, nobins_intersection)
