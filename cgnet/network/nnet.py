@@ -140,7 +140,7 @@ class CGnet(nn.Module):
         self.criterion = criterion
         self.feature = feature
 
-    def forward(self, coordinates, embedding_property=None):
+    def forward(self, coord, embedding_property=None):
         """Forward pass through the network ending with autograd layer.
 
         Parameters
@@ -161,9 +161,10 @@ class CGnet(nn.Module):
         force  : torch.Tensor
             vector forces of size [n_frames, n_degrees_of_freedom].
         """
+        feat = coord
         if self.feature:
             if isinstance(self.feature, FeatureCombiner):
-                forward_feat, feat = self.feature(coordinates,
+                forward_feat, feat = self.feature(feat,
                                                   embedding_property=embedding_property)
                 energy = self.arch(forward_feat)
                 if len(energy.size()) == 3:
@@ -171,12 +172,11 @@ class CGnet(nn.Module):
                     energy = torch.sum(energy, axis=1)
             if not isinstance(self.feature, FeatureCombiner):
                 if embedding_property is not None:
-                    feat = self.feature(coordinates, embedding_property)
+                    feat = self.feature(feat, embedding_property)
                 else:
-                    feat = self.feature(coordinates)
+                    feat = self.feature(feat)
                 energy = self.arch(feat)
         else:
-            feat = coordinates
             energy = self.arch(feat)
         if self.priors:
             for prior in self.priors:
@@ -186,7 +186,7 @@ class CGnet(nn.Module):
             energy = torch.sum(energy, axis=-2)
         # Perform autograd to learn potential of conservative force field
         force = torch.autograd.grad(-torch.sum(energy),
-                                    coordinates,
+                                    coord,
                                     create_graph=True,
                                     retain_graph=True)
         return energy, force[0]
