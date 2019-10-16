@@ -170,7 +170,7 @@ class CGnet(nn.Module):
                 if len(energy.size()) == 3:
                     # sum energy over beads
                     # energy = torch.sum(energy, axis=1)
-                    energy = energy.sum(dim=1)
+                    energy = energy.sum(dim=1) # pytorch 1.1
             if not isinstance(self.feature, FeatureCombiner):
                 if embedding_property is not None:
                     feat = self.feature(feat, embedding_property)
@@ -185,7 +185,7 @@ class CGnet(nn.Module):
         # Sum up energies along bead axis for Schnet outputs
         if len(energy.size()) == 3 and isinstance(self.feature, SchnetFeature):
             #energy = torch.sum(energy, axis=-2)
-            energy = energy.sum(dim=-2)
+            energy = energy.sum(dim=-2) # pytorch 1.1
         # Perform autograd to learn potential of conservative force field
         force = torch.autograd.grad(-torch.sum(energy),
                                     coord,

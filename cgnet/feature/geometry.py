@@ -228,7 +228,8 @@ class Geometry():
     def _torch_eye(self, n, dtype):
         if dtype == torch.bool:
             # Only in pytorch>=1.2!
-            return torch.ByteTensor(np.eye(n, dtype=np.bool))
+            # return torch.BoolTensor(np.eye(n, dtype=np.bool))
+            return torch.ByteTensor(np.eye(n, dtype=np.bool)) # pytorch 1.1
         else:
             return torch.eye(n, dtype=dtype)
 
