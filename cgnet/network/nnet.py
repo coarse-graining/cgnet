@@ -167,7 +167,7 @@ class CGnet(nn.Module):
                 # with two Features will be a SchnetFeature followed by a
                 # GeometryFeature.
                 schnet_feature, geom_feature = self.feature(coordinates,
-                                                  embedding_property=embedding_property)
+                                                            embedding_property=embedding_property)
                 energy = self.arch(schnet_feature)
                 if len(energy.size()) == 3:
                     # sum energy over beads
@@ -177,7 +177,8 @@ class CGnet(nn.Module):
                 # either have a SchnetFeature (which comes with embedding_property)
                 # or a GeometryFeature (which doesn't).
                 if embedding_property is not None:
-                    schnet_feature = self.feature(coordinates, embedding_property)
+                    schnet_feature = self.feature(
+                        coordinates, embedding_property)
                     geom_feature = None
                     energy = self.arch(schnet_feature)
                 else:
@@ -195,7 +196,7 @@ class CGnet(nn.Module):
             if geom_feature is None:
                 raise RuntimeError(
                     "Priors may only be used with GeometryFeatures or coordinates."
-                    )
+                )
             for prior in self.priors:
                 energy = energy + prior(geom_feature[:, prior.callback_indices])
         # Sum up energies along bead axis for Schnet outputs
