@@ -153,7 +153,9 @@ def test_combiner_schnet_in_cgnet():
     schnet_feature, embedding_property, feature_size = _get_random_schnet_feature(
         calc_geom=True)
     layer_list = [schnet_feature]
-    feature_combiner = FeatureCombiner(layer_list)
+    # We need to set propagate_geometry to False here because we are not giving
+    # the FeatureCombiner a GeometryFeature
+    feature_combiner = FeatureCombiner(layer_list, propagate_geometry=False)
 
     # Next, we make aa CGnet with a random hidden architecture
     arch = _get_random_architecture(feature_size)

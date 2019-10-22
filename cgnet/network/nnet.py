@@ -168,7 +168,18 @@ class CGnet(nn.Module):
                 # GeometryFeature.
                 schnet_feature, geom_feature = self.feature(coordinates,
                                                             embedding_property=embedding_property)
-                energy = self.arch(schnet_feature)
+                if self.feature.propagate_geometry:
+                    if geom_feature is None:
+                        raise RuntimeError(
+                            "There is no GeometryFeature to propagate. Was " \
+                            "your FeatureCombiner a SchnetFeature only?"
+                            )
+                    n_frames = coordinates.shape[0]
+                    schnet_feature = schnet_feature.reshape(n_frames, -1)
+                    concatenated_feature = torch.cat((schnet_feature, geom_feature), dim=1)
+                    energy = self.arch(concatenated_feature)
+                else:
+                    energy = self.arch(schnet_feature)
                 if len(energy.size()) == 3:
                     # sum energy over beads
                     energy = torch.sum(energy, axis=1)
