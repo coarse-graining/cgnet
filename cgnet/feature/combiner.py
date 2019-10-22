@@ -21,6 +21,10 @@ class FeatureCombiner(nn.Module):
         specifies whether or not to save the output of GeometryFeature
         layers. It is important to set this to true if CGnet priors
         are to be used, and need to callback to GeometryFeature outputs.
+    propagate_geometry : boolean (default=True)
+        specifies whether or not to concatenate geometry features (i.e.,
+        distances, angles, and/or dihedrals) to the feature that is
+        propagated through the neural network (default=True)
     distance_indices : list or np.ndarray of int (default=None)
         Indices of distances output from a GeometryFeature layer, used
         to isolate distances for redundant re-indexing for Schnet utilities
@@ -71,7 +75,9 @@ class FeatureCombiner(nn.Module):
     architecture as proposed by Schutt et. al. (2018). In this case,
     SchnetFeature should be initialized with calculate_geometry=False,
     as the preceding GeometryFeature layer already computes a geometrical
-    featurization.
+    featurization. In this case, propagate_geometry can be set to True
+    or False depending on whether the geometry features should or should
+    not be propagated through the neural network, respectively.
 
     (3) corresponds to classic pairwise distance-based SchNet. In this case,
     the SchnetFeature must be initialized with calculate_geometry=True
@@ -95,11 +101,12 @@ class FeatureCombiner(nn.Module):
         https://doi.org/10.1063/1.5019779
     """
 
-    def __init__(self, layer_list, save_geometry=True, distance_indices=None):
+    def __init__(self, layer_list, save_geometry=True, propagate_geometry=True,
+                 distance_indices=None):
         super(FeatureCombiner, self).__init__()
         self.layer_list = nn.ModuleList(layer_list)
-        if type(save_geometry) == bool:
-            self.save_geometry = save_geometry
+        self.save_geometry = save_geometry
+        self.propagate_geometry = propagate_geometry
         self.interfeature_transforms = []
         self.transform_dictionary = {}
         self.distance_indices = distance_indices
