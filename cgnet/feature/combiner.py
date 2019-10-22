@@ -21,10 +21,12 @@ class FeatureCombiner(nn.Module):
         specifies whether or not to save the output of GeometryFeature
         layers. It is important to set this to true if CGnet priors
         are to be used, and need to callback to GeometryFeature outputs.
-    propagate_geometry : boolean (default=True)
+    propagate_geometry : boolean (default=False)
         specifies whether or not to concatenate geometry features (i.e.,
         distances, angles, and/or dihedrals) to the feature that is
-        propagated through the neural network (default=True)
+        propagated through the neural network. This is designed to be
+        used ONLY when the layer list is a [GeometryFeature, SchnetFeature].
+        (default=False)
     distance_indices : list or np.ndarray of int (default=None)
         Indices of distances output from a GeometryFeature layer, used
         to isolate distances for redundant re-indexing for Schnet utilities
@@ -101,7 +103,7 @@ class FeatureCombiner(nn.Module):
         https://doi.org/10.1063/1.5019779
     """
 
-    def __init__(self, layer_list, save_geometry=True, propagate_geometry=True,
+    def __init__(self, layer_list, save_geometry=True, propagate_geometry=False,
                  distance_indices=None):
         super(FeatureCombiner, self).__init__()
         self.layer_list = nn.ModuleList(layer_list)
@@ -110,8 +112,10 @@ class FeatureCombiner(nn.Module):
         self.interfeature_transforms = []
         self.transform_dictionary = {}
         self.distance_indices = distance_indices
+        _has_schnet = False
         for layer in self.layer_list:
             if isinstance(layer, SchnetFeature):
+                _has_schnet = True
                 if (layer.calculate_geometry and any(isinstance(layer,
                     GeometryFeature) for layer in self.layer_list)):
                     warnings.warn("This SchnetFeature has been set to "
@@ -138,8 +142,29 @@ class FeatureCombiner(nn.Module):
                     self.transform_dictionary['redundant_distance_mapping'] = (
                         g.get_redundant_distance_mapping(layer._distance_pairs))
                     self.interfeature_transforms.append([self.distance_reindex])
+                if isinstance(layer, GeometryFeature):
+                    if _has_schnet:
+                        raise RuntimeError(
+                            "A GeometryFeature should never come after a SchnetFeature"
+                            )
             else:
                 self.interfeature_transforms.append(None)
+
+            # The following just checks whether the layer_list is
+            # [GeometryFeature, SchnetFeature] is propagate_geometry
+            # is set to true.
+            if self.propagate_geometry:
+                if len(self.layer_list) != 2:
+                      raise RuntimeError(
+                        "propagate_geometry is only designed for a layer " \
+                        "list of [GeometryFeature, SchnetFeature]"
+                        )
+                elif not (isinstance(self.layer_list[0], GeometryFeature)
+                          and isinstance(self.layer_list[1], SchnetFeature)):
+                          raise RuntimeError(
+                            "propagate_geometry is only designed for a layer " \
+                            "list of [GeometryFeature, SchnetFeature]"
+                            )
     
     def distance_reindex(self, geometry_output):
         """Reindexes GeometryFeature distance outputs to redundant form for
