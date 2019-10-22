@@ -140,7 +140,7 @@ class CGnet(nn.Module):
         self.criterion = criterion
         self.feature = feature
 
-    def forward(self, coord, embedding_property=None):
+    def forward(self, coordinates, embedding_property=None):
         """Forward pass through the network ending with autograd layer.
 
         Parameters
@@ -161,32 +161,50 @@ class CGnet(nn.Module):
         force  : torch.Tensor
             vector forces of size [n_frames, n_degrees_of_freedom].
         """
-        feat = coord
         if self.feature:
             if isinstance(self.feature, FeatureCombiner):
-                forward_feat, feat = self.feature(feat,
-                                                  embedding_property=embedding_property)
-                energy = self.arch(forward_feat)
+                # Right now, the only case we have is that a FeatureCombiner
+                # with two Features will be a SchnetFeature followed by a
+                # GeometryFeature.
+                schnet_feature, geom_feature = self.feature(coordinates,
+                                                            embedding_property=embedding_property)
+                energy = self.arch(schnet_feature)
                 if len(energy.size()) == 3:
                     # sum energy over beads
                     energy = torch.sum(energy, axis=1)
             if not isinstance(self.feature, FeatureCombiner):
+                # Otherwise, if we don't have a FeatureCombiner then we must
+                # either have a SchnetFeature (which comes with embedding_property)
+                # or a GeometryFeature (which doesn't).
                 if embedding_property is not None:
-                    feat = self.feature(feat, embedding_property)
+                    schnet_feature = self.feature(
+                        coordinates, embedding_property)
+                    geom_feature = None
+                    energy = self.arch(schnet_feature)
                 else:
-                    feat = self.feature(feat)
-                energy = self.arch(feat)
+                    geom_feature = self.feature(coordinates)
+                    schnet_feature = None
+                    energy = self.arch(geom_feature)
         else:
-            energy = self.arch(feat)
+            # Finally, if we pass only the coordinates with no pre-computed
+            # Feature, then we call those coordinates the feature. We will
+            # name this geom_feature because there may be priors on it.
+            geom_feature = coordinates
+            schnet_feature = None
+            energy = self.arch(geom_feature)
         if self.priors:
+            if geom_feature is None:
+                raise RuntimeError(
+                    "Priors may only be used with GeometryFeatures or coordinates."
+                )
             for prior in self.priors:
-                energy = energy + prior(feat[:, prior.callback_indices])
+                energy = energy + prior(geom_feature[:, prior.callback_indices])
         # Sum up energies along bead axis for Schnet outputs
         if len(energy.size()) == 3 and isinstance(self.feature, SchnetFeature):
             energy = torch.sum(energy, axis=-2)
         # Perform autograd to learn potential of conservative force field
         force = torch.autograd.grad(-torch.sum(energy),
-                                    coord,
+                                    coordinates,
                                     create_graph=True,
                                     retain_graph=True)
         return energy, force[0]
