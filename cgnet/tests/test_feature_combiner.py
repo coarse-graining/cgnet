@@ -116,7 +116,7 @@ def test_combiner_geometry_feature():
     feature_output, geometry_output = feature_combiner(coords_torch)
     assert feature_combiner.interfeature_transforms == [None]
     np.testing.assert_equal(list(feature_output.size()), list((n_frames,
-                                                               len(geom_stats.master_description_tuples))))
+                                        len(geom_stats.master_description_tuples))))
     assert geometry_output is None
 
 
@@ -293,6 +293,46 @@ def test_cgschnet_simulation_shapes():
                                   [n_frames, sim_length, 1])
 
 
+def test_feature_combiner_shapes():
+    # Test feature combiner shapes with geometry features and schnet
+
+    full_geometry_feature = GeometryFeature(feature_tuples='all_backbone',
+                                    n_beads=n_beads)
+
+    schnet_feature, embedding_property, feature_size = _get_random_schnet_feature(
+        calculate_geometry=False)
+    layer_list = [full_geometry_feature, schnet_feature]
+    # grab distance indices
+    dist_idx = geom_stats.return_indices('Distances')
+
+    # Here, we set propagate_geometry to true
+    feature_combiner = FeatureCombiner(layer_list, distance_indices=dist_idx,
+                                       propagate_geometry=True)
+
+    # The length of the geometry feature is the length of its tuples, where
+    # each four-body dihedral is double counted to account for cosines and sines
+    geom_feature_length = (len(full_geometry_feature.feature_tuples) +
+                           len([f for f in full_geometry_feature.feature_tuples
+                           if len(f) == 4]))
+
+    # The total_size is what we need to input into our first linear layer, and
+    # it represents the concatenation of the flatted schnet features with the
+    # geometry features
+    total_size = feature_size*n_beads + geom_feature_length
+
+    # The forward method returns the object to be propagated to the NN and
+    # the geometry features.
+    feature_output, geometry_features = feature_combiner.forward(
+                                                        coords_torch,
+                                                        embedding_property
+                                                        )
+
+    np.testing.assert_array_equal(feature_output.shape,
+                                  [n_frames, n_beads, feature_size])
+    np.testing.assert_array_equal(geometry_features.shape,
+                                  [n_frames, geom_feature_length])
+
+
 def test_combiner_with_geometry_propagation():
     # This tests a network with schnet features in which the geometry features
     # are also propagated through the neural network
@@ -306,6 +346,8 @@ def test_combiner_with_geometry_propagation():
     layer_list = [full_geometry_feature, schnet_feature]
     # grab distance indices
     dist_idx = geom_stats.return_indices('Distances')
+
+    # Here, we set propagate_geometry to true
     feature_combiner = FeatureCombiner(layer_list, distance_indices=dist_idx,
                                        propagate_geometry=True)
 
