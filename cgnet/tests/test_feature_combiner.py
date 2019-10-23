@@ -9,13 +9,13 @@ from cgnet.network import (CGnet, ForceLoss, HarmonicLayer, ZscoreLayer,
                            Simulation)
 
 
-def _get_random_schnet_feature(calc_geom=False):
+def _get_random_schnet_feature(calculate_geometry=False):
     """ Helper function for producing SchnetFeature instances with
     random initializaitons
 
     Parameters
     ----------
-    calc_geom : bool (default=False)
+    calculate_geometry : bool (default=False)
         specifies whether or not the returned SchnetFeature should
         calculate pairwise distances
 
@@ -44,7 +44,7 @@ def _get_random_schnet_feature(calc_geom=False):
     schnet_feature = SchnetFeature(feature_size=feature_size,
                                    embedding_layer=embedding_layer,
                                    n_interaction_blocks=n_interaction_blocks,
-                                   calculate_geometry=calc_geom,
+                                   calculate_geometry=calculate_geometry,
                                    n_beads=n_beads,
                                    neighbor_cutoff=neighbor_cutoff)
     return schnet_feature, embedding_property, feature_size
@@ -130,7 +130,7 @@ def test_combiner_schnet_feature():
     # That is capable of calculating pairwise distances (calculate_geometry
     # is True)
     schnet_feature, embedding_property, feature_size = _get_random_schnet_feature(
-        calc_geom=True)
+        calculate_geometry=True)
     layer_list = [schnet_feature]
     feature_combiner = FeatureCombiner(layer_list)
 
@@ -152,7 +152,7 @@ def test_combiner_schnet_in_cgnet():
     # That is capable of calculating pairwise distances (calculate_geometry
     # is True)
     schnet_feature, embedding_property, feature_size = _get_random_schnet_feature(
-        calc_geom=True)
+        calculate_geometry=True)
     layer_list = [schnet_feature]
     feature_combiner = FeatureCombiner(layer_list)
 
@@ -193,9 +193,9 @@ def test_combiner_zscore():
     # Both transfroms should be None
     assert feature_combiner.interfeature_transforms == [None, None]
     np.testing.assert_equal(list(feature_output.size()), list((n_frames,
-                                                               len(geom_stats.master_description_tuples))))
+                                    len(geom_stats.master_description_tuples))))
     np.testing.assert_equal(list(geometry_output.size()), list((n_frames,
-                                                                len(geom_stats.master_description_tuples))))
+                                    len(geom_stats.master_description_tuples))))
     assert geometry_output is not None
 
 
@@ -237,7 +237,7 @@ def test_combiner_full():
     # Test the combination of GeometryFeature, SchnetFeature,
     # amd priors in a CGnet class
     schnet_feature, embedding_property, feature_size = _get_random_schnet_feature(
-        calc_geom=False)
+        calculate_geometry=False)
     layer_list = [geometry_feature, zscore_layer, schnet_feature]
     # grab distance indices
     dist_idx = geom_stats.return_indices('Distances')
@@ -268,7 +268,7 @@ def test_cgschnet_simulation_shapes():
     # Test simulation with embeddings and make sure the shapes of
     # the simulated coordinates, forces, and potential are correct
     schnet_feature, embedding_property, feature_size = _get_random_schnet_feature(
-        calc_geom=True)
+        calculate_geometry=True)
     layer_list = [schnet_feature]
     feature_combiner = FeatureCombiner(layer_list)
 
@@ -291,3 +291,49 @@ def test_cgschnet_simulation_shapes():
 
     np.testing.assert_array_equal(sim.simulated_potential.shape,
                                   [n_frames, sim_length, 1])
+
+
+def test_combiner_with_geometry_propagation():
+    # This tests a network with schnet features in which the geometry features
+    # are also propagated through the neural network
+
+    # This calculates all pairwise distances and backbone angles and dihedrals
+    full_geometry_feature = GeometryFeature(feature_tuples='all_backbone',
+                                        n_beads=n_beads)
+
+    schnet_feature, embedding_property, feature_size = _get_random_schnet_feature(
+        calculate_geometry=False)
+    layer_list = [full_geometry_feature, schnet_feature]
+    # grab distance indices
+    dist_idx = geom_stats.return_indices('Distances')
+    feature_combiner = FeatureCombiner(layer_list, distance_indices=dist_idx,
+                                       propagate_geometry=True)
+
+    # The length of the geometry feature is the length of its tuples, where
+    # each four-body dihedral is double counted to account for cosines and sines
+    geom_feature_length = (len(full_geometry_feature.feature_tuples) +
+                           len([f for f in full_geometry_feature.feature_tuples
+                           if len(f) == 4]))
+
+    # The total_size is what we need to input into our first linear layer, and
+    # it represents the concatenation of the flatted schnet features with the
+    # geometry features
+    total_size = feature_size*n_beads + geom_feature_length
+
+    # Now we just repeat the procedure from test_combiner_full above
+    width = np.random.randint(5, high=10)  # random fully-connected width
+    arch = LinearLayer(total_size,
+                       width, activation=nn.Tanh())
+    for i in range(2):
+        arch += LinearLayer(width, width, activation=nn.Tanh())
+    arch += LinearLayer(width, 1, activation=None)
+    model = CGnet(arch, ForceLoss(), feature=feature_combiner,
+                  priors=[bond_potential])
+
+    # Next, we forward the random protein data through the model
+    energy, forces = model.forward(coords_torch,
+                                   embedding_property=embedding_property)
+
+    # Ensure CGnet output has the correct size
+    np.testing.assert_array_equal(energy.size(), (n_frames, 1))
+    np.testing.assert_array_equal(forces.size(), (n_frames, n_beads, 3))
