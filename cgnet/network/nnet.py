@@ -162,36 +162,54 @@ class CGnet(nn.Module):
             vector forces of size [n_frames, n_degrees_of_freedom].
         """
         if self.feature:
+            # The below code adheres to the following logic:
+            # 1. The feature_output is always what is passed to the model architecture
+            # 2. The geom_feature is always what is passed to the priors
+            # There will never be no feature_output, but sometimes it will
+            # be the same as the geom_feature. There may be no geom_feature.
             if isinstance(self.feature, FeatureCombiner):
                 # Right now, the only case we have is that a FeatureCombiner
                 # with two Features will be a SchnetFeature followed by a
                 # GeometryFeature.
-                schnet_feature, geom_feature = self.feature(coordinates,
+                feature_output, geom_feature = self.feature(coordinates,
                                                             embedding_property=embedding_property)
-                energy = self.arch(schnet_feature)
+                if self.feature.propagate_geometry:
+                    # We only can use propagate_geometry if the feature_output is a 
+                    # SchnetFeature
+                    schnet_feature = feature_output
+                    if geom_feature is None:
+                        raise RuntimeError(
+                            "There is no GeometryFeature to propagate. Was " \
+                            "your FeatureCombiner a SchnetFeature only?"
+                            )
+                    n_frames = coordinates.shape[0]
+                    schnet_feature = schnet_feature.reshape(n_frames, -1)
+                    concatenated_feature = torch.cat((schnet_feature, geom_feature), dim=1)
+                    energy = self.arch(concatenated_feature)
+                else:
+                    energy = self.arch(feature_output)
                 if len(energy.size()) == 3:
                     # sum energy over beads
                     energy = torch.sum(energy, axis=1)
             if not isinstance(self.feature, FeatureCombiner):
-                # Otherwise, if we don't have a FeatureCombiner then we must
-                # either have a SchnetFeature (which comes with embedding_property)
-                # or a GeometryFeature (which doesn't).
                 if embedding_property is not None:
-                    schnet_feature = self.feature(
+                    # This assumes the only feature with an embedding_property
+                    # is a SchnetFeature. If other features can take embeddings,
+                    # this needs to be revisited.
+                    feature_output = self.feature(
                         coordinates, embedding_property)
                     geom_feature = None
-                    energy = self.arch(schnet_feature)
                 else:
-                    geom_feature = self.feature(coordinates)
-                    schnet_feature = None
-                    energy = self.arch(geom_feature)
+                    feature_output = self.feature(coordinates)
+                    geom_feature = feature_output
+                energy = self.arch(feature_output)
         else:
             # Finally, if we pass only the coordinates with no pre-computed
             # Feature, then we call those coordinates the feature. We will
             # name this geom_feature because there may be priors on it.
+            feature_output = coordinates
             geom_feature = coordinates
-            schnet_feature = None
-            energy = self.arch(geom_feature)
+            energy = self.arch(feature_output)
         if self.priors:
             if geom_feature is None:
                 raise RuntimeError(
