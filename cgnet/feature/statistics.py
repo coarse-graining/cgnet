@@ -91,11 +91,12 @@ class GeometryStatistics():
             if backbone_inds is None:
                 raise RuntimeError("You must specify either custom_feature_tuples ' \
                                    'or backbone_inds='all'")
-            if backbone_inds == 'all':
-                if get_all_distances + get_backbone_angles + get_backbone_dihedrals == 0:
-                    raise RuntimeError('Without custom feature tuples, you must specify ' \
-                                       'any of get_all_distances, get_backbone_angles, or ' \
-                                       'get_backbone_dihedrals.')
+            if type(backbone_inds) is str:
+                if backbone_inds == 'all':
+                    if get_all_distances + get_backbone_angles + get_backbone_dihedrals == 0:
+                        raise RuntimeError('Without custom feature tuples, you must specify ' \
+                                           'any of get_all_distances, get_backbone_angles, or ' \
+                                           'get_backbone_dihedrals.')
         self._process_backbone(backbone_inds)
         self._process_custom_feature_tuples()
 
@@ -304,6 +305,10 @@ class GeometryStatistics():
             if backbone_inds == 'all':
                 self.backbone_inds = np.arange(self.n_beads)
                 self._backbone_map = {ind: ind for ind in range(self.n_beads)}
+            else:
+                raise RuntimeError(
+                    "backbone_inds must be list or np.ndarray of indices, 'all', or None"
+                    )
         elif type(backbone_inds) in [list, np.ndarray]:
             if len(np.unique(backbone_inds)) != len(backbone_inds):
                 raise ValueError(
