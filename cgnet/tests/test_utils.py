@@ -5,7 +5,8 @@ import numpy as np
 from torch.utils.data import SubsetRandomSampler, DataLoader
 from cgnet.network import lipschitz_projection, dataset_loss, Simulation
 from cgnet.network import CGnet, ForceLoss
-from cgnet.feature import MoleculeDataset, LinearLayer
+from cgnet.feature import (MoleculeDataset, LinearLayer, SchnetFeature,
+                           CGBeadEmbedding)
 
 # Here we create testing data from a random linear protein
 # with a random number of frames
@@ -15,12 +16,19 @@ dims = 3
 
 coords = np.random.randn(frames, beads, dims).astype('float32')
 forces = np.random.randn(frames, beads, dims).astype('float32')
+num_embeddings = np.random.randint(2, 10)
+embedding_array = np.random.randint(1, num_embeddings, size=beads)
+# beadwise embeddings
+embeddings = np.tile(embedding_array, [coords.shape[0], 1])
 
 # Here, we instance a molecular dataset with sampler and dataloader
-dataset = MoleculeDataset(coords, forces)
 sampler = SubsetRandomSampler(np.arange(0, frames, 1))
+dataset = MoleculeDataset(coords, forces)
 loader = DataLoader(dataset, sampler=sampler,
                     batch_size=np.random.randint(2, high=10))
+schnet_dataset = MoleculeDataset(coords, forces, embeddings)
+schnet_loader = DataLoader(schnet_dataset, sampler=sampler,
+                           batch_size=np.random.randint(2, high=10))
 
 # Here we construct a single hidden layer architecture with random
 # widths and a terminal contraction to a scalar output
@@ -32,7 +40,26 @@ arch = (LinearLayer(dims, dims, activation=nn.Tanh()) +
 model = CGnet(arch, ForceLoss()).float()
 length = np.random.choice([2, 4])*2  # Number of frames to simulate
 save = np.random.choice([2, 4])  # Frequency with which to save simulation
-                                 # frames (choice of 2 or 4)
+# frames (choice of 2 or 4)
+
+
+feature_size = np.random.randint(5, 10)  # random feature size
+embedding_dim = beads  # embedding property size
+n_interaction_blocks = np.random.randint(1, 3)  # random number of interactions
+neighbor_cutoff = np.random.uniform(0, 1)  # random neighbor cutoff
+# random embedding property
+embedding_layer = CGBeadEmbedding(n_embeddings=num_embeddings,
+                                  embedding_dim=feature_size)
+schnet_feature = SchnetFeature(feature_size=feature_size,
+                               embedding_layer=embedding_layer,
+                               n_interaction_blocks=n_interaction_blocks,
+                               calculate_geometry=True,
+                               n_beads=beads,
+                               neighbor_cutoff=neighbor_cutoff)
+# architecture to match schnet_feature output
+schnet_arch = (LinearLayer(feature_size, dims, activation=nn.Tanh()) +
+               LinearLayer(dims, 1, activation=None))
+schnet_model = CGnet(schnet_arch, ForceLoss(), feature=schnet_feature)
 
 
 def test_lipschitz_weak_and_strong():
@@ -125,6 +152,21 @@ def test_dataset_loss():
     # Next, we do the same but use a loader with a batch size of 1
     loader2 = DataLoader(dataset, sampler=sampler, batch_size=1)
     loss2 = dataset_loss(model, loader2)
+
+    # Here, we verify that the two losses over the dataset are equal
+    np.testing.assert_allclose(loss, loss2, rtol=1e-5)
+
+
+def test_schnet_dataset_loss():
+    # This test is the same as above, but instead uses a CGSchNet model
+
+    # First, we get dataset loss using the greater-than-one batch size
+    # loader from the preamble
+    loss = dataset_loss(schnet_model, schnet_loader)
+
+    # Next, we do the same but use a loader with a batch size of 1
+    loader2 = DataLoader(schnet_dataset, sampler=sampler, batch_size=1)
+    loss2 = dataset_loss(schnet_model, loader2)
 
     # Here, we verify that the two losses over the dataset are equal
     np.testing.assert_allclose(loss, loss2, rtol=1e-5)
