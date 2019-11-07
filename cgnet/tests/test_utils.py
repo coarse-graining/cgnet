@@ -150,11 +150,12 @@ def test_dataset_loss():
     loss = dataset_loss(model, loader)
 
     # Next, we do the same but use a loader with a batch size of 1
-    loader2 = DataLoader(dataset, sampler=sampler, batch_size=1)
-    loss2 = dataset_loss(model, loader2)
+    single_point_loader = DataLoader(dataset, sampler=sampler,
+                                     batch_size=1)
+    single_point_loss = dataset_loss(model, single_point_loader)
 
     # Here, we verify that the two losses over the dataset are equal
-    np.testing.assert_allclose(loss, loss2, rtol=1e-5)
+    np.testing.assert_allclose(loss, single_point_loss, rtol=1e-5)
 
 
 def test_schnet_dataset_loss():
@@ -165,11 +166,12 @@ def test_schnet_dataset_loss():
     loss = dataset_loss(schnet_model, schnet_loader)
 
     # Next, we do the same but use a loader with a batch size of 1
-    loader2 = DataLoader(schnet_dataset, sampler=sampler, batch_size=1)
-    loss2 = dataset_loss(schnet_model, loader2)
+    single_point_loader = DataLoader(schnet_dataset, sampler=sampler,
+                                     batch_size=1)
+    single_point_loss = dataset_loss(schnet_model, single_point_loader)
 
     # Here, we verify that the two losses over the dataset are equal
-    np.testing.assert_allclose(loss, loss2, rtol=1e-5)
+    np.testing.assert_allclose(loss, single_point_loss, rtol=1e-5)
 
 
 def test_regular_simulation_shape():
