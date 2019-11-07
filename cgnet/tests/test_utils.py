@@ -42,6 +42,8 @@ length = np.random.choice([2, 4])*2  # Number of frames to simulate
 save = np.random.choice([2, 4])  # Frequency with which to save simulation
 # frames (choice of 2 or 4)
 
+# Here, we set of the parameters of the SchnetFeature
+# for dataset_loss tests below
 
 feature_size = np.random.randint(5, 10)  # random feature size
 embedding_dim = beads  # embedding property size
@@ -50,12 +52,15 @@ neighbor_cutoff = np.random.uniform(0, 1)  # random neighbor cutoff
 # random embedding property
 embedding_layer = CGBeadEmbedding(n_embeddings=num_embeddings,
                                   embedding_dim=feature_size)
+
+# Here we use the above variables to create the SchnetFeature
 schnet_feature = SchnetFeature(feature_size=feature_size,
                                embedding_layer=embedding_layer,
                                n_interaction_blocks=n_interaction_blocks,
                                calculate_geometry=True,
                                n_beads=beads,
                                neighbor_cutoff=neighbor_cutoff)
+
 # architecture to match schnet_feature output
 schnet_arch = (LinearLayer(feature_size, dims, activation=nn.Tanh()) +
                LinearLayer(dims, 1, activation=None))
@@ -143,7 +148,8 @@ def test_lipschitz_mask():
 def test_dataset_loss():
     # Test dataset loss by comparing results from different batch sizes
     # The loss calculated over the entire dataset should not be affected
-    # by the batch size used by the dataloader
+    # by the batch size used by the dataloader. This test uses a standard
+    # CGnet model
 
     # First, we get dataset loss using the greater-than-one batch size
     # loader from the preamble
@@ -159,7 +165,10 @@ def test_dataset_loss():
 
 
 def test_schnet_dataset_loss():
-    # This test is the same as above, but instead uses a CGSchNet model
+    # Test dataset loss by comparing results from different batch sizes
+    # The loss calculated over the entire dataset should not be affected
+    # by the batch size used by the dataloader. This test uses a CGnet
+    # with a SchnetFeature
 
     # First, we get dataset loss using the greater-than-one batch size
     # loader from the preamble
