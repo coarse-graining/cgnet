@@ -372,7 +372,7 @@ class Simulation():
                     self.simulated_potential[
                         t//self.save_interval] = potential
 
-            if self.save_to_file & t % (self.length/self.num_chunks) == 0:
+            if self.save_to_file and t % (self.length/self.num_chunks) == 0:
                 np.save('{}_{}_trajectory.npy'.format(self.save_to_file, chunk),
                         self.swap_axes(self.simulated_traj, 0, 1).cpu().numpy())
 
