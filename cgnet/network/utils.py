@@ -179,7 +179,8 @@ class Simulation():
     def __init__(self, model, initial_coordinates, embeddings=None,
                  save_forces=False, save_potential=False, length=100,
                  save_interval=10, dt=5e-4, diffusion=1.0, beta=1.0,
-                 verbose=False, random_seed=None, device=torch.device('cpu')):
+                 save_to_file=None, num_chunks=1, verbose=False,
+                 random_seed=None, device=torch.device('cpu')):
         if length % save_interval != 0:
             raise ValueError(
                 'The save_interval must be a factor of the simulation length'
@@ -188,6 +189,12 @@ class Simulation():
         if len(initial_coordinates.shape) != 3:
             raise ValueError(
                 'initial_coordinates shape must be [frames, beads, dimensions]'
+            )
+
+        if save_to_file is None and num_chunks > 1:
+            raise ValueError(
+                'Define a file name in save_to_file if you want to save'
+                'multiple simulation chunks.'
             )
 
         if embeddings is None:
@@ -231,6 +238,8 @@ class Simulation():
         self.diffusion = diffusion
         self.beta = beta
         self.verbose = verbose
+        self.save_to_file = save_to_file
+        self.num_chunks = num_chunks
 
         if random_seed is None:
             self.rng = torch.default_generator
@@ -303,6 +312,7 @@ class Simulation():
                 "Generating {} simulations of length {} at {}-step intervals".format(
                     self.n_sims, self.length, self.save_interval)
             )
+        chunk = 0
         save_size = int(self.length/self.save_interval)
 
         self.simulated_traj = torch.zeros((save_size, self.n_sims, self.n_beads,
@@ -361,6 +371,27 @@ class Simulation():
 
                     self.simulated_potential[
                         t//self.save_interval] = potential
+
+            if self.save_to_file & t % (self.length/self.num_chunks) == 0:
+                np.save('{}_{}_trajectory.npy'.format(self.save_to_file, chunk),
+                        self.swap_axes(self.simulated_traj, 0, 1).cpu().numpy())
+
+                if self.save_forces:
+                    np.save(
+                        '{}_{}_forces.npy'.format(self.save_to_file, chunk),
+                        self.swap_axes(
+                            self.simulated_forces,
+                            0, 1).cpu().numpy())
+
+                if self.save_potential:
+                    np.save(
+                        '{}_{}_forces.npy'.format(self.save_to_file, chunk),
+                        self.swap_axes(
+                            self.simulated_potential,
+                            0, 1).cpu().numpy())
+
+                chunk += 1
+
             x_old = x_new.clone().detach().requires_grad_(True).to(self.device)
 
             if self.verbose:
