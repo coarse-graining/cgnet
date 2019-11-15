@@ -199,6 +199,10 @@ class SchnetFeature(nn.Module):
         Number of coarse grain beads in the model.
     neighbor_cutoff: float (default=None)
         Cutoff distance in whether beads are considered neighbors or not.
+    basis_function_type: str (default='rbf')
+        Type of basis functions with which distances are expanded in. Can take
+        values 'rbf' or 'telescoping'. corresponding to RadialBasisFunction()
+        and TelescopingRBF() respectively.
     rbf_cutoff: float (default=5.0)
         Cutoff for the radial basis function.
     n_gaussians: int (default=50)
@@ -250,6 +254,7 @@ class SchnetFeature(nn.Module):
                  embedding_layer,
                  calculate_geometry=None,
                  n_beads=None,
+                 basis_function_type='rbf',
                  neighbor_cutoff=None,
                  rbf_cutoff=5.0,
                  n_gaussians=50,
@@ -261,9 +266,16 @@ class SchnetFeature(nn.Module):
         self.device = device
         self.geometry = Geometry(method='torch', device=self.device)
         self.embedding_layer = embedding_layer
-        self.rbf_layer = RadialBasisFunction(cutoff=rbf_cutoff,
+        if basis_function_type == 'rbf':
+            self.rbf_layer = RadialBasisFunction(cutoff=rbf_cutoff,
                                              n_gaussians=n_gaussians,
                                              variance=variance)
+        if basis_function_type == 'telescoping':
+            self.rbf_layer = TelescopingRBF(cutoff=rb_cutoff,
+                                          n_gaussians)
+        else:
+            raise RuntimeError("Basis function type must be 'rbf' or 'telescoping'.")
+
         if share_weights:
             # Lets the interaction blocks share the weights
             self.interaction_blocks = nn.ModuleList(
