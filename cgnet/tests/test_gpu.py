@@ -26,7 +26,9 @@ def generate_model():
     coords = np.random.randn(n_frames, n_beads, 3).astype('float32')
 
     # Next, we gather the statistics for Bond/Repulsion priors
-    stats = GeometryStatistics(coords)
+    stats = GeometryStatistics(coords, backbone_inds='all',
+                               get_all_distances=True, get_backbone_angles=True,
+                               get_backbone_dihedrals=True)
 
     bonds_list, _ = stats.get_prior_statistics('Bonds', as_list=True)
     bonds_idx = stats.return_indices('Bonds')
