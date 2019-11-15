@@ -339,7 +339,7 @@ class Simulation():
                 print('Simulation trajectory contains NaNs after {} steps. '
                       'Reduce the integration timestep dt.'.format(t))
                 self.simulated_traj[(t // self.save_interval)+1, :, :] = x_new
-                return self.simulated_traj
+                return self.swap_axes(self.simulated_traj, 0, 1).cpu().numpy()
 
             if t % self.save_interval == 0:
                 self.simulated_traj[t//self.save_interval, :, :] = x_new
