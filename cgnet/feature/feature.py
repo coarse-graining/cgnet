@@ -272,7 +272,8 @@ class SchnetFeature(nn.Module):
                                              variance=variance)
         if basis_function_type == 'telescoping':
             self.rbf_layer = TelescopingRBF(cutoff=rb_cutoff,
-                                          n_gaussians)
+                                            n_gaussians=n_gaussians,
+                                            device = self.device)
         else:
             raise RuntimeError("Basis function type must be 'rbf' or 'telescoping'.")
 
