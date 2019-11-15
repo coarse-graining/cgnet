@@ -335,9 +335,11 @@ class Simulation():
             x_new = (x_old.detach() + forces*dtau +
                      np.sqrt(2*dtau/self.beta)*noise)
 
-            assert not torch.isnan(x_new).any(), \
-                'Simulation trajectory contains NaNs after {} steps. ' \
-                'Reduce the integration timestep dt.'.format(t)
+            if torch.isnan(x_new).any():
+                print('Simulation trajectory contains NaNs after {} steps. '
+                      'Reduce the integration timestep dt.'.format(t))
+                self.simulated_traj[(t // self.save_interval)+1, :, :] = x_new
+                return self.simulated_traj
 
             if t % self.save_interval == 0:
                 self.simulated_traj[t//self.save_interval, :, :] = x_new
