@@ -216,7 +216,7 @@ class TelescopingRBF(nn.Module):
         exp(-r_{ij}), not r_{ij}
 
         """
-        dist_centered_squared = torch.pow(torch.exp(distances.unsqueeze(dim=3))
+        dist_centered_squared = torch.pow(torch.exp(-distances.unsqueeze(dim=3))
                                           - self.centers, 2)
         gaussian_exp = torch.exp(-self.beta
                                  * dist_centered_squared)
