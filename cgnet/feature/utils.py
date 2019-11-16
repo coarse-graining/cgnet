@@ -189,12 +189,12 @@ class TelescopingRBF(nn.Module):
 
         """
         zeros = torch.zeros_like(distances).to(self.device)
-        mod = torch.where(distances < self.cutoff,
-                          1-6*torch.pow((distances/self.cutoff),5)
-                          +15*torch.pow((distances/self.cutoff),4)
-                          -10*torch.pow((distances/self.cutoff),3),
-                          zeros)
-        return mod
+        modulation_envelope = torch.where(distances < self.cutoff,
+                                  1 - 6*torch.pow((distances/self.cutoff),5)
+                                  + 15*torch.pow((distances/self.cutoff),4)
+                                  - 10*torch.pow((distances/self.cutoff),3),
+                                  zeros)
+        return modulation_envelope
 
     def forward(self, distances):
         """Calculate modulated gaussian expansion
@@ -220,8 +220,8 @@ class TelescopingRBF(nn.Module):
                                           - self.centers, 2)
         gaussian_exp = torch.exp(-self.beta
                                  * dist_centered_squared)
-        mod = self.modulation(distances).unsqueeze(dim=3)
-        return mod*gaussian_exp
+        modulation_envelope = self.modulation(distances).unsqueeze(dim=3)
+        return modulation_envelope * gaussian_exp
 
 def LinearLayer(
         d_in,
