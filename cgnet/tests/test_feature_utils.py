@@ -80,6 +80,11 @@ def test_telescoping_rbf():
     modulation = np.expand_dims(modulation, axis=3)
 
     telescoping_rbf_manual = modulation * gauss_manual
+    telescoping_rbf_manual = np.where(
+        telescoping_rbf_manual > telescoping_rbf.tolerance,
+        telescoping_rbf_manual,
+        np.zeros_like(telescoping_rbf_manual)
+        )
 
     # centers and output values need to be the same
     np.testing.assert_allclose(centers,
