@@ -135,14 +135,16 @@ class TelescopingRBF(nn.Module):
     Parameters
     ----------
     cutoff : float (default=10.0)
-        Distance cutoff for the modulation. The decay of the
+        Distance cutoff (in angstroms) for the modulation. The decay of the
         modulation envelope has positive concavity and smoothly approaches
-        zero in the vicinity of the specified cutoff distance.
+        zero in the vicinity of the specified cutoff distance. The default
+        value of 10 angstroms is taken from Unke & Meuwly (2019).
     num_gaussians : int (default=64)
         Total number of gaussian functions to calculate. Number will be used to
         create a uniform grid from exp(-cutoff) to 1. The number of gaussians
         will also decide the output size of the RBF layer output
-        ([n_examples, n_beads, n_neighbors, n_gauss]).
+        ([n_examples, n_beads, n_neighbors, n_gauss]). The default value of
+        64 gaussians is taken from Unke & Meuwly (2019).
     device : torch.device (default=torch.device('cpu'))
         Device upon which tensors are mounted
 
