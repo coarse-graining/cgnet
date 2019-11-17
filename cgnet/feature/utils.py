@@ -235,6 +235,7 @@ class TelescopingRBF(nn.Module):
 
         return expansions
 
+
 def LinearLayer(
         d_in,
         d_out,
