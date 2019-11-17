@@ -254,7 +254,7 @@ class SchnetFeature(nn.Module):
                  embedding_layer,
                  calculate_geometry=None,
                  n_beads=None,
-                 basis_function_type='rbf',
+                 basis_function_type='uniform',
                  neighbor_cutoff=None,
                  rbf_cutoff=5.0,
                  n_gaussians=50,
