@@ -95,6 +95,21 @@ def test_telescoping_rbf():
     np.testing.assert_allclose(telescoping_rbf_layer.numpy(),
                                telescoping_rbf_manual, rtol=1e-5)
 
+def test_telescoping_rbf_zero_cutoff():
+    # This test ensures that a choice of zero cutoff produces
+    # a set of basis functions that all occupy the same center
+
+    # First, we generate a telescoping RBF layer with a random number
+    # of gaussians and a cutoff of zero
+    n_gaussians = np.random.randint(5, 10)
+    telescoping_rbf = TelescopingRBF(n_gaussians=n_gaussians,
+                                  cutoff=0.0)
+    # Next we make a mock array of centers at 1.0
+    centers = torch.linspace(1.0, 1.0, n_gaussians)
+
+    # Here, we test to see that centers are equal in this corner case
+    np.testing.assert_equal(centers.numpy(), telescoping_rbf.centers.numpy())
+
 
 def test_shifted_softplus():
     # Make sure shifted softplus activation is consistent with
