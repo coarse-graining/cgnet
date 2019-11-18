@@ -145,6 +145,9 @@ class TelescopingRBF(nn.Module):
         will also decide the output size of the RBF layer output
         ([n_examples, n_beads, n_neighbors, n_gauss]). The default value of
         64 gaussians is taken from Unke & Meuwly (2019).
+    tolerance : float (default=1e-10)
+        When expanding the modulated gaussians, values below the tolerance
+        will be set to zero.
     device : torch.device (default=torch.device('cpu'))
         Device upon which tensors are mounted
 
@@ -166,9 +169,10 @@ class TelescopingRBF(nn.Module):
 
     """
 
-    def __init__(self, cutoff=10.0, n_gaussians=64,
+    def __init__(self, cutoff=10.0, n_gaussians=64, tolerance=1e-10,
                  device=torch.device('cpu')):
         super(TelescopingRBF, self).__init__()
+        self.tolerance = tolerance
         self.device = device
         self.register_buffer('centers', torch.linspace(np.exp(-cutoff), 1,
                                                        n_gaussians))
@@ -208,7 +212,7 @@ class TelescopingRBF(nn.Module):
 
         Returns
         -------
-        mod*gaussian_exp: torch.Tensor
+        expansions : torch.Tensor
             Modulated gaussian expansions of shape
             [n_examples, n_beads, n_neighbors, n_gauss]
 
@@ -223,7 +227,17 @@ class TelescopingRBF(nn.Module):
         gaussian_exp = torch.exp(-self.beta
                                  * dist_centered_squared)
         modulation_envelope = self.modulation(distances).unsqueeze(dim=3)
-        return modulation_envelope * gaussian_exp
+
+        expansions = modulation_envelope * gaussian_exp
+
+        # In practice, this gives really tiny numbers. For numbers below the
+        # tolerance, we just set them to zero.
+        expansions = torch.where(np.abs(expansions) > self.tolerance,
+                                 expansions,
+                                 torch.zeros_like(expansions))
+
+        return expansions
+
 
 def LinearLayer(
         d_in,

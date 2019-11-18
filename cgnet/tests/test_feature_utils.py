@@ -14,7 +14,6 @@ frames = np.random.randint(10, 30)
 beads = np.random.randint(5, 10)
 
 
-
 def test_radial_basis_function():
     # Make sure radial basis functions are consistent with manual calculation
 
@@ -81,6 +80,13 @@ def test_telescoping_rbf():
     modulation = np.expand_dims(modulation, axis=3)
 
     telescoping_rbf_manual = modulation * gauss_manual
+
+    # Map tiny values to zero
+    telescoping_rbf_manual = np.where(
+        np.abs(telescoping_rbf_manual) > telescoping_rbf.tolerance,
+        telescoping_rbf_manual,
+        np.zeros_like(telescoping_rbf_manual)
+    )
 
     # centers and output values need to be the same
     np.testing.assert_allclose(centers,
