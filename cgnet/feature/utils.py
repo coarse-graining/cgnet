@@ -229,7 +229,10 @@ class TelescopingRBF(nn.Module):
         modulation_envelope = self.modulation(distances).unsqueeze(dim=3)
 
         expansions = modulation_envelope * gaussian_exp
-        expansions = torch.where(expansions > self.tolerance,
+
+        # In practice, this gives really tiny numbers. For numbers below the
+        # tolerance, we just set them to zero.
+        expansions = torch.where(np.abs(expansions) > self.tolerance,
                                  expansions,
                                  torch.zeros_like(expansions))
 
