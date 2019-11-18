@@ -104,6 +104,9 @@ def test_telescoping_rbf_zero_cutoff():
     n_gaussians = np.random.randint(5, 10)
     telescoping_rbf = TelescopingRBF(n_gaussians=n_gaussians,
                                   cutoff=0.0)
+    # First we test to see that \beta is infinite
+    np.testing.assert_equal(np.inf, telescoping_rbf.beta)
+    
     # Next we make a mock array of centers at 1.0
     centers = torch.linspace(1.0, 1.0, n_gaussians)
 
