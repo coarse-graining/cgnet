@@ -57,7 +57,8 @@ def test_telescoping_rbf():
 
     # Calculate Gaussian expansion using the implemented layer
     telescoping_rbf = TelescopingRBF(cutoff=cutoff,
-                                     n_gaussians=n_gaussians)
+                                     n_gaussians=n_gaussians,
+                                     tolerance=1e-8)
     telescoping_rbf_layer = telescoping_rbf.forward(torch.tensor(distances))
 
     # Manually calculate expansion with numpy
