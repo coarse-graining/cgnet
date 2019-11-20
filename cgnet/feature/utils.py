@@ -232,7 +232,7 @@ class TelescopingRBF(nn.Module):
 
         # In practice, this gives really tiny numbers. For numbers below the
         # tolerance, we just set them to zero.
-        expansions = torch.where(np.abs(expansions) > self.tolerance,
+        expansions = torch.where(torch.abs(expansions) > self.tolerance,
                                  expansions,
                                  torch.zeros_like(expansions))
 

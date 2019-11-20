@@ -7,7 +7,7 @@ import numpy as np
 import warnings
 
 from .geometry import Geometry
-from .utils import RadialBasisFunction
+from .utils import RadialBasisFunction, TelescopingRBF
 from .schnet_utils import InteractionBlock
 
 
@@ -271,7 +271,7 @@ class SchnetFeature(nn.Module):
                                              n_gaussians=n_gaussians,
                                              variance=variance)
         elif basis_function_type == 'telescoping':
-            self.rbf_layer = TelescopingRBF(cutoff=rb_cutoff,
+            self.rbf_layer = TelescopingRBF(cutoff=rbf_cutoff,
                                             n_gaussians=n_gaussians,
                                             device = self.device)
         else:
