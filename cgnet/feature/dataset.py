@@ -20,6 +20,7 @@ class MoleculeDataset(Dataset):
         Coordinate data of dimension [n_frames, n_beads, n_dimensions]
     embeddings : np.array
         Embedding data of dimension [n_frames, n_beads, n_embedding_properties]
+        Embeddings must be positive integers.
     selection : np.array (default=None)
         Array of frame indices to select from the coordinates and forces.
         If None, all are used.
@@ -37,6 +38,9 @@ class MoleculeDataset(Dataset):
         self.coordinates = self._make_array(coordinates, selection)
         self.forces = self._make_array(forces, selection)
         if embeddings is not None:
+            if (np.any(embeddings < 1) or
+                not np.all(embeddings.astype(int) == embeddings)):
+                raise ValueError("Embeddings must be positive integers.")
             self.embeddings = self._make_array(embeddings, selection)
         else:
             self.embeddings = None
