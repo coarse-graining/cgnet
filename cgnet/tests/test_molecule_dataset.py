@@ -73,7 +73,7 @@ def test_indexing():
 
 def test_embedding_shape():
     # Test shape of multidimensional embeddings
-    embeddings = np.abs(np.floor(np.random.randn(frames, beads))).astype(int) + 1
+    embeddings = np.ceil(np.abs(np.random.randn(frames, beads))).astype(int)
 
     ds = MoleculeDataset(coords, forces, embeddings)
 
