@@ -136,8 +136,14 @@ class Geometry():
         # formulation.
         base *= -1
 
-        angles = self.arccos(self.sum(base*offset, axis=2)/self.norm(
-            base, axis=2)/self.norm(offset, axis=2))
+        interval = self.sum(base * offset, axis=2) / self.norm(base,
+                                                               axis=2) / self.norm(
+            offset, axis=2)
+
+        # Clipping to prevent the arccos to be NaN
+        angles = self.arccos(self.clip(interval,
+                                       lower_bound=-1.,
+                                       upper_bound=1.))
 
         return angles
 
@@ -297,3 +303,9 @@ class Geometry():
             return x.type(dtype)
         elif self.method == 'numpy':
             return x.astype(dtype)
+
+    def clip(self, x, lower_bound, upper_bound):
+        if self.method == 'torch':
+            return torch.clamp(x, min=lower_bound, max=upper_bound)
+        elif self.method == 'numpy':
+            return np.clip(x, a_min=lower_bound, a_max=upper_bound)
