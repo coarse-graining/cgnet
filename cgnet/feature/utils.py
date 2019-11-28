@@ -156,11 +156,12 @@ class TelescopingRBF(nn.Module):
     Notes
     -----
     These basis functions were originally introduced as part of the PhysNet
-    architecture. Though the basis function centers are scattered uniformly, the
-    modulation function has the effect of broadening those functions closer to
-    the specified cutoff. The overall result is a set of basis functions which
-    have high resolution at small distances which smoothly morphs to basis
-    functions with lower resolution at larger distances.
+    architecture (Unke & Meuwly, 2019). Though the basis function centers are
+    scattered uniformly, the modulation function has the effect of broadening
+    those functions closer to the specified cutoff. The overall result is a set
+    of basis functions which have high resolution at small distances which
+    smoothly morphs to basis functions with lower resolution at larger
+    distances.
 
     References
     ----------
