@@ -4,7 +4,8 @@
 import numpy as np
 import torch
 
-from cgnet.feature.utils import RadialBasisFunction, TelescopingRBF, ShiftedSoftplus
+from cgnet.feature.utils import (RadialBasisFunction, TelescopingRBF,
+                                 ShiftedSoftplus)
 from cgnet.feature.statistics import GeometryStatistics
 from cgnet.feature.feature import GeometryFeature
 
@@ -64,7 +65,7 @@ def test_telescoping_rbf():
     # Manually calculate expansion with numpy
     # First, we compute the centers and the scaling factors
     centers = np.linspace(np.exp(-cutoff), 1, n_gaussians)
-    beta = np.power(((2/n_gaussians) * (1-np.exp(-cutoff))),-2)
+    beta = np.power(((2/n_gaussians) * (1-np.exp(-cutoff))), -2)
 
     # Next, we compute the gaussian portion
     exp_distances = np.exp(-np.expand_dims(distances, axis=3))
@@ -95,6 +96,7 @@ def test_telescoping_rbf():
     np.testing.assert_allclose(telescoping_rbf_layer.numpy(),
                                telescoping_rbf_manual, rtol=1e-5)
 
+
 def test_telescoping_rbf_zero_cutoff():
     # This test ensures that a choice of zero cutoff produces
     # a set of basis functions that all occupy the same center
@@ -103,10 +105,10 @@ def test_telescoping_rbf_zero_cutoff():
     # of gaussians and a cutoff of zero
     n_gaussians = np.random.randint(5, 10)
     telescoping_rbf = TelescopingRBF(n_gaussians=n_gaussians,
-                                  cutoff=0.0)
+                                     cutoff=0.0)
     # First we test to see that \beta is infinite
     np.testing.assert_equal(np.inf, telescoping_rbf.beta)
-    
+
     # Next we make a mock array of centers at 1.0
     centers = torch.linspace(1.0, 1.0, n_gaussians)
 
@@ -127,4 +129,3 @@ def test_shifted_softplus():
     manual_output = np.log(1.0 + np.exp(feature.numpy())) - np.log(2.0)
 
     np.testing.assert_allclose(manual_output, ssplus(feature).numpy())
-

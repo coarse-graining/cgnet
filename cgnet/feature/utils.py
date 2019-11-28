@@ -83,7 +83,7 @@ class RadialBasisFunction(nn.Module):
     def __init__(self, cutoff=5.0, n_gaussians=50, variance=1.0):
         super(RadialBasisFunction, self).__init__()
         self.register_buffer('centers', torch.linspace(0.0,
-                                        cutoff, n_gaussians))
+                             cutoff, n_gaussians))
         self.variance = variance
 
     def forward(self, distances):
@@ -97,13 +97,15 @@ class RadialBasisFunction(nn.Module):
         Returns
         -------
         gaussian_exp: torch.Tensor
-            Gaussian expansions of shape [n_examples, n_beads, n_neighbors, n_gauss]
+            Gaussian expansions of shape [n_examples, n_beads, n_neighbors,
+            n_gauss]
         """
         dist_centered_squared = torch.pow(distances.unsqueeze(dim=3) -
                                           self.centers, 2)
         gaussian_exp = torch.exp(-(0.5 / self.variance)
                                  * dist_centered_squared)
         return gaussian_exp
+
 
 class TelescopingRBF(nn.Module):
     r"""Radial basis function (RBF) layer
@@ -184,11 +186,11 @@ class TelescopingRBF(nn.Module):
         self.tolerance = tolerance
         self.device = device
         self.register_buffer('centers', torch.linspace(np.exp(-cutoff), 1,
-                                                       n_gaussians))
+                             n_gaussians))
         self.cutoff = cutoff
-        self.beta = np.power(((2/n_gaussians)*(1-np.exp(-self.cutoff))),-2)
+        self.beta = np.power(((2/n_gaussians)*(1-np.exp(-self.cutoff))), -2)
 
-    def modulation(self,distances):
+    def modulation(self, distances):
         """PhysNet cutoff modulation function
 
         Parameters
@@ -205,10 +207,14 @@ class TelescopingRBF(nn.Module):
         """
         zeros = torch.zeros_like(distances).to(self.device)
         modulation_envelope = torch.where(distances < self.cutoff,
-                                  1 - 6*torch.pow((distances/self.cutoff),5)
-                                  + 15*torch.pow((distances/self.cutoff),4)
-                                  - 10*torch.pow((distances/self.cutoff),3),
-                                  zeros)
+                                          1 - 6 *
+                                          torch.pow((distances/self.cutoff), 5)
+                                          + 15 *
+                                          torch.pow((distances/self.cutoff), 4)
+                                          - 10 *
+                                          torch.pow(
+                                              (distances/self.cutoff), 3),
+                                          zeros)
         return modulation_envelope
 
     def forward(self, distances):
