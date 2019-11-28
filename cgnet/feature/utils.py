@@ -153,6 +153,12 @@ class TelescopingRBF(nn.Module):
     device : torch.device (default=torch.device('cpu'))
         Device upon which tensors are mounted
 
+    Attributes
+    ----------
+    beta : float
+        Gaussian decay parameter, defined as:
+            \beta = ((2/num_gaussians) * (1 - exp(-cutoff))^-2
+
     Notes
     -----
     These basis functions were originally introduced as part of the PhysNet
