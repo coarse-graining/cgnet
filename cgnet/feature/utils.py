@@ -138,7 +138,9 @@ class TelescopingRBF(nn.Module):
         Distance cutoff (in angstroms) for the modulation. The decay of the
         modulation envelope has positive concavity and smoothly approaches
         zero in the vicinity of the specified cutoff distance. The default
-        value of 10 angstroms is taken from Unke & Meuwly (2019).
+        value of 10 angstroms is taken from Unke & Meuwly (2019). In principle,
+        the ideal value should be taken as the largest pairwise distance in the
+        system.
     num_gaussians : int (default=64)
         Total number of gaussian functions to calculate. Number will be used to
         create a uniform grid from exp(-cutoff) to 1. The number of gaussians
