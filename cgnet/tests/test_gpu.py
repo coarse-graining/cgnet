@@ -55,7 +55,7 @@ def generate_model():
         1, 3)  # random number of interactions
     neighbor_cutoff = np.random.uniform(0, 1)  # random neighbor cutoff
     # random embedding property
-    embedding_property = torch.randint(low=0, high=n_embeddings,
+    embedding_property = torch.randint(low=1, high=n_embeddings,
                                        size=(n_frames, n_beads))
     embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
                                       embedding_dim=embedding_dim)
