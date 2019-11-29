@@ -66,7 +66,8 @@ class _PriorLayer(nn.Module):
     def __init__(self, callback_indices, interaction_parameters):
         super(_PriorLayer, self).__init__()
         if len(callback_indices) != len(interaction_parameters):
-            raise ValueError("callback_indices and interaction parameters must have the same length")
+            raise ValueError(
+                "callback_indices and interaction parameters must have the same length")
         self.interaction_parameters = interaction_parameters
         self.callback_indices = callback_indices
 
@@ -131,7 +132,8 @@ class RepulsionLayer(_PriorLayer):
     """
 
     def __init__(self, callback_indices, interaction_parameters):
-        super(RepulsionLayer, self).__init__(callback_indices, interaction_parameters)
+        super(RepulsionLayer, self).__init__(
+            callback_indices, interaction_parameters)
         for param_dict in self.interaction_parameters:
             if (key in param_dict for key in ('ex_vol', 'exp')):
                 pass
@@ -215,7 +217,8 @@ class HarmonicLayer(_PriorLayer):
     """
 
     def __init__(self, callback_indices, interaction_parameters):
-        super(HarmonicLayer, self).__init__(callback_indices, interaction_parameters)
+        super(HarmonicLayer, self).__init__(
+            callback_indices, interaction_parameters)
         for param_dict in self.interaction_parameters:
             if (key in param_dict for key in ('k', 'mean')):
                 assert not torch.isnan(param_dict['k']).any(), \
@@ -230,8 +233,8 @@ class HarmonicLayer(_PriorLayer):
         harmonic_parameters = torch.tensor([])
         for param_dict in self.interaction_parameters:
             harmonic_parameters = torch.cat((harmonic_parameters,
-                                       torch.tensor([[param_dict['k']],
-                                       [param_dict['mean']]])), dim=1)
+                                             torch.tensor([[param_dict['k']],
+                                                           [param_dict['mean']]])), dim=1)
         self.register_buffer('harmonic_parameters', harmonic_parameters)
 
     def forward(self, in_feat):

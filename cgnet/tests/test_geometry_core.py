@@ -34,10 +34,10 @@ def test_tile_methods_numpy_vs_torch():
 
     # Make two likely different shapes for the array and the tiling
     # with friendly factors
-    shape_one = [2,3,4]
+    shape_one = [2, 3, 4]
     np.random.shuffle(shape_one)
 
-    shape_two = [2,3,4]
+    shape_two = [2, 3, 4]
     np.random.shuffle(shape_two)
 
     # Reshape A with the first shape

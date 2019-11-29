@@ -125,7 +125,7 @@ def test_repulsion_layer():
                                 n_beads=beads)
     output_features = geom_feat(coords)
     energy = repulsion_potential(output_features[:,
-                                 repulsion_potential.callback_indices])
+                                                 repulsion_potential.callback_indices])
 
     # Test to see if RepulsionLayer ouput is scalar energy
     np.testing.assert_array_equal(energy.size(), (frames, 1))
@@ -158,7 +158,7 @@ def test_harmonic_layer():
                                 n_beads=beads)
     output_features = geom_feat(coords)
     energy = harmonic_potential(output_features[:,
-                                harmonic_potential.callback_indices])
+                                                harmonic_potential.callback_indices])
 
     # Test to see if HarmonicLayer output is scalar energy
     np.testing.assert_array_equal(energy.size(), (frames, 1))
@@ -268,9 +268,9 @@ def test_prior_with_stats_dropout():
     feature_bools = [1] + [np.random.randint(0, high=1) for _ in range(2)]
     np.random.shuffle(feature_bools)
     dropout_stats = GeometryStatistics(coords, backbone_inds='all',
-                               get_all_distances=feature_bools[0],
-                               get_backbone_angles=feature_bools[1],
-                               get_backbone_dihedrals=feature_bools[2])
+                                       get_all_distances=feature_bools[0],
+                                       get_backbone_angles=feature_bools[1],
+                                       get_backbone_dihedrals=feature_bools[2])
 
     # Here we construct priors on available features and test the callback order
     if 'Distances' in dropout_stats.descriptions:
