@@ -81,3 +81,30 @@ def test_distances_and_neighbors_numpy_vs_torch():
     np.testing.assert_array_equal(distances_numpy, distances_torch)
     np.testing.assert_array_equal(neighbors_numpy, neighbors_torch)
     np.testing.assert_array_equal(neighbors_mask_numpy, neighbors_mask_torch)
+
+
+def test_nan_control():
+
+    backbone_angles = [(i, i+1, i+2) for i in range(beads - 2)]
+    backbone_diheds = [(i, i+1, i+2, i+3) for i in range(beads - 3)]
+
+    nan_coords = coords.copy()
+    nan_coords[0][0] = np.nan
+    torch_nan_coords = torch.from_numpy(nan_coords)
+
+    np.testing.assert_raises(AssertionError,
+                             g_numpy.get_distances, _distance_pairs, nan_coords)
+    np.testing.assert_raises(AssertionError,
+                             g_numpy.get_angles, backbone_angles, nan_coords)
+    np.testing.assert_raises(AssertionError,
+                             g_numpy.get_dihedrals, backbone_diheds, nan_coords)
+
+    np.testing.assert_raises(AssertionError,
+                             g_torch.get_distances, _distance_pairs,
+                             torch_nan_coords)
+    np.testing.assert_raises(AssertionError,
+                             g_torch.get_angles, backbone_angles,
+                             torch_nan_coords)
+    np.testing.assert_raises(AssertionError,
+                             g_torch.get_dihedrals, backbone_diheds,
+                             torch_nan_coords)
