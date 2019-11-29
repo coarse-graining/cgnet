@@ -119,6 +119,7 @@ class Geometry():
         distances = self.get_vectorize_inputs(distance_inds, data)
         if norm:
             distances = self.norm(distances, axis=2)
+        assert not self.isnan(distances)
         return distances
 
     def get_angles(self, angle_inds, data):
@@ -144,7 +145,7 @@ class Geometry():
         angles = self.arccos(self.clip(interval,
                                        lower_bound=-1.,
                                        upper_bound=1.))
-
+        assert not self.isnan(angles)
         return angles
 
     def get_dihedrals(self, dihed_inds, data):
@@ -177,6 +178,9 @@ class Geometry():
         dihedral_sines = self.sum(cp_base[:, ::2]*plane_vector[:, ::2],
                                   axis=2)/self.norm(
             cp_base[:, ::2], axis=2)/self.norm(plane_vector[:, ::2], axis=2)
+
+        assert not self.isnan(dihedral_cosines)
+        assert not self.isnan(dihedral_sines)
 
         return dihedral_cosines, dihedral_sines
 
@@ -243,7 +247,7 @@ class Geometry():
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
     # Methods defined: arccos, cross, norm, sum, arange, tile, eye, ones,
-    #                  to_type
+    #                  to_type, clip, isnan
 
     def arccos(self, x):
         if self.method == 'torch':
@@ -309,3 +313,9 @@ class Geometry():
             return torch.clamp(x, min=lower_bound, max=upper_bound)
         elif self.method == 'numpy':
             return np.clip(x, a_min=lower_bound, a_max=upper_bound)
+
+    def isnan(self, x):
+        if self.method == 'torch':
+            return torch.isnan(x).any()
+        elif self.method == 'numpy':
+            return np.isnan(x).any()

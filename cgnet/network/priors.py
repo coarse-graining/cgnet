@@ -218,6 +218,8 @@ class HarmonicLayer(_PriorLayer):
         super(HarmonicLayer, self).__init__(callback_indices, interaction_parameters)
         for param_dict in self.interaction_parameters:
             if (key in param_dict for key in ('k', 'mean')):
+                assert not torch.isnan(param_dict['k']).any()
+                assert not torch.isnan(param_dict['mean']).any()
                 pass
             else:
                 KeyError('Missing or incorrect key for harmonic parameters')
