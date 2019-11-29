@@ -218,8 +218,12 @@ class HarmonicLayer(_PriorLayer):
         super(HarmonicLayer, self).__init__(callback_indices, interaction_parameters)
         for param_dict in self.interaction_parameters:
             if (key in param_dict for key in ('k', 'mean')):
-                assert not torch.isnan(param_dict['k']).any()
-                assert not torch.isnan(param_dict['mean']).any()
+                assert not torch.isnan(param_dict['k']).any(), \
+                    'Harmonic spring constant "k" contains NaNs.' \
+                    'Check your parameters.'
+                assert not torch.isnan(param_dict['mean']).any(),  \
+                    'Center of the harmonic interaction "mean" contains NaNs.'\
+                    'Check your parameters.'
                 pass
             else:
                 KeyError('Missing or incorrect key for harmonic parameters')

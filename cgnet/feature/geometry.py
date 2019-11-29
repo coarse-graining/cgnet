@@ -119,7 +119,8 @@ class Geometry():
         distances = self.get_vectorize_inputs(distance_inds, data)
         if norm:
             distances = self.norm(distances, axis=2)
-        assert not self.isnan(distances)
+        assert not self.isnan(distances), \
+            'NaN found during distance calculation. Check your coordinates!'
         return distances
 
     def get_angles(self, angle_inds, data):
@@ -145,7 +146,8 @@ class Geometry():
         angles = self.arccos(self.clip(interval,
                                        lower_bound=-1.,
                                        upper_bound=1.))
-        assert not self.isnan(angles)
+        assert not self.isnan(angles), \
+            'NaN found during angle calculation. Check your coordinates!'
         return angles
 
     def get_dihedrals(self, dihed_inds, data):
@@ -179,8 +181,10 @@ class Geometry():
                                   axis=2)/self.norm(
             cp_base[:, ::2], axis=2)/self.norm(plane_vector[:, ::2], axis=2)
 
-        assert not self.isnan(dihedral_cosines)
-        assert not self.isnan(dihedral_sines)
+        assert not self.isnan(dihedral_cosines), \
+            'NaN found during dihedral calculation. Check your coordinates!'
+        assert not self.isnan(dihedral_sines), \
+            'NaN found during dihedral calculation. Check your coordinates!'
 
         return dihedral_cosines, dihedral_sines
 
