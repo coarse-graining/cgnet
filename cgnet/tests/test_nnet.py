@@ -183,6 +183,24 @@ def test_harmonic_layer():
                                   energy_check.detach().numpy())
 
 
+def test_harmonic_nan_check():
+    # Tests if NaNs are caught in the HarmonicLayer class
+
+    # Set up bond indices (integers) and interactiosn
+    bonds_idx = geom_stats.return_indices('Bonds')  # Bond indices
+    # List of bond interaction dictionaries for assembling priors
+    bonds_interactions, _ = geom_stats.get_prior_statistics(
+        features='Bonds', as_list=True)
+
+    # Set random harmonic parameter NaN
+    random_idx = np.random.randint(1, beads-1)
+    bonds_interactions[random_idx]['mean'] = torch.Tensor([np.nan])
+
+    # Check if an assert is raised
+    np.testing.assert_raises(AssertionError,
+                             HarmonicLayer, bonds_idx, bonds_interactions)
+
+
 def test_prior_callback_order_1():
     # Tests the order of prior callbacks with respect to feature layer output
     # First, we isolate the bonds from the distance feature tuples
