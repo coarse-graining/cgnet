@@ -42,13 +42,13 @@ class ShiftedSoftplus(nn.Module):
         Parameters
         ----------
         input_tensor: torch.Tensor
-            Input tensor of shape (n_examples, *) where `*` means, any number of
+            Input tensor of size (n_examples, *) where `*` means, any number of
             additional dimensions.
 
         Returns
         -------
         Output: torch.Tensor
-            Same shape (n_examples, *) as the input.
+            Same size (n_examples, *) as the input.
         """
         return nn.functional.softplus(input_tensor) - np.log(2.0)
 
@@ -92,12 +92,12 @@ class RadialBasisFunction(nn.Module):
         Parameters
         ----------
         distances : torch.Tensor
-            Interatomic distances of shape [n_examples, n_beads, n_neighbors]
+            Interatomic distances of size [n_examples, n_beads, n_neighbors]
 
         Returns
         -------
         gaussian_exp: torch.Tensor
-            Gaussian expansions of shape [n_examples, n_beads, n_neighbors,
+            Gaussian expansions of size [n_examples, n_beads, n_neighbors,
             n_gauss]
         """
         dist_centered_squared = torch.pow(distances.unsqueeze(dim=3) -
@@ -196,7 +196,7 @@ class TelescopingRBF(nn.Module):
         Parameters
         ----------
         distances : torch.Tensor
-            Interatomic distances of shape [n_examples, n_beads, n_neighbors]
+            Interatomic distances of size [n_examples, n_beads, n_neighbors]
 
         Returns
         -------
@@ -223,12 +223,12 @@ class TelescopingRBF(nn.Module):
         Parameters
         ----------
         distances : torch.Tensor
-            Interatomic distances of shape [n_examples, n_beads, n_neighbors]
+            Interatomic distances of size [n_examples, n_beads, n_neighbors]
 
         Returns
         -------
         expansions : torch.Tensor
-            Modulated gaussian expansions of shape
+            Modulated gaussian expansions of size 
             [n_examples, n_beads, n_neighbors, n_gauss]
 
         Notes
