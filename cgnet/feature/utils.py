@@ -75,9 +75,17 @@ class RadialBasisFunction(nn.Module):
         Total number of Gaussian functions to calculate. Number will be used to
         create a uniform grid from 0.0 to cutoff. The number of Gaussians will
         also decide the output size of the RBF layer output
-        ([n_examples, n_beads, n_neighbors, n_gauss]).
+        ([n_examples, n_beads, n_neighbors, n_gauss]). The default number of
+        gaussians is the same as that in SchnetPack (Schutt et al, 2019)..
     variance : float (default=1.0)
         The variance (standard deviation squared) of the Gaussian functions.
+
+    References
+    ----------
+    Schutt, K. T., Kessel, P., Gastegger, M., Nicoli, K. A., Tkatchenko, A.,
+         & Müller, K.-R. (2019). SchNetPack: A Deep Learning Toolbox For Atomistic
+         Systems. Journal of Chemical Theory and Computation, 15(1), 448–455.
+         https://doi.org/10.1021/acs.jctc.8b00908
     """
 
     def __init__(self, cutoff=5.0, n_gaussians=50, variance=1.0):
