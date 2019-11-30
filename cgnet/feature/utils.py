@@ -76,7 +76,7 @@ class RadialBasisFunction(nn.Module):
         create a uniform grid from 0.0 to cutoff. The number of Gaussians will
         also decide the output size of the RBF layer output
         ([n_examples, n_beads, n_neighbors, n_gauss]). The default number of
-        gaussians is the same as that in SchnetPack (Schutt et al, 2019)..
+        gaussians is the same as that in SchnetPack (Schutt et al, 2019).
     variance : float (default=1.0)
         The variance (standard deviation squared) of the Gaussian functions.
 
