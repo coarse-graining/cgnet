@@ -71,7 +71,7 @@ class RadialBasisFunction(nn.Module):
     cutoff : float (default=5.0)
         Distance cutoff for the Gaussian function. The cutoff represents the
         center of the last gaussian function in basis.
-    num_gaussians : int (default=50)
+    n_gaussians : int (default=50)
         Total number of Gaussian functions to calculate. Number will be used to
         create a uniform grid from 0.0 to cutoff. The number of Gaussians will
         also decide the output size of the RBF layer output
@@ -129,7 +129,7 @@ class TelescopingRBF(nn.Module):
     the centers mu_k calculated on a uniform grid between
     exp(-r_{ij}) and 1.0, and beta as a scaling parameter defined as:
 
-        \beta = ((2/num_gaussians) * (1 - exp(-cutoff))^-2
+        \beta = ((2/n_gaussians) * (1 - exp(-cutoff))^-2
 
     The radial basis function has the effect of decorrelating the
     convolutional filter, which improves the training time.
@@ -143,7 +143,7 @@ class TelescopingRBF(nn.Module):
         value of 10 angstroms is taken from Unke & Meuwly (2019). In principle,
         the ideal value should be taken as the largest pairwise distance in the
         system.
-    num_gaussians : int (default=64)
+    n_gaussians : int (default=64)
         Total number of gaussian functions to calculate. Number will be used to
         create a uniform grid from exp(-cutoff) to 1. The number of gaussians
         will also decide the output size of the RBF layer output
@@ -159,7 +159,7 @@ class TelescopingRBF(nn.Module):
     ----------
     beta : float
         Gaussian decay parameter, defined as:
-            \beta = ((2/num_gaussians) * (1 - exp(-cutoff))^-2
+            \beta = ((2/n_gaussians) * (1 - exp(-cutoff))^-2
 
     Notes
     -----
