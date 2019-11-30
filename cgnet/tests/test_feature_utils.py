@@ -4,7 +4,7 @@
 import numpy as np
 import torch
 
-from cgnet.feature.utils import (RadialBasisFunction, TelescopingRBF,
+from cgnet.feature.utils import (RadialBasisFunction, ModulatedRBF,
                                  ShiftedSoftplus)
 from cgnet.feature.statistics import GeometryStatistics
 from cgnet.feature.feature import GeometryFeature
@@ -46,21 +46,21 @@ def test_radial_basis_function():
     np.testing.assert_allclose(gauss_layer.numpy(), gauss_manual, rtol=1e-5)
 
 
-def test_telescoping_rbf():
-    # Make sure the telescoping radial basis functions are consistent with
+def test_modulated_rbf():
+    # Make sure the modulated radial basis functions are consistent with
     # manual calculations
 
     # Distances need to have shape (n_batch, n_beads, n_neighbors)
     distances = np.random.randn(frames, beads, beads - 1).astype('float32')
-    # Define random parameters for the telescoping RBF
+    # Define random parameters for the modulated RBF
     n_gaussians = np.random.randint(5, 10)
     cutoff = np.random.uniform(5.0, 10.0)
 
     # Calculate Gaussian expansion using the implemented layer
-    telescoping_rbf = TelescopingRBF(cutoff=cutoff,
+    modulated_rbf = ModulatedRBF(cutoff=cutoff,
                                      n_gaussians=n_gaussians,
                                      tolerance=1e-8)
-    telescoping_rbf_layer = telescoping_rbf.forward(torch.tensor(distances))
+    modulated_rbf_layer = modulated_rbf.forward(torch.tensor(distances))
 
     # Manually calculate expansion with numpy
     # First, we compute the centers and the scaling factors
@@ -81,39 +81,39 @@ def test_telescoping_rbf():
                           zeros)
     modulation = np.expand_dims(modulation, axis=3)
 
-    telescoping_rbf_manual = modulation * gauss_manual
+    modulated_rbf_manual = modulation * gauss_manual
 
     # Map tiny values to zero
-    telescoping_rbf_manual = np.where(
-        np.abs(telescoping_rbf_manual) > telescoping_rbf.tolerance,
-        telescoping_rbf_manual,
-        np.zeros_like(telescoping_rbf_manual)
+    modulated_rbf_manual = np.where(
+        np.abs(modulated_rbf_manual) > modulated_rbf.tolerance,
+        modulated_rbf_manual,
+        np.zeros_like(modulated_rbf_manual)
     )
 
     # centers and output values need to be the same
     np.testing.assert_allclose(centers,
-                               telescoping_rbf.centers, rtol=1e-5)
-    np.testing.assert_allclose(telescoping_rbf_layer.numpy(),
-                               telescoping_rbf_manual, rtol=1e-5)
+                               modulated_rbf.centers, rtol=1e-5)
+    np.testing.assert_allclose(modulated_rbf_layer.numpy(),
+                               modulated_rbf_manual, rtol=1e-5)
 
 
-def test_telescoping_rbf_zero_cutoff():
+def test_modulated_rbf_zero_cutoff():
     # This test ensures that a choice of zero cutoff produces
     # a set of basis functions that all occupy the same center
 
-    # First, we generate a telescoping RBF layer with a random number
+    # First, we generate a modulated RBF layer with a random number
     # of gaussians and a cutoff of zero
     n_gaussians = np.random.randint(5, 10)
-    telescoping_rbf = TelescopingRBF(n_gaussians=n_gaussians,
+    modulated_rbf = ModulatedRBF(n_gaussians=n_gaussians,
                                      cutoff=0.0)
     # First we test to see that \beta is infinite
-    np.testing.assert_equal(np.inf, telescoping_rbf.beta)
+    np.testing.assert_equal(np.inf, modulated_rbf.beta)
 
     # Next we make a mock array of centers at 1.0
     centers = torch.linspace(1.0, 1.0, n_gaussians)
 
     # Here, we test to see that centers are equal in this corner case
-    np.testing.assert_equal(centers.numpy(), telescoping_rbf.centers.numpy())
+    np.testing.assert_equal(centers.numpy(), modulated_rbf.centers.numpy())
 
 
 def test_shifted_softplus():

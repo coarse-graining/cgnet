@@ -107,7 +107,7 @@ class RadialBasisFunction(nn.Module):
         return gaussian_exp
 
 
-class TelescopingRBF(nn.Module):
+class ModulatedRBF(nn.Module):
     r"""Radial basis function (RBF) layer
     This layer serves as a distance expansion using modulated radial
     basis functions with the following form:
@@ -182,7 +182,7 @@ class TelescopingRBF(nn.Module):
 
     def __init__(self, cutoff=10.0, n_gaussians=64, tolerance=1e-10,
                  device=torch.device('cpu')):
-        super(TelescopingRBF, self).__init__()
+        super(ModulatedRBF, self).__init__()
         self.tolerance = tolerance
         self.device = device
         self.register_buffer('centers', torch.linspace(np.exp(-cutoff), 1,
