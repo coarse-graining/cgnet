@@ -42,13 +42,13 @@ class ShiftedSoftplus(nn.Module):
         Parameters
         ----------
         input_tensor: torch.Tensor
-            Input tensor of shape (n_examples, *) where `*` means, any number of
+            Input tensor of size (n_examples, *) where `*` means, any number of
             additional dimensions.
 
         Returns
         -------
         Output: torch.Tensor
-            Same shape (n_examples, *) as the input.
+            Same size (n_examples, *) as the input.
         """
         return nn.functional.softplus(input_tensor) - np.log(2.0)
 
@@ -71,19 +71,27 @@ class RadialBasisFunction(nn.Module):
     cutoff : float (default=5.0)
         Distance cutoff for the Gaussian function. The cutoff represents the
         center of the last gaussian function in basis.
-    num_gaussians : int (default=50)
+    n_gaussians : int (default=50)
         Total number of Gaussian functions to calculate. Number will be used to
         create a uniform grid from 0.0 to cutoff. The number of Gaussians will
         also decide the output size of the RBF layer output
-        ([n_examples, n_beads, n_neighbors, n_gauss]).
+        ([n_examples, n_beads, n_neighbors, n_gauss]). The default number of
+        gaussians is the same as that in SchnetPack (Schutt et al, 2019).
     variance : float (default=1.0)
         The variance (standard deviation squared) of the Gaussian functions.
+
+    References
+    ----------
+    Schutt, K. T., Kessel, P., Gastegger, M., Nicoli, K. A., Tkatchenko, A.,
+         & Müller, K.-R. (2019). SchNetPack: A Deep Learning Toolbox For Atomistic
+         Systems. Journal of Chemical Theory and Computation, 15(1), 448–455.
+         https://doi.org/10.1021/acs.jctc.8b00908
     """
 
     def __init__(self, cutoff=5.0, n_gaussians=50, variance=1.0):
         super(RadialBasisFunction, self).__init__()
         self.register_buffer('centers', torch.linspace(0.0,
-                                        cutoff, n_gaussians))
+                             cutoff, n_gaussians))
         self.variance = variance
 
     def forward(self, distances):
@@ -92,18 +100,166 @@ class RadialBasisFunction(nn.Module):
         Parameters
         ----------
         distances : torch.Tensor
-            Interatomic distances of shape [n_examples, n_beads, n_neighbors]
+            Interatomic distances of size [n_examples, n_beads, n_neighbors]
 
         Returns
         -------
         gaussian_exp: torch.Tensor
-            Gaussian expansions of shape [n_examples, n_beads, n_neighbors, n_gauss]
+            Gaussian expansions of size [n_examples, n_beads, n_neighbors,
+            n_gauss]
         """
         dist_centered_squared = torch.pow(distances.unsqueeze(dim=3) -
                                           self.centers, 2)
         gaussian_exp = torch.exp(-(0.5 / self.variance)
                                  * dist_centered_squared)
         return gaussian_exp
+
+
+class ModulatedRBF(nn.Module):
+    r"""Radial basis function (RBF) layer
+    This layer serves as a distance expansion using modulated radial
+    basis functions with the following form:
+
+        g_k(r_{ij}) = \phi(r_{ij}, cutoff) *
+        exp(- \beta * (\left \exp(-r_{ij}) - \mu_k\right)^2)
+
+    where \phi(r_{ij}, cutoff) is a piecewise polynomial modulation
+    function of the following form,
+
+                /
+               |    1 - 6*(r_{ij}/cutoff)^5
+               |    + 15*(r_{ij}/cutoff)^4      for r_{ij} < cutoff
+     \phi = -- |    - 10*(r_{ij}/cutoff)^3
+               |
+               |    0.0                         for r_{ij} >= cutoff
+                \
+
+    the centers mu_k calculated on a uniform grid between
+    exp(-r_{ij}) and 1.0, and beta as a scaling parameter defined as:
+
+        \beta = ((2/n_gaussians) * (1 - exp(-cutoff))^-2
+
+    The radial basis function has the effect of decorrelating the
+    convolutional filter, which improves the training time.
+
+    Parameters
+    ----------
+    cutoff : float (default=10.0)
+        Distance cutoff (in angstroms) for the modulation. The decay of the
+        modulation envelope has positive concavity and smoothly approaches
+        zero in the vicinity of the specified cutoff distance. The default
+        value of 10 angstroms is taken from Unke & Meuwly (2019). In principle,
+        the ideal value should be taken as the largest pairwise distance in the
+        system.
+    n_gaussians : int (default=64)
+        Total number of gaussian functions to calculate. Number will be used to
+        create a uniform grid from exp(-cutoff) to 1. The number of gaussians
+        will also decide the output size of the RBF layer output
+        ([n_examples, n_beads, n_neighbors, n_gauss]). The default value of
+        64 gaussians is taken from Unke & Meuwly (2019).
+    tolerance : float (default=1e-10)
+        When expanding the modulated gaussians, values below the tolerance
+        will be set to zero.
+    device : torch.device (default=torch.device('cpu'))
+        Device upon which tensors are mounted
+
+    Attributes
+    ----------
+    beta : float
+        Gaussian decay parameter, defined as:
+            \beta = ((2/n_gaussians) * (1 - exp(-cutoff))^-2
+
+    Notes
+    -----
+    These basis functions were originally introduced as part of the PhysNet
+    architecture (Unke & Meuwly, 2019). Though the basis function centers are
+    scattered uniformly, the modulation function has the effect of broadening
+    those functions closer to the specified cutoff. The overall result is a set
+    of basis functions which have high resolution at small distances which
+    smoothly morphs to basis functions with lower resolution at larger
+    distances.
+
+    References
+    ----------
+    Unke, O. T., & Meuwly, M. (2019). PhysNet: A Neural Network for Predicting
+        Energies, Forces, Dipole Moments and Partial Charges. Journal of
+        Chemical Theory and Computation, 15(6), 3678–3693.
+        https://doi.org/10.1021/acs.jctc.9b00181
+
+    """
+
+    def __init__(self, cutoff=10.0, n_gaussians=64, tolerance=1e-10,
+                 device=torch.device('cpu')):
+        super(ModulatedRBF, self).__init__()
+        self.tolerance = tolerance
+        self.device = device
+        self.register_buffer('centers', torch.linspace(np.exp(-cutoff), 1,
+                             n_gaussians))
+        self.cutoff = cutoff
+        self.beta = np.power(((2/n_gaussians)*(1-np.exp(-self.cutoff))), -2)
+
+    def modulation(self, distances):
+        """PhysNet cutoff modulation function
+
+        Parameters
+        ----------
+        distances : torch.Tensor
+            Interatomic distances of size [n_examples, n_beads, n_neighbors]
+
+        Returns
+        -------
+        mod : torch.Tensor
+            The modulation envelope of the radial basis functions. Shape
+            [n_examples, n_beads, n_neighbors]
+
+        """
+        zeros = torch.zeros_like(distances).to(self.device)
+        modulation_envelope = torch.where(distances < self.cutoff,
+                                          1 - 6 *
+                                          torch.pow((distances/self.cutoff), 5)
+                                          + 15 *
+                                          torch.pow((distances/self.cutoff), 4)
+                                          - 10 *
+                                          torch.pow(
+                                              (distances/self.cutoff), 3),
+                                          zeros)
+        return modulation_envelope
+
+    def forward(self, distances):
+        """Calculate modulated gaussian expansion
+
+        Parameters
+        ----------
+        distances : torch.Tensor
+            Interatomic distances of size [n_examples, n_beads, n_neighbors]
+
+        Returns
+        -------
+        expansions : torch.Tensor
+            Modulated gaussian expansions of size 
+            [n_examples, n_beads, n_neighbors, n_gauss]
+
+        Notes
+        -----
+        The gaussian portion of the basis function is a function of
+        exp(-r_{ij}), not r_{ij}
+
+        """
+        dist_centered_squared = torch.pow(torch.exp(-distances.unsqueeze(dim=3))
+                                          - self.centers, 2)
+        gaussian_exp = torch.exp(-self.beta
+                                 * dist_centered_squared)
+        modulation_envelope = self.modulation(distances).unsqueeze(dim=3)
+
+        expansions = modulation_envelope * gaussian_exp
+
+        # In practice, this gives really tiny numbers. For numbers below the
+        # tolerance, we just set them to zero.
+        expansions = torch.where(torch.abs(expansions) > self.tolerance,
+                                 expansions,
+                                 torch.zeros_like(expansions))
+
+        return expansions
 
 
 def LinearLayer(
