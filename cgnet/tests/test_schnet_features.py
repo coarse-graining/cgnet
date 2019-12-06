@@ -165,7 +165,7 @@ def test_schnet_feature():
     # Tests proper forwarding through SchNet wrapper class
 
     # Create random embedding properties
-    embedding_property = torch.randint(low=0, high=n_embeddings,
+    embedding_property = torch.randint(low=1, high=n_embeddings,
                                        size=(frames, beads))
 
     # Initialize the embedding and SchnetFeature class

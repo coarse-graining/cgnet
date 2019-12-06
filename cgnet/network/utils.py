@@ -64,8 +64,9 @@ def lipschitz_projection(model, strength=10.0, mask=None):
             weight = layer.weight.data
             u, s, v = torch.svd(weight)
             if next(model.parameters()).is_cuda:
+                device = weight.device
                 lip_reg = torch.max(((s[0]) / strength),
-                                    torch.tensor([1.0]).cuda())
+                                    torch.tensor([1.0]).to(device))
             else:
                 lip_reg = torch.max(((s[0]) / strength),
                                     torch.tensor([1.0]))
@@ -104,15 +105,16 @@ def dataset_loss(model, loader):
     num_batch = 0
     ref_numel = 0
     for num, batch in enumerate(loader):
-        coords, force, _ = batch
+        coords, force, embedding_property = batch
         if num == 0:
             ref_numel = coords.numel()
-        potential, pred_force = model.forward(coords)
+        potential, pred_force = model.forward(coords,
+                                embedding_property=embedding_property)
         loss += model.criterion(pred_force,
-                                force) * (coords.numel() / ref_numel)
+                force).cpu().detach().numpy() * (coords.numel() / ref_numel)
         num_batch += (coords.numel() / ref_numel)
     loss /= num_batch
-    return loss.data.item()
+    return loss
 
 
 class Simulation():

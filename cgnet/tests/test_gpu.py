@@ -26,7 +26,9 @@ def generate_model():
     coords = np.random.randn(n_frames, n_beads, 3).astype('float32')
 
     # Next, we gather the statistics for Bond/Repulsion priors
-    stats = GeometryStatistics(coords)
+    stats = GeometryStatistics(coords, backbone_inds='all',
+                               get_all_distances=True, get_backbone_angles=True,
+                               get_backbone_dihedrals=True)
 
     bonds_list, _ = stats.get_prior_statistics('Bonds', as_list=True)
     bonds_idx = stats.return_indices('Bonds')
@@ -53,7 +55,7 @@ def generate_model():
         1, 3)  # random number of interactions
     neighbor_cutoff = np.random.uniform(0, 1)  # random neighbor cutoff
     # random embedding property
-    embedding_property = torch.randint(low=0, high=n_embeddings,
+    embedding_property = torch.randint(low=1, high=n_embeddings,
                                        size=(n_frames, n_beads))
     embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
                                       embedding_dim=embedding_dim)
