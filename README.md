@@ -1,7 +1,26 @@
-cgnet
+cgnet (pytorch 1.1 compatible)
 ===
 
-In development!
+The three changes are:
+
+In `feature/geometry.py`:
+
+```
+# return torch.BoolTensor(np.eye(n, dtype=np.bool)) # pytorch >=1.2
+return torch.ByteTensor(np.eye(n, dtype=np.bool)) # pytorch 1.1
+```
+
+In `network/nnet.py`:
+
+```
+# energy = torch.sum(energy, axis=1) # pytorch >=1.2
+energy = energy.sum(dim=1) # pytorch 1.1
+```
+
+```
+# energy = torch.sum(energy, axis=-2) # pytorch >=1.2
+energy = energy.sum(dim=-2) # pytorch 1.1
+```
 
 Dependencies
 ---
