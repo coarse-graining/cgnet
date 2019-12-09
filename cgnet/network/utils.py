@@ -89,7 +89,7 @@ def dataset_loss(model, loader):
         loss computed over the entire dataset. If the last batch consists of a
         smaller set of left over examples, its contribution to the loss is
         weighted by the ratio of number elements in the MSE matrix to that of
-        the normal number of elements assocatied with the loader's batch size
+        the normal number of elements associated with the loader's batch size
         before summation to a scalar.
 
     Example
