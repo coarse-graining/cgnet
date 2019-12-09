@@ -73,7 +73,7 @@ def lipschitz_projection(model, strength=10.0, mask=None):
             layer.weight.data = weight / (lip_reg)
 
 
-def dataset_loss(model, loader):
+def dataset_loss(model, loader, optimizer=None, verbose_interval=None):
     """Compute average loss over arbitrary loader and dataset pair.
 
     Parameters
@@ -82,6 +82,8 @@ def dataset_loss(model, loader):
         model to calculate loss
     loader : torch.utils.data.DataLoader() instance
         loader (with associated dataset)
+    optimizer :
+    verbose_interval :
 
     Returns
     -------
@@ -111,6 +113,9 @@ def dataset_loss(model, loader):
     effective_number_of_batches = 0
 
     for batch_num, batch_data in enumerate(loader):
+        if optimizer is not None:
+            optimizer.zero_grad()
+
         coords, force, embedding_property = batch_data
         if batch_num == 0:
             reference_batch_size = coords.numel()
@@ -118,14 +123,27 @@ def dataset_loss(model, loader):
         batch_weight = coords.numel() / reference_batch_size
         if batch_weight > 1:
             raise ValueError(
-    "The first batch was not the largest batch, so you cannot use dataset loss."
-                )
+                "The first batch was not the largest batch, so you cannot use dataset loss."
+            )
 
         potential, predicted_force = model.forward(coords,
-                                embedding_property=embedding_property)
-        loss += model.criterion(predicted_force,
-                force).cpu().detach().numpy() * batch_weight
+                                    embedding_property=embedding_property)
+
+        batch_loss = model.criterion(predicted_force, force)
+
+        if optimizer is not None:
+            batch_loss.backward()
+            optimizer.step()
+
+        if verbose_interval is not None:
+            if batch_num % verbose_interval == 0:
+                print("Batch: {}, Loss: {:.2f}".format(
+                    batch_num+1, batch_loss))
+
+        loss += batch_loss.cpu().detach().numpy() * batch_weight
+
         effective_number_of_batches += batch_weight
+
     loss /= effective_number_of_batches
     return loss
 
