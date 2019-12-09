@@ -10,7 +10,7 @@ from cgnet.feature import GeometryFeature, SchnetFeature
 
 
 def _default_print_function(batch_num, batch_loss):
-    print("Batch: {}, Loss: {:.2f}".format(batch_num+1, batch_loss))
+    print("Batch: {}, Loss: {:.2f}".format(batch_num, batch_loss))
 
 
 def lipschitz_projection(model, strength=10.0, mask=None):
