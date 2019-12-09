@@ -88,7 +88,8 @@ def dataset_loss(model, loader, optimizer=None,
         If not None, the optimizer will be zeroed and stepped for each batch.
     regularization_function : in-place function or None (default=None)
         If not None, the regularization function will be applied after
-        stepping the optimizer
+        stepping the optimizer. It must take only "model" as its input
+        and operate in-place.
     verbose_interval : integer or None (default=None)
         If not None, a printout of the batch number and loss will be provided
         at the specified interval (with respect to batch number).

@@ -397,7 +397,7 @@ def test_linear_regression():
     # Notes
     # -----
     # This test is quite forgiving in comparing the sklearn/CGnet results
-    # for learning a linear force feild/quadratic potential because the decimal
+    # for learning a linear force field/quadratic potential because the decimal
     # accuracy is set to one decimal point. It could be lower, but the test
     # might then occassionaly fail due to stochastic reasons associated with
     # the dataset and the limited training routine.
