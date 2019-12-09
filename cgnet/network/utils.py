@@ -9,6 +9,10 @@ import numpy as np
 from cgnet.feature import GeometryFeature, SchnetFeature
 
 
+def _default_print_function(batch_num, batch_loss):
+    print("Batch: {}, Loss: {:.2f}".format(batch_num+1, batch_loss))
+
+
 def lipschitz_projection(model, strength=10.0, mask=None):
     """Performs L2 Lipschitz Projection via spectral normalization
 
@@ -75,7 +79,8 @@ def lipschitz_projection(model, strength=10.0, mask=None):
 
 def dataset_loss(model, loader, optimizer=None,
                  regularization_function=None,
-                 verbose_interval=None):
+                 verbose_interval=None,
+                 print_function=_default_print_function):
     """Compute average loss over arbitrary loader and dataset pair.
 
     Parameters
@@ -93,6 +98,10 @@ def dataset_loss(model, loader, optimizer=None,
     verbose_interval : integer or None (default=None)
         If not None, a printout of the batch number and loss will be provided
         at the specified interval (with respect to batch number).
+    print_function : python function (default=utils._default_print_function)
+        Print function that takes (batch_number, batch_loss) as its only
+        two arguments, to print updates with the style of your choice
+        when verbose_interval is not None.
 
     Returns
     -------
@@ -156,8 +165,7 @@ def dataset_loss(model, loader, optimizer=None,
 
         if verbose_interval is not None:
             if(batch_num + 1) % verbose_interval == 0:
-                print("Batch: {}, Loss: {:.2f}".format(
-                    batch_num+1, batch_loss))
+                print_function(batch_num+1, batch_loss)
 
         loss += batch_loss.cpu().detach().numpy() * batch_weight
 
