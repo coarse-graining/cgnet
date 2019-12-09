@@ -10,7 +10,7 @@ from cgnet.feature import (MoleculeDataset, LinearLayer, SchnetFeature,
 
 # Here we create testing data from a random linear protein
 # with a random number of frames
-frames = np.random.randint(1, 3)
+frames = np.random.randint(5, 10)
 beads = np.random.randint(4, 10)
 dims = 3
 
@@ -25,7 +25,7 @@ embeddings = np.tile(embedding_array, [coords.shape[0], 1])
 sampler = SubsetRandomSampler(np.arange(0, frames, 1))
 dataset = MoleculeDataset(coords, forces)
 loader = DataLoader(dataset, sampler=sampler,
-                    batch_size=np.random.randint(2, high=10))
+                    batch_size=np.random.randint(2, high=4))
 schnet_dataset = MoleculeDataset(coords, forces, embeddings)
 schnet_loader = DataLoader(schnet_dataset, sampler=sampler,
                            batch_size=np.random.randint(2, high=10))
