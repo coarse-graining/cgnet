@@ -73,7 +73,9 @@ def lipschitz_projection(model, strength=10.0, mask=None):
             layer.weight.data = weight / (lip_reg)
 
 
-def dataset_loss(model, loader, optimizer=None, verbose_interval=None):
+def dataset_loss(model, loader, optimizer=None,
+                 regularization_function=None,
+                 verbose_interval=None):
     """Compute average loss over arbitrary loader and dataset pair.
 
     Parameters
@@ -82,8 +84,14 @@ def dataset_loss(model, loader, optimizer=None, verbose_interval=None):
         model to calculate loss
     loader : torch.utils.data.DataLoader() instance
         loader (with associated dataset)
-    optimizer :
-    verbose_interval :
+    optimizer : torch.optim method or None (default=None)
+        If not None, the optimizer will be zeroed and stepped for each batch.
+    regularization_function : in-place function or None (default=None)
+        If not None, the regularization function will be applied after
+        stepping the optimizer
+    verbose_interval : integer or None (default=None)
+        If not None, a printout of the batch number and loss will be provided
+        at the specified interval (with respect to batch number).
 
     Returns
     -------
@@ -109,6 +117,12 @@ def dataset_loss(model, loader, optimizer=None, verbose_interval=None):
     batch size.
 
     """
+    if optimizer is None and regularization_function is not None:
+        raise RuntimeError(
+            "regularization_function is only used when there is an optimizer, " \
+            "but you have optimizer=None."
+            )
+
     loss = 0
     effective_number_of_batches = 0
 
@@ -123,7 +137,8 @@ def dataset_loss(model, loader, optimizer=None, verbose_interval=None):
         batch_weight = coords.numel() / reference_batch_size
         if batch_weight > 1:
             raise ValueError(
-                "The first batch was not the largest batch, so you cannot use dataset loss."
+                "The first batch was not the largest batch, so you cannot use " \
+                "dataset loss."
             )
 
         potential, predicted_force = model.forward(coords,
@@ -135,8 +150,11 @@ def dataset_loss(model, loader, optimizer=None, verbose_interval=None):
             batch_loss.backward()
             optimizer.step()
 
+            if regularization_function is not None:
+                regularization_function(model)
+
         if verbose_interval is not None:
-            if batch_num % verbose_interval == 0:
+            if(batch_num + 1) % verbose_interval == 0:
                 print("Batch: {}, Loss: {:.2f}".format(
                     batch_num+1, batch_loss))
 
