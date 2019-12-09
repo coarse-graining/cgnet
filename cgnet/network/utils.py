@@ -74,7 +74,7 @@ def lipschitz_projection(model, strength=10.0, mask=None):
 
 
 def dataset_loss(model, loader):
-    """Compute average loss over arbitrary loader/dataset
+    """Compute average loss over arbitrary loader and dataset pair.
 
     Parameters
     ----------
@@ -100,20 +100,33 @@ def dataset_loss(model, loader):
                                               batch_size=512)
     test_error = dataset_loss(MyModel, test_loader)
 
+    Notes
+    -----
+    This method assumes that if there is a smaller batch, it will be at the
+    end: namely, we assume that the size of the first batch is the largest
+    batch size.
+
     """
     loss = 0
-    num_batch = 0
-    ref_numel = 0
-    for num, batch in enumerate(loader):
-        coords, force, embedding_property = batch
-        if num == 0:
-            ref_numel = coords.numel()
-        potential, pred_force = model.forward(coords,
+    effective_number_of_batches = 0
+
+    for batch_num, batch_data in enumerate(loader):
+        coords, force, embedding_property = batch_data
+        if batch_num == 0:
+            reference_batch_size = coords.numel()
+
+        batch_weight = coords.numel() / reference_batch_size
+        if batch_weight > 1:
+            raise ValueError(
+    "The first batch was not the largest batch, so you cannot use dataset loss."
+                )
+
+        potential, predicted_force = model.forward(coords,
                                 embedding_property=embedding_property)
-        loss += model.criterion(pred_force,
-                force).cpu().detach().numpy() * (coords.numel() / ref_numel)
-        num_batch += (coords.numel() / ref_numel)
-    loss /= num_batch
+        loss += model.criterion(predicted_force,
+                force).cpu().detach().numpy() * batch_weight
+        effective_number_of_batches += batch_weight
+    loss /= effective_number_of_batches
     return loss
 
 
