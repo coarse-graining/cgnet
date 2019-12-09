@@ -73,8 +73,8 @@ def lipschitz_projection(model, strength=10.0, mask=None):
             layer.weight.data = weight / (lip_reg)
 
 
-def dataset_loss(model, loader):
-    """Compute average loss over arbitrary loader/dataset
+def dataset_loss(model, loader, optimizer=None, verbose_interval=None):
+    """Compute average loss over arbitrary loader and dataset pair.
 
     Parameters
     ----------
@@ -82,6 +82,8 @@ def dataset_loss(model, loader):
         model to calculate loss
     loader : torch.utils.data.DataLoader() instance
         loader (with associated dataset)
+    optimizer :
+    verbose_interval :
 
     Returns
     -------
@@ -89,7 +91,7 @@ def dataset_loss(model, loader):
         loss computed over the entire dataset. If the last batch consists of a
         smaller set of left over examples, its contribution to the loss is
         weighted by the ratio of number elements in the MSE matrix to that of
-        the normal number of elements assocatied with the loader's batch size
+        the normal number of elements associated with the loader's batch size
         before summation to a scalar.
 
     Example
@@ -100,20 +102,49 @@ def dataset_loss(model, loader):
                                               batch_size=512)
     test_error = dataset_loss(MyModel, test_loader)
 
+    Notes
+    -----
+    This method assumes that if there is a smaller batch, it will be at the
+    end: namely, we assume that the size of the first batch is the largest
+    batch size.
+
     """
     loss = 0
-    num_batch = 0
-    ref_numel = 0
-    for num, batch in enumerate(loader):
-        coords, force, embedding_property = batch
-        if num == 0:
-            ref_numel = coords.numel()
-        potential, pred_force = model.forward(coords,
-                                embedding_property=embedding_property)
-        loss += model.criterion(pred_force,
-                force).cpu().detach().numpy() * (coords.numel() / ref_numel)
-        num_batch += (coords.numel() / ref_numel)
-    loss /= num_batch
+    effective_number_of_batches = 0
+
+    for batch_num, batch_data in enumerate(loader):
+        if optimizer is not None:
+            optimizer.zero_grad()
+
+        coords, force, embedding_property = batch_data
+        if batch_num == 0:
+            reference_batch_size = coords.numel()
+
+        batch_weight = coords.numel() / reference_batch_size
+        if batch_weight > 1:
+            raise ValueError(
+                "The first batch was not the largest batch, so you cannot use dataset loss."
+            )
+
+        potential, predicted_force = model.forward(coords,
+                                    embedding_property=embedding_property)
+
+        batch_loss = model.criterion(predicted_force, force)
+
+        if optimizer is not None:
+            batch_loss.backward()
+            optimizer.step()
+
+        if verbose_interval is not None:
+            if batch_num % verbose_interval == 0:
+                print("Batch: {}, Loss: {:.2f}".format(
+                    batch_num+1, batch_loss))
+
+        loss += batch_loss.cpu().detach().numpy() * batch_weight
+
+        effective_number_of_batches += batch_weight
+
+    loss /= effective_number_of_batches
     return loss
 
 
