@@ -1,5 +1,8 @@
 # Authors: Nick Charron, Brooke Husic
 
+import copy
+
+import torch
 import torch.nn as nn
 import numpy as np
 from torch.utils.data import SubsetRandomSampler, DataLoader
@@ -10,7 +13,7 @@ from cgnet.feature import (MoleculeDataset, LinearLayer, SchnetFeature,
 
 # Here we create testing data from a random linear protein
 # with a random number of frames
-frames = np.random.randint(1, 3)
+frames = np.random.randint(5, 10)
 beads = np.random.randint(4, 10)
 dims = 3
 
@@ -24,8 +27,9 @@ embeddings = np.tile(embedding_array, [coords.shape[0], 1])
 # Here, we instance a molecular dataset with sampler and dataloader
 sampler = SubsetRandomSampler(np.arange(0, frames, 1))
 dataset = MoleculeDataset(coords, forces)
+batch_size = np.random.randint(2, high=4)
 loader = DataLoader(dataset, sampler=sampler,
-                    batch_size=np.random.randint(2, high=10))
+                    batch_size=batch_size)
 schnet_dataset = MoleculeDataset(coords, forces, embeddings)
 schnet_loader = DataLoader(schnet_dataset, sampler=sampler,
                            batch_size=np.random.randint(2, high=10))
@@ -65,6 +69,10 @@ schnet_feature = SchnetFeature(feature_size=feature_size,
 schnet_arch = (LinearLayer(feature_size, dims, activation=nn.Tanh()) +
                LinearLayer(dims, 1, activation=None))
 schnet_model = CGnet(schnet_arch, ForceLoss(), feature=schnet_feature)
+
+lipschitz_strength = 1
+def _regularization_function(model, strength=lipschitz_strength):
+    lipschitz_projection(model, strength=strength)
 
 
 def test_lipschitz_weak_and_strong():
@@ -162,6 +170,142 @@ def test_dataset_loss():
 
     # Here, we verify that the two losses over the dataset are equal
     np.testing.assert_allclose(loss, single_point_loss, rtol=1e-5)
+
+
+def test_dataset_loss_with_optimizer():
+    # Test manual batch processing vs. dataset_loss during training
+    # Make a simple model and test that a manual on-the-fly loss calculation
+    # approximately matches the one from dataset_loss when given an optimizer
+
+    # Set up the network
+    num_epochs = 5
+
+    # Empty lists to be compared after training
+    epochal_train_losses_manual = []
+    epochal_train_losses_dataset = []
+
+    # We require two models and two optimizers to keep things separate
+    # The architectures MUST be deep copied or else they are tethered
+    # to each other
+    model_manual = CGnet(copy.deepcopy(arch), ForceLoss()).float()
+    model_dataset = CGnet(copy.deepcopy(arch), ForceLoss()).float()
+
+    optimizer_manual = torch.optim.Adam(model_manual.parameters(),
+                                        lr=1e-5)
+    optimizer_dataset = torch.optim.Adam(model_dataset.parameters(),
+                                         lr=1e-5)
+
+    # We want a nonrandom loader so we can compare the losses at the end
+    nonrandom_loader = DataLoader(dataset, batch_size=batch_size)
+
+    for epoch in range(1, num_epochs+1):
+        train_loss_manual = 0.0
+        train_loss_dataset = 0.0
+
+        # This is the manual part
+        effective_batch_num = 0
+
+        for batch_num, batch_data in enumerate(nonrandom_loader):
+            optimizer_manual.zero_grad()
+            coord, force, embedding_property = batch_data
+
+            if batch_num == 0:
+                ref_batch_size = coord.numel()
+
+            batch_weight = coord.numel() / ref_batch_size
+
+            energy, pred_force = model_manual.forward(coord,
+                                                      embedding_property)
+
+            batch_loss = model_manual.criterion(pred_force, force)
+            batch_loss.backward()
+            optimizer_manual.step()
+
+            train_loss_manual += batch_loss.detach().cpu() * batch_weight
+            effective_batch_num += batch_weight
+
+        train_loss_manual = train_loss_manual / effective_batch_num
+        epochal_train_losses_manual.append(train_loss_manual.numpy())
+
+        # This is the dataset loss part
+        train_loss_dataset = dataset_loss(model_dataset,
+                                          nonrandom_loader,
+                                          optimizer_dataset)
+        epochal_train_losses_dataset.append(train_loss_dataset)
+
+    np.testing.assert_allclose(epochal_train_losses_manual,
+                               epochal_train_losses_dataset,
+                               rtol=1e-4)
+
+
+def test_dataset_loss_with_optimizer_and_regularization():
+    # Test manual batch processing vs. dataset_loss during regularized training
+    # Make a simple model and test that a manual on-the-fly loss calculation
+    # approximately matches the one from dataset_loss when given an optimizer
+    # and regularization function
+
+    # Set up the network
+    num_epochs = 5
+
+    # Empty lists to be compared after training
+    epochal_train_losses_manual = []
+    epochal_train_losses_dataset = []
+
+    # We require two models and two optimizers to keep things separate
+    # The architectures MUST be deep copied or else they are tethered
+    # to each other
+    model_manual = CGnet(copy.deepcopy(arch), ForceLoss()).float()
+    model_dataset = CGnet(copy.deepcopy(arch), ForceLoss()).float()
+
+    optimizer_manual = torch.optim.Adam(model_manual.parameters(),
+                                        lr=1e-5)
+    optimizer_dataset = torch.optim.Adam(model_dataset.parameters(),
+                                         lr=1e-5)
+
+    # We want a nonrandom loader so we can compare the losses at the end
+    nonrandom_loader = DataLoader(dataset, batch_size=batch_size)
+
+    for epoch in range(1, num_epochs+1):
+        train_loss_manual = 0.0
+        train_loss_dataset = 0.0
+
+        # This is the manual part
+        effective_batch_num = 0
+
+        for batch_num, batch_data in enumerate(nonrandom_loader):
+            optimizer_manual.zero_grad()
+            coord, force, embedding_property = batch_data
+
+            if batch_num == 0:
+                ref_batch_size = coord.numel()
+
+            batch_weight = coord.numel() / ref_batch_size
+
+            energy, pred_force = model_manual.forward(coord,
+                                                      embedding_property)
+
+            batch_loss = model_manual.criterion(pred_force, force)
+            batch_loss.backward()
+            optimizer_manual.step()
+
+            lipschitz_projection(model_manual, strength=lipschitz_strength)
+
+            train_loss_manual += batch_loss.detach().cpu() * batch_weight
+            effective_batch_num += batch_weight
+
+        train_loss_manual = train_loss_manual / effective_batch_num
+        epochal_train_losses_manual.append(train_loss_manual.numpy())
+
+        # This is the dataset loss part
+        train_loss_dataset = dataset_loss(model_dataset,
+                                          nonrandom_loader,
+                                          optimizer_dataset,
+                                          _regularization_function)
+        epochal_train_losses_dataset.append(train_loss_dataset)
+
+    np.testing.assert_allclose(epochal_train_losses_manual,
+                               epochal_train_losses_dataset,
+                               rtol=1e-4)
 
 
 def test_schnet_dataset_loss():
