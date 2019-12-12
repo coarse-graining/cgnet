@@ -38,6 +38,16 @@ class Geometry():
             self.bool = np.bool
             self.float32 = np.float32
 
+    def check_for_nans(self, object, name=None):
+        if name is None:
+            name = ''
+
+        if self.isnan(object).any():
+            raise ValueError(
+                "Nan found in {}. Check your coordinates!)".format(
+                    name)
+            )
+
     def check_array_vs_tensor(self, object, name=None):
         if name is None:
             name = ''
@@ -117,14 +127,20 @@ class Geometry():
         self.check_array_vs_tensor(data, 'data')
 
         distances = self.get_vectorize_inputs(distance_inds, data)
+
         if norm:
             distances = self.norm(distances, axis=2)
-        assert not self.isnan(distances), \
-            'NaN found during distance calculation. Check your coordinates!'
+
+        self.check_for_nans(distances, 'distances')
+
         return distances
 
-    def get_angles(self, angle_inds, data):
+    def get_angles(self, angle_inds, data, clip=True):
         """Calculates angles in a vectorized fashion.
+
+        If clip is True (default), then the angle cosines are clipped
+        to be between -1 and 1 to account for numerical error.
+
         """
         self.check_array_vs_tensor(data, 'data')
 
@@ -138,16 +154,18 @@ class Geometry():
         # formulation.
         base *= -1
 
-        interval = self.sum(base * offset, axis=2) / self.norm(base,
+        angles = self.sum(base * offset, axis=2) / self.norm(base,
                                                                axis=2) / self.norm(
             offset, axis=2)
 
-        # Clipping to prevent the arccos to be NaN
-        angles = self.arccos(self.clip(interval,
-                                       lower_bound=-1.,
-                                       upper_bound=1.))
-        assert not self.isnan(angles), \
-            'NaN found during angle calculation. Check your coordinates!'
+        if clip:
+            # Clipping to prevent the arccos to be NaN
+            angles = self.arccos(self.clip(angles,
+                                           lower_bound=-1.,
+                                           upper_bound=1.))
+
+        self.check_for_nans(angles, 'angles')
+
         return angles
 
     def get_dihedrals(self, dihed_inds, data):
@@ -181,10 +199,9 @@ class Geometry():
                                   axis=2)/self.norm(
             cp_base[:, ::2], axis=2)/self.norm(plane_vector[:, ::2], axis=2)
 
-        assert not self.isnan(dihedral_cosines), \
-            'NaN found during dihedral calculation. Check your coordinates!'
-        assert not self.isnan(dihedral_sines), \
-            'NaN found during dihedral calculation. Check your coordinates!'
+
+        self.check_for_nans(dihedral_cosines, 'dihedral cosines')
+        self.check_for_nans(dihedral_sines, 'dihedral sines')
 
         return dihedral_cosines, dihedral_sines
 
@@ -312,14 +329,14 @@ class Geometry():
         elif self.method == 'numpy':
             return x.astype(dtype)
 
-    def clip(self, x, lower_bound, upper_bound):
+    def clip(self, x, lower_bound, upper_bound, out=None):
         if self.method == 'torch':
-            return torch.clamp(x, min=lower_bound, max=upper_bound)
+            return torch.clamp(x, min=lower_bound, max=upper_bound, out=out)
         elif self.method == 'numpy':
-            return np.clip(x, a_min=lower_bound, a_max=upper_bound)
+            return np.clip(x, a_min=lower_bound, a_max=upper_bound, out=out)
 
     def isnan(self, x):
         if self.method == 'torch':
-            return torch.isnan(x).any()
+            return torch.isnan(x)
         elif self.method == 'numpy':
-            return np.isnan(x).any()
+            return np.isnan(x)

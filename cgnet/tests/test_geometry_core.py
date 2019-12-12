@@ -101,19 +101,19 @@ def test_nan_check():
     torch_nan_coords = torch.from_numpy(nan_coords)
 
     # Check if an assert is raised
-    np.testing.assert_raises(AssertionError,
+    np.testing.assert_raises(ValueError,
                              g_numpy.get_distances, _distance_pairs, nan_coords)
-    np.testing.assert_raises(AssertionError,
+    np.testing.assert_raises(ValueError,
                              g_numpy.get_angles, angle_pairs, nan_coords)
-    np.testing.assert_raises(AssertionError,
+    np.testing.assert_raises(ValueError,
                              g_numpy.get_dihedrals, dihedral_pairs, nan_coords)
 
-    np.testing.assert_raises(AssertionError,
+    np.testing.assert_raises(ValueError,
                              g_torch.get_distances, _distance_pairs,
                              torch_nan_coords)
-    np.testing.assert_raises(AssertionError,
+    np.testing.assert_raises(ValueError,
                              g_torch.get_angles, angle_pairs,
                              torch_nan_coords)
-    np.testing.assert_raises(AssertionError,
+    np.testing.assert_raises(ValueError,
                              g_torch.get_dihedrals, dihedral_pairs,
                              torch_nan_coords)
