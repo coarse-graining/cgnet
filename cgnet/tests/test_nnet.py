@@ -125,7 +125,7 @@ def test_repulsion_layer():
                                 n_beads=beads)
     output_features = geom_feat(coords)
     energy = repulsion_potential(output_features[:,
-                                 repulsion_potential.callback_indices])
+                                                 repulsion_potential.callback_indices])
 
     # Test to see if RepulsionLayer ouput is scalar energy
     np.testing.assert_array_equal(energy.size(), (frames, 1))
@@ -158,7 +158,7 @@ def test_harmonic_layer():
                                 n_beads=beads)
     output_features = geom_feat(coords)
     energy = harmonic_potential(output_features[:,
-                                harmonic_potential.callback_indices])
+                                                harmonic_potential.callback_indices])
 
     # Test to see if HarmonicLayer output is scalar energy
     np.testing.assert_array_equal(energy.size(), (frames, 1))
@@ -181,6 +181,24 @@ def test_harmonic_layer():
 
     np.testing.assert_array_equal(energy.detach().numpy(),
                                   energy_check.detach().numpy())
+
+
+def test_harmonic_nan_check():
+    # Tests if NaNs are caught in the HarmonicLayer class
+
+    # Set up bond indices (integers) and interactiosn
+    bonds_idx = geom_stats.return_indices('Bonds')  # Bond indices
+    # List of bond interaction dictionaries for assembling priors
+    bonds_interactions, _ = geom_stats.get_prior_statistics(
+        features='Bonds', as_list=True)
+
+    # Set random harmonic parameter NaN
+    random_idx = np.random.randint(1, beads-1)
+    bonds_interactions[random_idx]['mean'] = torch.Tensor([np.nan])
+
+    # Check if an assert is raised
+    np.testing.assert_raises(ValueError,
+                             HarmonicLayer, bonds_idx, bonds_interactions)
 
 
 def test_prior_callback_order_1():
@@ -250,9 +268,9 @@ def test_prior_with_stats_dropout():
     feature_bools = [1] + [np.random.randint(0, high=1) for _ in range(2)]
     np.random.shuffle(feature_bools)
     dropout_stats = GeometryStatistics(coords, backbone_inds='all',
-                               get_all_distances=feature_bools[0],
-                               get_backbone_angles=feature_bools[1],
-                               get_backbone_dihedrals=feature_bools[2])
+                                       get_all_distances=feature_bools[0],
+                                       get_backbone_angles=feature_bools[1],
+                                       get_backbone_dihedrals=feature_bools[2])
 
     # Here we construct priors on available features and test the callback order
     if 'Distances' in dropout_stats.descriptions:
