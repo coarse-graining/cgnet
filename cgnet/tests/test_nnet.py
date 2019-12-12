@@ -197,7 +197,7 @@ def test_harmonic_nan_check():
     bonds_interactions[random_idx]['mean'] = torch.Tensor([np.nan])
 
     # Check if an assert is raised
-    np.testing.assert_raises(AssertionError,
+    np.testing.assert_raises(ValueError,
                              HarmonicLayer, bonds_idx, bonds_interactions)
 
 
