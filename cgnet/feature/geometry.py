@@ -39,6 +39,9 @@ class Geometry():
             self.float32 = np.float32
 
     def check_for_nans(self, object, name=None):
+        """This method checks an object for the presence of nans and
+        returns an error if any nans are found.
+        """
         if name is None:
             name = ''
 
@@ -49,6 +52,10 @@ class Geometry():
             )
 
     def check_array_vs_tensor(self, object, name=None):
+        """This method checks whether the object (i.e., numpy array or torch
+        tensor) is consistent with the method chosen for the Geometry
+        instance (i.e., 'numpy' or 'torch', respectively).
+        """
         if name is None:
             name = ''
 
@@ -266,6 +273,10 @@ class Geometry():
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # # # # # # # # # # # # # # Versatile Methods # # # # # # # # # # # # # #
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+    # The methods implemented below should modify the originals as little as
+    # possible, such that the documentation for the respective method on the
+    # numpy and pytorch websites should be sufficient.
 
     # Methods defined: arccos, cross, norm, sum, arange, tile, eye, ones,
     #                  to_type, clip, isnan
