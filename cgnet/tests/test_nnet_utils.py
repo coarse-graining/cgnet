@@ -10,7 +10,8 @@ from cgnet.network import lipschitz_projection, dataset_loss, Simulation
 from cgnet.network.utils  import _schnet_feature_weight_extractor
 from cgnet.network import CGnet, ForceLoss
 from cgnet.feature import (MoleculeDataset, LinearLayer, SchnetFeature,
-                           CGBeadEmbedding, GeometryFeature, FeatureCombiner)
+                           CGBeadEmbedding, GeometryFeature, FeatureCombiner,
+                           GeometryStatistics)
 
 # Here we create testing data from a random linear protein
 # with a random number of frames
@@ -24,6 +25,11 @@ num_embeddings = np.random.randint(2, 10)
 embedding_array = np.random.randint(1, num_embeddings, size=beads)
 # beadwise embeddings
 embeddings = np.tile(embedding_array, [coords.shape[0], 1])
+
+# Here we instance statistics in order ot construct a feature combiner
+# in the test_lipschitz_full_model_mask test. We need the distance indices
+stats = GeometryStatistics(coords, backbone_inds='all', get_all_distances=True)
+dist_idx = stats.return_indices('Distances')
 
 # Here, we instance a molecular dataset with sampler and dataloader
 sampler = SubsetRandomSampler(np.arange(0, frames, 1))
@@ -93,10 +99,10 @@ def test_lipschitz_weak_and_strong():
     # We save the numerical values of the pre-projection weights, perform the
     # strong lipschitz projection, and verify that the post-projection weights
     # are greatly reduced in magnitude.
-    pre_projection_weights = [layer.weight.data for layer in test_model.arch
+    pre_projection_weights = [layer.weight.data.numpy() for layer in test_model.arch
                               if isinstance(layer, nn.Linear)]
     lipschitz_projection(test_model, _lambda)
-    post_projection_weights = [layer.weight.data for layer in test_model.arch
+    post_projection_weights = [layer.weight.data.numpy() for layer in test_model.arch
                                if isinstance(layer, nn.Linear)]
     for pre, post in zip(pre_projection_weights, post_projection_weights):
         np.testing.assert_raises(AssertionError,
@@ -108,10 +114,10 @@ def test_lipschitz_weak_and_strong():
     # This test is identical to the one above, except here we verify that
     # the post-projection weights are unchanged by the lipshchitz projection
     _lambda = float(1e12)
-    pre_projection_weights = [layer.weight.data for layer in test_model.arch
+    pre_projection_weights = [layer.weight.data.numpy() for layer in test_model.arch
                               if isinstance(layer, nn.Linear)]
     lipschitz_projection(test_model, _lambda)
-    post_projection_weights = [layer.weight.data for layer in test_model.arch
+    post_projection_weights = [layer.weight.data.numpy() for layer in test_model.arch
                                if isinstance(layer, nn.Linear)]
     for pre, post in zip(pre_projection_weights, post_projection_weights):
         np.testing.assert_array_equal(pre, post)
@@ -132,7 +138,7 @@ def test_lipschitz_network_mask():
     test_arch += LinearLayer(width, 1, activation=None)
     test_model = CGnet(test_arch, ForceLoss()).float()
     _lambda = float(1e-12)
-    pre_projection_weights = [layer.weight.data for layer in test_model.arch
+    pre_projection_weights = [layer.weight.data.numpy() for layer in test_model.arch
                               if isinstance(layer, nn.Linear)]
 
     # Next, we create a random binary lipschitz mask, which prevents lipschitz
@@ -140,7 +146,7 @@ def test_lipschitz_network_mask():
     lip_mask = [np.random.randint(2) for _ in test_arch
                 if isinstance(_, nn.Linear)]
     lipschitz_projection(test_model, _lambda, network_mask=lip_mask)
-    post_projection_weights = [layer.weight.data for layer in test_model.arch
+    post_projection_weights = [layer.weight.data.numpy() for layer in test_model.arch
                                if isinstance(layer, nn.Linear)]
     # Here we verify that the masked layers remain unaffected by the strong
     # Lipschitz projection
@@ -193,7 +199,8 @@ def test_lipschitz_schnet_mask():
     _lambda = float(1e-12)
     pre_projection_weights = _schnet_feature_weight_extractor(schnet_test_model.feature,
                                                               return_data=True)
-
+    # Convert torch tensors to numpy arrays for testing
+    pre_projection_weights = [weight.numpy() for weight in pre_projection_weights]
     # Next, we create a random binary lipschitz mask, which prevents lipschitz
     # projection for certain random schnet layers. There are 5 instances of 
     # nn.Linear for each schnet interaction block
@@ -204,7 +211,8 @@ def test_lipschitz_schnet_mask():
     lipschitz_projection(schnet_test_model, _lambda, schnet_mask=lip_mask)
     post_projection_weights = _schnet_feature_weight_extractor(schnet_test_model.feature,
                                                                return_data=True)
-
+    # Convert torch tensors to numpy arrays for testing
+    post_projection_weights = [weight.numpy() for weight in post_projection_weights]
     # Here we verify that the masked layers remain unaffected by the strong
     # Lipschitz projection
     for mask_element, pre, post in zip(lip_mask, pre_projection_weights,
@@ -224,53 +232,61 @@ def test_lipschitz_full_model_mask():
     # should occur - else, the weights should remain unchanged.
 
     # Here we ceate a CGSchNet model with a GeometryFeature layer,
-    # 5 interaction blocks, a random feature size, embedding, and
+    # 10 interaction blocks, a random feature size, embedding, and
     # cutoff from the setup at the top of this file, and a terminal
-    # network of 5 layers and with a random width  
+    # network of 10 layers and with a random width  
     width = np.random.randint(10, high=20)
-    test_arch = LinearLayer(1, width, activation=nn.Tanh())
+    test_arch = LinearLayer(feature_size, width, activation=nn.Tanh())
     for _ in range(9):
         test_arch += LinearLayer(width, width, activation=nn.Tanh())
     test_arch += LinearLayer(width, 1, activation=None)
 
     schnet_feature = SchnetFeature(feature_size=feature_size,
                                    embedding_layer=embedding_layer,
-                                   n_interaction_blocks=5,
-                                   calculate_geometry=True,
+                                   n_interaction_blocks=10,
                                    n_beads=beads,
-                                   neighbor_cutoff=neighbor_cutoff)
+                                   neighbor_cutoff=neighbor_cutoff,
+                                   calculate_geometry=False)
     feature_list = FeatureCombiner([GeometryFeature(feature_tuples='all_backbone',
-                                                    n_beads=beads),
-                                    schnet_feature])
-    full_test_model = CGnet(schnet_arch, ForceLoss(), feature=feature_list)
+                                    n_beads=beads), schnet_feature],
+                                    distance_indices=dist_idx)
+    full_test_model = CGnet(test_arch, ForceLoss(), feature=feature_list)
 
     # The pre_projection weights are the model.arch weights followed by
     # the SchnetFeature weights
     _lambda = float(1e-12)
-    pre_projection_weights = [layer.weight.data for layer in full_test_model.arch
+    pre_projection_weights = [layer.weight.data.numpy() for layer in full_test_model.arch
                               if isinstance(layer, nn.Linear)]
-    pre_projection_weights += _schnet_feature_weight_extractor(full_test_model.feature.layer_list[-1],
+    pre_projection_schnet_weights = _schnet_feature_weight_extractor(full_test_model.feature.layer_list[-1],
                                                               return_data=True)
-
+    # Convert torch tensors to numpy arrays for testing
+    pre_projection_schnet_weights = [weight.numpy() for weight in pre_projection_schnet_weights
+                                     if isinstance(weight, torch.Tensor)]
+    pre_projection_weights += pre_projection_schnet_weights
     # Next, we assemble the masks for both the terminal network and the 
     # SchnetFeature weights. There are 5 instances of nn.Linear for each
     # interaction block in the SchnetFeature
-    network_lip_mask = [np.random.randint(2)
+    network_lip_mask = [bool(np.random.randint(2))
                 for _ in range(len([layer for layer in full_test_model.arch
                 if isinstance(layer, nn.Linear)]))]
 
-    schnet_lip_mask = [np.random.randint(2)
+    schnet_lip_mask = [bool(np.random.randint(2))
                 for _ in range(5 * len(schnet_feature.interaction_blocks))]
     full_lip_mask = network_lip_mask + schnet_lip_mask
-
+    print(full_lip_mask)
+    print("Length of full test mask {}".format(len(full_lip_mask)))
+    print("Lenght of full test weights {}".format(len(pre_projection_weights)))
     # Here we make the lipschitz projection
     lipschitz_projection(full_test_model, _lambda, network_mask=network_lip_mask,
                          schnet_mask=schnet_lip_mask)
-    post_projection_weights = [layer.weight.data for layer in full_test_model.arch
+    post_projection_weights = [layer.weight.data.numpy() for layer in full_test_model.arch
                               if isinstance(layer, nn.Linear)]
-    post_projection_weights += _schnet_feature_weight_extractor(full_test_model.feature.layer_list[-1],
+    post_projection_schnet_weights = _schnet_feature_weight_extractor(full_test_model.feature.layer_list[-1],
                                                                return_data=True)
-
+    # Convert torch tensors to numpy arrays for testing
+    post_projection_schnet_weights = [weight.numpy() for weight in post_projection_schnet_weights
+                                      if isinstance(weight, torch.Tensor)]
+    post_projection_weights += post_projection_schnet_weights
     # Here we verify that the masked layers remain unaffected by the strong
     # Lipschitz projection
     for mask_element, pre, post in zip(full_lip_mask, pre_projection_weights,
@@ -281,7 +297,6 @@ def test_lipschitz_full_model_mask():
             assert np.linalg.norm(pre) > np.linalg.norm(post)
         if not mask_element:
             np.testing.assert_array_equal(pre, post)
-
 
 def test_dataset_loss():
     # Test dataset loss by comparing results from different batch sizes

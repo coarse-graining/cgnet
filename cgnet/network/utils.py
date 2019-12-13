@@ -15,9 +15,9 @@ def _schnet_feature_weight_extractor(schnet_feature, return_data=False):
     ----------
     schnet_feature : SchnetFeature instance
         The SchnetFeature instance from which nn.Linear instances will be
-        extraced.
+        extracted.
     return_data : bool (default=False)
-        If True, the function returns the numpy data arrays for each weight
+        If True, the function returns the torch tensor for each weight
         layer rather than the nn.Linear instance.
 
     Returns
@@ -25,7 +25,7 @@ def _schnet_feature_weight_extractor(schnet_feature, return_data=False):
     linear_list : list of nn.Linear instances or np.arrays,
         The list of nn.Linear layers extracted from the supplied
         SchnetFeature. If 'return_data=True', the function instead returns
-        the numpy data arrays of each nn.Linear instance.
+        the torch tensors of each nn.Linear instance.
 
     Notes
     -----
@@ -105,7 +105,7 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
     schnet_weight_layers = []
     # if it is part of a FeatureCombiner instance
     if isinstance(model.feature, FeatureCombiner):
-        for feature in model.feature:
+        for feature in model.feature.layer_list:
             if isinstance(feature, SchnetFeature):
                 schnet_weight_layers += _schnet_feature_weight_extractor(feature)
     # Lastly, we handle the case of SchnetFeatures that are not part of
@@ -150,7 +150,6 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
                 lip_reg = torch.max(((s[0]) / strength),
                                     torch.tensor([1.0]))
             layer.weight.data = weight / (lip_reg)
-
 
 def dataset_loss(model, loader, optimizer=None,
                  regularization_function=None,
