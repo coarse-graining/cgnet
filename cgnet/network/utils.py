@@ -8,7 +8,7 @@ import numpy as np
 
 from cgnet.feature import GeometryFeature, SchnetFeature, FeatureCombiner
 
-def _schnet_feature_weight_extractor(schnet_feature):
+def _schnet_feature_weight_extractor(schnet_feature, return_data=False):
     """Helper function to extract instances of nn.Linear from a SchnetFeature
 
     Parameters
@@ -16,12 +16,16 @@ def _schnet_feature_weight_extractor(schnet_feature):
     schnet_feature : SchnetFeature instance
         The SchnetFeature instance from which nn.Linear instances will be
         extraced.
+    return_data : bool (default=False)
+        If True, the function returns the numpy data arrays for each weight
+        layer rather than the nn.Linear instance.
 
     Returns
     -------
-    linear_list : list of nn.Linear instances,
+    linear_list : list of nn.Linear instances or np.arrays,
         The list of nn.Linear layers extracted from the supplied
-        SchnetFeature.
+        SchnetFeature. If 'return_data=True', the function instead returns
+        the numpy data arrays of each nn.Linear instance.
 
     Notes
     -----
@@ -30,18 +34,20 @@ def _schnet_feature_weight_extractor(schnet_feature):
     block.
     """
 
-    linear_list
+    linear_list = []
     for block in schnet_feature.interaction_blocks:
-        linear_list += [layer for layer in
-                        schnet_feature.block.initial_dense
+        linear_list += [layer for layer in block.initial_dense
                         if isinstance(layer, nn.Linear)]
-        linear_list += [layer for layer in
-                        schnet_feature.block.cfconv.filter_generator
+        linear_list += [layer for layer in block.cfconv.filter_generator
                         if isinstance(layer, nn.Linear)]
-        linear_list += [layer for layer in
-                        schnet_feature.block.output_dense
+        linear_list += [layer for layer in block.output_dense
                         if isinstance(layer, nn.Linear)]
-    return linear_list
+    if return_data:
+       linear_list = [layer.weight.data for layer in linear_list]
+       return linear_list
+    else:
+       return linear_list
+
 
 def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=None):
     """Performs L2 Lipschitz Projection via spectral normalization
@@ -105,7 +111,7 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
     # Lastly, we handle the case of SchnetFeatures that are not part of
     # a FeatureCombiner instance
     elif isinstance(model.feature, SchnetFeature):
-            schnet_weight_layers += _schnet_feature_weight_extractor(feature)
+            schnet_weight_layers += _schnet_feature_weight_extractor(model.feature)
     else:
         pass
 
