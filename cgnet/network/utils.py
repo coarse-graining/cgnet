@@ -8,6 +8,7 @@ import numpy as np
 
 from cgnet.feature import GeometryFeature, SchnetFeature, FeatureCombiner
 
+
 def _schnet_feature_weight_extractor(schnet_feature, return_data=False):
     """Helper function to extract instances of nn.Linear from a SchnetFeature
 
@@ -43,10 +44,10 @@ def _schnet_feature_weight_extractor(schnet_feature, return_data=False):
         linear_list += [layer for layer in block.output_dense
                         if isinstance(layer, nn.Linear)]
     if return_data:
-       linear_list = [layer.weight.data for layer in linear_list]
-       return linear_list
+        linear_list = [layer.weight.data for layer in linear_list]
+        return linear_list
     else:
-       return linear_list
+        return linear_list
 
 
 def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=None):
@@ -98,20 +99,21 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
 
     # Grab all instances of nn.Linear in the model, including those
     # that are part of SchnetFeatures
-    # First, we grab the instances of nn.Linear from model.arch 
+    # First, we grab the instances of nn.Linear from model.arch
     network_weight_layers = [layer for layer in model.arch
-                     if isinstance(layer, nn.Linear)]
+                             if isinstance(layer, nn.Linear)]
     # Next, we grab the nn.Linear instances from the SchnetFeature
     schnet_weight_layers = []
     # if it is part of a FeatureCombiner instance
     if isinstance(model.feature, FeatureCombiner):
         for feature in model.feature.layer_list:
             if isinstance(feature, SchnetFeature):
-                schnet_weight_layers += _schnet_feature_weight_extractor(feature)
+                schnet_weight_layers += _schnet_feature_weight_extractor(
+                    feature)
     # Lastly, we handle the case of SchnetFeatures that are not part of
     # a FeatureCombiner instance
     elif isinstance(model.feature, SchnetFeature):
-            schnet_weight_layers += _schnet_feature_weight_extractor(model.feature)
+        schnet_weight_layers += _schnet_feature_weight_extractor(model.feature)
     else:
         pass
 
@@ -150,6 +152,7 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
                 lip_reg = torch.max(((s[0]) / strength),
                                     torch.tensor([1.0]))
             layer.weight.data = weight / (lip_reg)
+
 
 def dataset_loss(model, loader, optimizer=None,
                  regularization_function=None,
@@ -227,9 +230,9 @@ def dataset_loss(model, loader, optimizer=None,
     """
     if optimizer is None and regularization_function is not None:
         raise RuntimeError(
-            "regularization_function is only used when there is an optimizer, " \
+            "regularization_function is only used when there is an optimizer, "
             "but you have optimizer=None."
-            )
+        )
 
     loss = 0
     effective_number_of_batches = 0
@@ -245,12 +248,12 @@ def dataset_loss(model, loader, optimizer=None,
         batch_weight = coords.numel() / reference_batch_size
         if batch_weight > 1:
             raise ValueError(
-                "The first batch was not the largest batch, so you cannot use " \
+                "The first batch was not the largest batch, so you cannot use "
                 "dataset loss."
             )
 
         potential, predicted_force = model.forward(coords,
-                                    embedding_property=embedding_property)
+                                                   embedding_property=embedding_property)
 
         batch_loss = model.criterion(predicted_force, force)
 
@@ -337,6 +340,7 @@ class Simulation():
 
     Long simulation lengths may take a significant amount of time.
     """
+
     def __init__(self, model, initial_coordinates, embeddings=None,
                  save_forces=False, save_potential=False, length=100,
                  save_interval=10, dt=5e-4, diffusion=1.0, beta=1.0,
@@ -354,7 +358,7 @@ class Simulation():
         if embeddings is None:
             try:
                 if np.any([type(model.feature.layer_list[i]) == SchnetFeature
-                       for i in range(len(model.feature.layer_list))]):
+                           for i in range(len(model.feature.layer_list))]):
                     raise RuntimeError('Since you have a SchnetFeature, you must \
                                         provide an embeddings array')
             except:
@@ -367,7 +371,7 @@ class Simulation():
                 raise ValueError('embeddings shape must be [frames, beads]')
 
             if initial_coordinates.shape[:2] != embeddings.shape:
-                raise ValueError('initial_coordinates and embeddings ' \
+                raise ValueError('initial_coordinates and embeddings '
                                  'must have the same first two dimensions')
 
         if type(initial_coordinates) is not torch.Tensor:
@@ -455,7 +459,7 @@ class Simulation():
 
         """
         if self._simulated and not overwrite:
-            raise RuntimeError('Simulation results are already populated. ' \
+            raise RuntimeError('Simulation results are already populated. '
                                'To rerun, set overwrite=True.')
 
         if self.verbose:
@@ -525,7 +529,8 @@ class Simulation():
 
         if self.verbose:
             print('100% finished.')
-        self.simulated_traj = self.swap_axes(self.simulated_traj,0,1).cpu().numpy()
+        self.simulated_traj = self.swap_axes(
+            self.simulated_traj, 0, 1).cpu().numpy()
 
         if self.save_forces:
             self.simulated_forces = self.swap_axes(self.simulated_forces,
