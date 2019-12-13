@@ -117,8 +117,8 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
             raise ValueError("Lipshitz network mask must have the same number "
                              "of elements as the number of nn.Linear "
                              "modules in the model.arch attribute.")
-    if schnet_mask is None:
-        schnet_mask = [True for _ in schnet_weight_layers]
+    if network_mask is None:
+        network_mask = [True for _ in network_weight_layers]
 
     if schnet_mask is not None:
         if not isinstance(schnet_mask, list):
@@ -128,7 +128,7 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
                              "of elements as the number of nn.Linear "
                              "modules in the model SchnetFeature.")
     if schnet_mask is None:
-        schnet_mask = [True for _ in network_weight_layers]
+        schnet_mask = [True for _ in schnet_weight_layers]
 
     full_mask = network_mask + schnet_mask
     full_weight_layers = network_weight_layers + schnet_weight_layers
