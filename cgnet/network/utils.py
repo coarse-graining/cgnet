@@ -43,7 +43,7 @@ def _schnet_feature_weight_extractor(schnet_feature):
                         if isinstance(layer, nn.Linear)]
     return linear_list
 
-def lipschitz_projection(model, strength=10.0, mask=None):
+def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=None):
     """Performs L2 Lipschitz Projection via spectral normalization
 
     Parameters
@@ -55,10 +55,18 @@ def lipschitz_projection(model, strength=10.0, mask=None):
         The magntitude of {dominant weight matrix eigenvalue / strength}
         is compared to unity, and the weight matrix is rescaled by the max
         of this comparison
-    mask : list of bool (default=None)
-        mask used to exclude certain layers from lipschitz projection. If
-        an element is False, the corresponding weight layer is exempt from
-        a lipschitz projection.
+    network_mask : list of bool (default=None)
+        mask used to exclude certain terminal network layers from lipschitz
+        projection. If an element is False, the corresponding weight layer
+        is exempt from a lipschitz projection.
+    schnet_mask : list of bool (default=None)
+        mask used to exclude certain SchnetFeature layers from lipschitz projection.
+        If an element is False, the corresponding weight layer is exempt from a
+        lipschitz projection. The linear layers of a SchnetFeature InteractionBlock
+        have the following arrangement:
+            [initial_dense, cfconv_filter #1, cfconv_filter #2, output_dense #1,
+             output_dense #2]
+        that is, each InteractionBlock contains 5 nn.Linear instances
 
     Notes
     -----
@@ -85,31 +93,46 @@ def lipschitz_projection(model, strength=10.0, mask=None):
     # Grab all instances of nn.Linear in the model, including those
     # that are part of SchnetFeatures
     # First, we grab the instances of nn.Linear from model.arch 
-    weight_layers = [layer for layer in model.arch
+    network_weight_layers = [layer for layer in model.arch
                      if isinstance(layer, nn.Linear)]
     # Next, we grab the nn.Linear instances from the SchnetFeature
+    schnet_weight_layers = []
     # if it is part of a FeatureCombiner instance
     if isinstance(model.feature, FeatureCombiner):
         for feature in model.feature:
             if isinstance(feature, SchnetFeature):
-                weight_layers += _schnet_feature_weight_extractor(feature)
+                schnet_weight_layers += _schnet_feature_weight_extractor(feature)
     # Lastly, we handle the case of SchnetFeatures that are not part of
     # a FeatureCombiner instance
     elif isinstance(model.feature, SchnetFeature):
-            weight_layers += _schnet_feature_weight_extractor(feature)
+            schnet_weight_layers += _schnet_feature_weight_extractor(feature)
     else:
         pass
 
-    if mask is not None:
-        if not isinstance(mask, list):
-            raise ValueError("Lipschitz mask must be list of booleans")
-        if len(weight_layers) != len(mask):
-            raise ValueError("Lipshitz mask must have the same number "
+    # Next, we assemble a (possibly combined from network and SchnetFeature) mask
+    if network_mask is not None:
+        if not isinstance(network_mask, list):
+            raise ValueError("Lipschitz network mask must be list of booleans")
+        if len(network_weight_layers) != len(network_mask):
+            raise ValueError("Lipshitz network mask must have the same number "
                              "of elements as the number of nn.Linear "
-                             "modules in the model.")
-    if mask is None:
-        mask = [True for _ in weight_layers]
-    for mask_element, layer in zip(mask, weight_layers):
+                             "modules in the model.arch attribute.")
+    if schnet_mask is None:
+        schnet_mask = [True for _ in schnet_weight_layers]
+
+    if schnet_mask is not None:
+        if not isinstance(schnet_mask, list):
+            raise ValueError("Lipschitz schnet mask must be list of booleans")
+        if len(schnet_weight_layers) != len(schnet_mask):
+            raise ValueError("Lipshitz schnet mask must have the same number "
+                             "of elements as the number of nn.Linear "
+                             "modules in the model SchnetFeature.")
+    if schnet_mask is None:
+        schnet_mask = [True for _ in network_weight_layers]
+
+    full_mask = network_mask + schnet_mask
+    full_weight_layers = network_weight_layers + schnet_weight_layers
+    for mask_element, layer in zip(full_mask, full_weight_layers):
         if mask_element:
             weight = layer.weight.data
             u, s, v = torch.svd(weight)
