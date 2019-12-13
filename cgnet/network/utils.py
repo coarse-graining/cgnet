@@ -6,8 +6,42 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 import numpy as np
 
-from cgnet.feature import GeometryFeature, SchnetFeature
+from cgnet.feature import GeometryFeature, SchnetFeature, FeatureCombiner
 
+def _schnet_feature_weight_extractor(schnet_feature):
+    """Helper function to extract instances of nn.Linear from a SchnetFeature
+
+    Parameters
+    ----------
+    schnet_feature : SchnetFeature instance
+        The SchnetFeature instance from which nn.Linear instances will be
+        extraced.
+
+    Returns
+    -------
+    linear_list : list of nn.Linear instances,
+        The list of nn.Linear layers extracted from the supplied
+        SchnetFeature.
+
+    Notes
+    -----
+    Add dense layers from each interaction block in the order: intial dense,
+    cfconv filter_layers, and output layers, all each within one interaction
+    block.
+    """
+
+    linear_list
+    for block in schnet_feature.interaction_blocks:
+        linear_list += [layer for layer in
+                        schnet_feature.block.initial_dense
+                        if isinstance(layer, nn.Linear)]
+        linear_list += [layer for layer in
+                        schnet_feature.block.cfconv.filter_generator
+                        if isinstance(layer, nn.Linear)]
+        linear_list += [layer for layer in
+                        schnet_feature.block.output_dense
+                        if isinstance(layer, nn.Linear)]
+    return linear_list
 
 def lipschitz_projection(model, strength=10.0, mask=None):
     """Performs L2 Lipschitz Projection via spectral normalization
@@ -48,8 +82,24 @@ def lipschitz_projection(model, strength=10.0, mask=None):
     [Cs, Stat]. Retrieved from http://arxiv.org/abs/1804.04368
     """
 
+    # Grab all instances of nn.Linear in the model, including those
+    # that are part of SchnetFeatures
+    # First, we grab the instances of nn.Linear from model.arch 
     weight_layers = [layer for layer in model.arch
                      if isinstance(layer, nn.Linear)]
+    # Next, we grab the nn.Linear instances from the SchnetFeature
+    # if it is part of a FeatureCombiner instance
+    if isinstance(model.feature, FeatureCombiner):
+        for feature in model.feature:
+            if isinstance(feature, SchnetFeature):
+                weight_layers += _schnet_feature_weight_extractor(feature)
+    # Lastly, we handle the case of SchnetFeatures that are not part of
+    # a FeatureCombiner instance
+    elif isinstance(model.feature, SchnetFeature):
+            weight_layers += _schnet_feature_weight_extractor(feature)
+    else:
+        pass
+
     if mask is not None:
         if not isinstance(mask, list):
             raise ValueError("Lipschitz mask must be list of booleans")
