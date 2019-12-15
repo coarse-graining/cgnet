@@ -2,6 +2,7 @@
 # Contributors: Jiang Wang
 
 
+import copy
 import numpy as np
 import torch
 import scipy.spatial
@@ -158,15 +159,31 @@ class GeometryStatistics():
                     warnings.warn(
                         "Some bond indices were already on the backbone."
                     )
+                    # We weed out already existing backbone pairs from the
+                    # bond pairs provided by the user. We will append them
+                    # to all of our bond pairs below.
                     self._bond_pairs = [bond_ind for bond_ind
                                         in self._bond_pairs if bond_ind
                                         not in self._adj_backbone_pairs]
-            self.bond_pairs = self._adj_backbone_pairs
+
+            # This attribute starts our list of "master" bond pairs
+            # when we've done some automatic calculations on the distances
+            # because we specified get_all_distances.
+            # Note also that we force the user to put backbone bonds in
+            # their custom_feature_tuples list if get_all_distances is
+            # False, which is why we're still inside the case where
+            # get_all_distances is True.
+            self.bond_pairs = copy.deepcopy(self._adj_backbone_pairs)
 
         else:
             self._distance_pairs = []
+            # If we haven't specified get_all_distances, our "master"
+            # bond list starts out empty
             self.bond_pairs = []
         self._distance_pairs.extend(self._custom_distance_pairs)
+
+        # Extend our master list of bond pairs by the user-defined, possibly
+        # filtered bond pairs
         self.bond_pairs.extend(self._bond_pairs)
 
         if len(self._distance_pairs) > 0:
