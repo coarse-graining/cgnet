@@ -2,6 +2,7 @@
 
 
 import numpy as np
+import warnings
 
 # These radii and masses were obtained from the following repository:
 # https://github.com/ZiZ1/model_builder/blob/master/models/mappings/atom_types.py
@@ -42,7 +43,47 @@ RESIDUE_MASSES = {
 
 
 def calculate_bond_minima(bond_pairs, cgmolecule, units='Angstroms',
-                          prefactor=0.7, names_to_include='all'):
+                          prefactor=0.7):
+    """This function uses amino acid radii to calculate a minimum contact
+    distance between atoms in a CGMolecule in either Angstroms or nanometers.
+    Both glycine-glycine pairs and atoms in the same residue will return
+    a distance of zero (the latter will also raise a warning).
+
+    Parameters
+    ----------
+    bond_pairs : list of two-element tuples
+        Each tuple contains the two atom indices in the coarse-grained for
+        which a mininum distance should be calculated.
+    cgmolecule : cgnet.molecule.CGMolecule instance
+        An initialized CGMolecule object.
+    units : 'Angstroms' or 'nanometers' (default='Angstroms')
+        The unit in which the minimum distances should be returned
+    prefactor : float (default=0.7)
+        Factor by which each atomic radii should be multiplied.
+        The default of 0.7 is inspired by reference [1].
+
+    Returns
+    -------
+    bond_minima : list of floats
+        Each element contains the minimum bond distance corresponding to the
+        same index in the input list of bond_pairs
+
+    References
+    ----------
+    [1] Cheiung, M. S., Finke, J. M., Callahan, B., Onuchic, J. N. (2003).
+        Exploring the interplay between topology and secondary structure
+        formation in the protein folding problem. J. Phys. Chem. B.
+        https://doi.org/10.1021/jp034441r
+
+    Example
+    -------
+    names = ['CA', 'CB', 'CA', 'CB']
+    resseq = [1, 1, 2, 2]
+    resmap = {1 : 'ALA', 2 : 'PHE'}
+
+    dipeptide = CGMolecule(names, resseq, resmap)
+    calculate_bond_minima([(1, 2)], dipeptide)
+    """
     if units.lower() not in ['angstroms', 'nanometers']:
         raise ValueError("units must Angstroms or nanometers")
 
@@ -53,17 +94,20 @@ def calculate_bond_minima(bond_pairs, cgmolecule, units='Angstroms',
     else:
         residue_radii = RESIDUE_RADII
 
-    bond_minima = [(prefactor*residue_radii[resmap[resseq[b1]]] +
+    bond_minima = np.array(
+                    [(prefactor*residue_radii[resmap[resseq[b1]]] +
                     prefactor*residue_radii[resmap[resseq[b2]]])
+                    if resseq[b1] != resseq[b2] else np.nan
                     for b1, b2 in bond_pairs]
+                    )
+
+    nan_indices = np.where(np.isnan(bond_minima))[0]
+    if len(nan_indices) > 0:
+        warnings.warn("The following bond pairs were in the same residue. Their "
+                      "minima were set to zero: {}".format(
+                      [bond_pairs[ni] for ni in nan_indices]))
+        bond_minima[nan_indices] = 0.
 
     bond_minima = [np.round(bond, 4) for bond in bond_minima]
 
     return bond_minima
-
-
-
-
-
-
-
