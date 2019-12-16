@@ -82,7 +82,7 @@ def calculate_bond_minima(bond_pairs, cgmolecule, units='Angstroms',
     resmap = {1 : 'ALA', 2 : 'PHE'}
 
     dipeptide = CGMolecule(names, resseq, resmap)
-    calculate_bond_minima([(1, 2)], dipeptide)
+    bond_minima = calculate_bond_minima([(1, 2)], dipeptide)
     """
     if units.lower() not in ['angstroms', 'nanometers']:
         raise ValueError("units must Angstroms or nanometers")
