@@ -202,7 +202,7 @@ def test_lipschitz_schnet_mask():
 
     _lambda = float(1e-12)
     pre_projection_weights = _schnet_feature_linear_extractor(schnet_test_model.feature,
-                                                              return_data=True)
+                                                              return_weight_data_only=True)
     # Convert torch tensors to numpy arrays for testing
     pre_projection_weights = [weight.numpy()
                               for weight in pre_projection_weights]
@@ -215,7 +215,7 @@ def test_lipschitz_schnet_mask():
     # Here we make the lipschitz projection
     lipschitz_projection(schnet_test_model, _lambda, schnet_mask=lip_mask)
     post_projection_weights = _schnet_feature_linear_extractor(schnet_test_model.feature,
-                                                               return_data=True)
+                                                               return_weight_data_only=True)
     # Convert torch tensors to numpy arrays for testing
     post_projection_weights = [weight.numpy()
                                for weight in post_projection_weights]
@@ -265,7 +265,7 @@ def test_lipschitz_full_model_mask():
     pre_projection_weights = [layer.weight.data.numpy() for layer in full_test_model.arch
                               if isinstance(layer, nn.Linear)]
     pre_projection_schnet_weights = _schnet_feature_linear_extractor(full_test_model.feature.layer_list[-1],
-                                                                     return_data=True)
+                                                                     return_weight_data_only=True)
     # Convert torch tensors to numpy arrays for testing
     pre_projection_schnet_weights = [weight.numpy() for weight in pre_projection_schnet_weights
                                      if isinstance(weight, torch.Tensor)]
@@ -289,7 +289,7 @@ def test_lipschitz_full_model_mask():
     post_projection_weights = [layer.weight.data.numpy() for layer in full_test_model.arch
                                if isinstance(layer, nn.Linear)]
     post_projection_schnet_weights = _schnet_feature_linear_extractor(full_test_model.feature.layer_list[-1],
-                                                                      return_data=True)
+                                                                      return_weight_data_only=True)
     # Convert torch tensors to numpy arrays for testing
     post_projection_schnet_weights = [weight.numpy() for weight in post_projection_schnet_weights
                                       if isinstance(weight, torch.Tensor)]

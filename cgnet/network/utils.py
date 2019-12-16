@@ -9,7 +9,7 @@ import numpy as np
 from cgnet.feature import GeometryFeature, SchnetFeature, FeatureCombiner
 
 
-def _schnet_feature_linear_extractor(schnet_feature, return_data=False):
+def _schnet_feature_linear_extractor(schnet_feature, return_weight_data_only=False):
     """Helper function to extract instances of nn.Linear from a SchnetFeature
 
     Parameters
@@ -17,7 +17,7 @@ def _schnet_feature_linear_extractor(schnet_feature, return_data=False):
     schnet_feature : SchnetFeature instance
         The SchnetFeature instance from which nn.Linear instances will be
         extracted.
-    return_data : bool (default=False)
+    return_weight_data_only : bool (default=False)
         If True, the function returns the torch tensor for each weight
         layer rather than the nn.Linear instance.
 
@@ -25,9 +25,10 @@ def _schnet_feature_linear_extractor(schnet_feature, return_data=False):
     -------
     linear_list : list of nn.Linear instances or np.arrays,
         The list of nn.Linear layers extracted from the supplied
-        SchnetFeature. If 'return_data=True', the function instead returns
-        the torch tensors of each nn.Linear instance.
-
+        SchnetFeature.
+    weight_data : list of torch.Tensors
+         If 'return_data=True', the function instead returns the torch tensors
+         of each nn.Linear instance.
     Notes
     -----
     Add dense layers from each interaction block in the order: intial dense,
@@ -43,9 +44,9 @@ def _schnet_feature_linear_extractor(schnet_feature, return_data=False):
                         if isinstance(layer, nn.Linear)]
         linear_list += [layer for layer in block.output_dense
                         if isinstance(layer, nn.Linear)]
-    if return_data:
-        linear_list = [layer.weight.data for layer in linear_list]
-        return linear_list
+    if return_weight_data_only:
+        weight_data = [layer.weight.data for layer in linear_list]
+        return weight_data
     else:
         return linear_list
 
