@@ -7,7 +7,8 @@ import warnings
 # These radii and masses were obtained from the following repository:
 # https://github.com/ZiZ1/model_builder/blob/master/models/mappings/atom_types.py
 
-# The radii were calculated using the molar volumes reported in:
+# The radii were calculated by assuming a sphere and solving for the radius
+# using the molar volumes reported in Table 6, column 1, of:
 # Haeckel, M., Hinz, H,-J., Hedwig, G. (1999). Partial molar volumes of
 # proteins: amino acid side-chain contributions derived from the partial
 # molar volumes of some tripeptides over the temperature range 10-90 C.
