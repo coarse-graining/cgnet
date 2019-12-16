@@ -114,8 +114,6 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
     # a FeatureCombiner instance
     elif isinstance(model.feature, SchnetFeature):
         schnet_weight_layers += _schnet_feature_linear_extractor(model.feature)
-    else:
-        pass
 
     # Next, we assemble a (possibly combined from network and SchnetFeature) mask
     if network_mask is not None:
