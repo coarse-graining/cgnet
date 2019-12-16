@@ -68,6 +68,13 @@ def calculate_bond_minima(bond_pairs, cgmolecule, units='Angstroms',
         Each element contains the minimum bond distance corresponding to the
         same index in the input list of bond_pairs
 
+    Notes
+    -----
+    This method does NOT take into account the identity of the atom in the 
+    residue. In other words, the CA-CA, CA-CB, CB-CB, etc. distances will all
+    be identical between two residues. In the example provided below, the
+    bond_minima output will be a list of two identical distances.
+
     References
     ----------
     [1] Cheung, M. S., Finke, J. M., Callahan, B., Onuchic, J. N. (2003).
@@ -82,7 +89,12 @@ def calculate_bond_minima(bond_pairs, cgmolecule, units='Angstroms',
     resmap = {1 : 'ALA', 2 : 'PHE'}
 
     dipeptide = CGMolecule(names, resseq, resmap)
-    bond_minima = calculate_bond_minima([(1, 2)], dipeptide)
+
+    # Our CA-CA distance is (0, 2), and our CB-CB distance is (1, 3)
+    bond_minima = calculate_bond_minima([(0, 2), (1, 3)], dipeptide)
+
+    # Note that in this example, bond_minima will have two entries with th
+    # same distance
     """
     if units.lower() not in ['angstroms', 'nanometers']:
         raise ValueError("units must Angstroms or nanometers")
