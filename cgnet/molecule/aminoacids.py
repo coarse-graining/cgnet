@@ -70,7 +70,7 @@ def calculate_bond_minima(bond_pairs, cgmolecule, units='Angstroms',
 
     References
     ----------
-    [1] Cheiung, M. S., Finke, J. M., Callahan, B., Onuchic, J. N. (2003).
+    [1] Cheung, M. S., Finke, J. M., Callahan, B., Onuchic, J. N. (2003).
         Exploring the interplay between topology and secondary structure
         formation in the protein folding problem. J. Phys. Chem. B.
         https://doi.org/10.1021/jp034441r
