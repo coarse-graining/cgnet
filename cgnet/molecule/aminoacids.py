@@ -94,6 +94,11 @@ def calculate_bond_minima(bond_pairs, cgmolecule, units='Angstroms',
     else:
         residue_radii = RESIDUE_RADII
 
+    # Calculate the distance unless the residue indices are the same,
+    # in which case use a nan instead. We go through nans because we
+    # want to provide the user with the problematic indices, and zeros
+    # aren't unique because a GLY-GLY pair would also return a zero
+    # even for different residue indices.
     bond_minima = np.array(
                     [(prefactor*residue_radii[resmap[resseq[b1]]] +
                     prefactor*residue_radii[resmap[resseq[b2]]])
