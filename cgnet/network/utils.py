@@ -9,7 +9,7 @@ import numpy as np
 from cgnet.feature import GeometryFeature, SchnetFeature, FeatureCombiner
 
 
-def _schnet_feature_weight_extractor(schnet_feature, return_data=False):
+def _schnet_feature_linear_extractor(schnet_feature, return_data=False):
     """Helper function to extract instances of nn.Linear from a SchnetFeature
 
     Parameters
@@ -108,12 +108,12 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
     if isinstance(model.feature, FeatureCombiner):
         for feature in model.feature.layer_list:
             if isinstance(feature, SchnetFeature):
-                schnet_weight_layers += _schnet_feature_weight_extractor(
+                schnet_weight_layers += _schnet_feature_linear_extractor(
                     feature)
     # Lastly, we handle the case of SchnetFeatures that are not part of
     # a FeatureCombiner instance
     elif isinstance(model.feature, SchnetFeature):
-        schnet_weight_layers += _schnet_feature_weight_extractor(model.feature)
+        schnet_weight_layers += _schnet_feature_linear_extractor(model.feature)
     else:
         pass
 

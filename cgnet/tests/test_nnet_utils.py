@@ -7,7 +7,7 @@ import torch.nn as nn
 import numpy as np
 from torch.utils.data import SubsetRandomSampler, DataLoader
 from cgnet.network import lipschitz_projection, dataset_loss, Simulation
-from cgnet.network.utils import _schnet_feature_weight_extractor
+from cgnet.network.utils import _schnet_feature_linear_extractor
 from cgnet.network import CGnet, ForceLoss
 from cgnet.feature import (MoleculeDataset, LinearLayer, SchnetFeature,
                            CGBeadEmbedding, GeometryFeature, FeatureCombiner,
@@ -163,14 +163,14 @@ def test_lipschitz_network_mask():
 
 
 def test_schnet_weight_extractor():
-    # Tests the hidden helper method, _schnet_feature_weight_extractor()
+    # Tests the hidden helper method, _schnet_feature_linear_extractor()
     # There should be 5 nn.Linear instances per interaction block in a
     # SchnetFeature. We use the random SchnetFeature created in the top
     # of this file
 
     # First we test to see if the layers extracted are in fact instances
     # of nn.Linear
-    linear_list = _schnet_feature_weight_extractor(schnet_feature)
+    linear_list = _schnet_feature_linear_extractor(schnet_feature)
     for layer in linear_list:
         assert isinstance(layer, nn.Linear)
     # Next, we assert that the number of nn.Linear instances are
@@ -201,7 +201,7 @@ def test_lipschitz_schnet_mask():
     schnet_test_model = CGnet(schnet_arch, ForceLoss(), feature=schnet_feature)
 
     _lambda = float(1e-12)
-    pre_projection_weights = _schnet_feature_weight_extractor(schnet_test_model.feature,
+    pre_projection_weights = _schnet_feature_linear_extractor(schnet_test_model.feature,
                                                               return_data=True)
     # Convert torch tensors to numpy arrays for testing
     pre_projection_weights = [weight.numpy()
@@ -214,7 +214,7 @@ def test_lipschitz_schnet_mask():
 
     # Here we make the lipschitz projection
     lipschitz_projection(schnet_test_model, _lambda, schnet_mask=lip_mask)
-    post_projection_weights = _schnet_feature_weight_extractor(schnet_test_model.feature,
+    post_projection_weights = _schnet_feature_linear_extractor(schnet_test_model.feature,
                                                                return_data=True)
     # Convert torch tensors to numpy arrays for testing
     post_projection_weights = [weight.numpy()
@@ -264,7 +264,7 @@ def test_lipschitz_full_model_mask():
     _lambda = float(1e-12)
     pre_projection_weights = [layer.weight.data.numpy() for layer in full_test_model.arch
                               if isinstance(layer, nn.Linear)]
-    pre_projection_schnet_weights = _schnet_feature_weight_extractor(full_test_model.feature.layer_list[-1],
+    pre_projection_schnet_weights = _schnet_feature_linear_extractor(full_test_model.feature.layer_list[-1],
                                                                      return_data=True)
     # Convert torch tensors to numpy arrays for testing
     pre_projection_schnet_weights = [weight.numpy() for weight in pre_projection_schnet_weights
@@ -288,7 +288,7 @@ def test_lipschitz_full_model_mask():
                          schnet_mask=schnet_lip_mask)
     post_projection_weights = [layer.weight.data.numpy() for layer in full_test_model.arch
                                if isinstance(layer, nn.Linear)]
-    post_projection_schnet_weights = _schnet_feature_weight_extractor(full_test_model.feature.layer_list[-1],
+    post_projection_schnet_weights = _schnet_feature_linear_extractor(full_test_model.feature.layer_list[-1],
                                                                       return_data=True)
     # Convert torch tensors to numpy arrays for testing
     post_projection_schnet_weights = [weight.numpy() for weight in post_projection_schnet_weights
