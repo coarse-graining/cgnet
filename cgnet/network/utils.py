@@ -38,12 +38,11 @@ def _schnet_feature_linear_extractor(schnet_feature, return_weight_data_only=Fal
 
     linear_list = []
     for block in schnet_feature.interaction_blocks:
-        linear_list += [layer for layer in block.initial_dense
-                        if isinstance(layer, nn.Linear)]
-        linear_list += [layer for layer in block.cfconv.filter_generator
-                        if isinstance(layer, nn.Linear)]
-        linear_list += [layer for layer in block.output_dense
-                        if isinstance(layer, nn.Linear)]
+        for block_layer in [block.initial_dense,
+                            block.cfconv.filter_generator,
+                            block.output_dense]:
+            linear_list += [layer for layer in block_layer
+                            if isinstance(layer, nn.Linear)]
     if return_weight_data_only:
         weight_data = [layer.weight.data for layer in linear_list]
         return weight_data
