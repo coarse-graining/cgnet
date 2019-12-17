@@ -220,6 +220,9 @@ class InteractionBlock(nn.Module):
         self.initial_dense = nn.Sequential(
             *LinearLayer(n_inputs, n_filters, bias=False,
                          activation=None))
+        # backwards compatibility for spelling error in initial dense
+        # layer attribute
+        self.inital_dense = self.initial_dense
         self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                                   n_filters=n_filters)
         output_layers = LinearLayer(n_filters, n_filters, bias=True,
