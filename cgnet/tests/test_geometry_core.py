@@ -34,10 +34,10 @@ def test_tile_methods_numpy_vs_torch():
 
     # Make two likely different shapes for the array and the tiling
     # with friendly factors
-    shape_one = [2,3,4]
+    shape_one = [2, 3, 4]
     np.random.shuffle(shape_one)
 
-    shape_two = [2,3,4]
+    shape_two = [2, 3, 4]
     np.random.shuffle(shape_two)
 
     # Reshape A with the first shape
@@ -81,3 +81,39 @@ def test_distances_and_neighbors_numpy_vs_torch():
     np.testing.assert_array_equal(distances_numpy, distances_torch)
     np.testing.assert_array_equal(neighbors_numpy, neighbors_torch)
     np.testing.assert_array_equal(neighbors_mask_numpy, neighbors_mask_torch)
+
+
+def test_nan_check():
+    # Test if an assert is raised during the computation of distances, angles
+    # and dihedrals
+
+    # Calculate angle and dihedral pair indices
+    angle_pairs = [(i, i+1, i+2) for i in range(beads - 2)]
+    dihedral_pairs = [(i, i+1, i+2, i+3) for i in range(beads - 3)]
+
+    # Select random frame and bead to set NaN
+    random_frame = np.random.randint(0, frames)
+    random_bead = np.random.randint(0, beads)
+
+    # Create test coordinates that contain NaN
+    nan_coords = coords.copy()
+    nan_coords[random_frame][random_bead] = np.nan
+    torch_nan_coords = torch.from_numpy(nan_coords)
+
+    # Check if an assert is raised
+    np.testing.assert_raises(ValueError,
+                             g_numpy.get_distances, _distance_pairs, nan_coords)
+    np.testing.assert_raises(ValueError,
+                             g_numpy.get_angles, angle_pairs, nan_coords)
+    np.testing.assert_raises(ValueError,
+                             g_numpy.get_dihedrals, dihedral_pairs, nan_coords)
+
+    np.testing.assert_raises(ValueError,
+                             g_torch.get_distances, _distance_pairs,
+                             torch_nan_coords)
+    np.testing.assert_raises(ValueError,
+                             g_torch.get_angles, angle_pairs,
+                             torch_nan_coords)
+    np.testing.assert_raises(ValueError,
+                             g_torch.get_dihedrals, dihedral_pairs,
+                             torch_nan_coords)

@@ -190,9 +190,9 @@ def test_dataset_loss_with_optimizer():
     model_manual = CGnet(copy.deepcopy(arch), ForceLoss()).float()
     model_dataset = CGnet(copy.deepcopy(arch), ForceLoss()).float()
 
-    optimizer_manual = torch.optim.Adam(model.parameters(),
+    optimizer_manual = torch.optim.Adam(model_manual.parameters(),
                                         lr=1e-5)
-    optimizer_dataset = torch.optim.Adam(model.parameters(),
+    optimizer_dataset = torch.optim.Adam(model_dataset.parameters(),
                                          lr=1e-5)
 
     # We want a nonrandom loader so we can compare the losses at the end
@@ -257,9 +257,9 @@ def test_dataset_loss_with_optimizer_and_regularization():
     model_manual = CGnet(copy.deepcopy(arch), ForceLoss()).float()
     model_dataset = CGnet(copy.deepcopy(arch), ForceLoss()).float()
 
-    optimizer_manual = torch.optim.Adam(model.parameters(),
+    optimizer_manual = torch.optim.Adam(model_manual.parameters(),
                                         lr=1e-5)
-    optimizer_dataset = torch.optim.Adam(model.parameters(),
+    optimizer_dataset = torch.optim.Adam(model_dataset.parameters(),
                                          lr=1e-5)
 
     # We want a nonrandom loader so we can compare the losses at the end

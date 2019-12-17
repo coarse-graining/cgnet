@@ -38,7 +38,24 @@ class Geometry():
             self.bool = np.bool
             self.float32 = np.float32
 
+    def check_for_nans(self, object, name=None):
+        """This method checks an object for the presence of nans and
+        returns an error if any nans are found.
+        """
+        if name is None:
+            name = ''
+
+        if self.isnan(object).any():
+            raise ValueError(
+                "Nan found in {}. Check your coordinates!)".format(
+                    name)
+            )
+
     def check_array_vs_tensor(self, object, name=None):
+        """This method checks whether the object (i.e., numpy array or torch
+        tensor) is consistent with the method chosen for the Geometry
+        instance (i.e., 'numpy' or 'torch', respectively).
+        """
         if name is None:
             name = ''
 
@@ -117,12 +134,20 @@ class Geometry():
         self.check_array_vs_tensor(data, 'data')
 
         distances = self.get_vectorize_inputs(distance_inds, data)
+
         if norm:
             distances = self.norm(distances, axis=2)
+
+        self.check_for_nans(distances, 'distances')
+
         return distances
 
-    def get_angles(self, angle_inds, data):
+    def get_angles(self, angle_inds, data, clip=True):
         """Calculates angles in a vectorized fashion.
+
+        If clip is True (default), then the angle cosines are clipped
+        to be between -1 and 1 to account for numerical error.
+
         """
         self.check_array_vs_tensor(data, 'data')
 
@@ -136,8 +161,17 @@ class Geometry():
         # formulation.
         base *= -1
 
-        angles = self.arccos(self.sum(base*offset, axis=2)/self.norm(
-            base, axis=2)/self.norm(offset, axis=2))
+        angles = self.sum(base * offset, axis=2) / self.norm(base,
+                                                               axis=2) / self.norm(
+            offset, axis=2)
+
+        if clip:
+            # Clipping to prevent the arccos to be NaN
+            angles = self.arccos(self.clip(angles,
+                                           lower_bound=-1.,
+                                           upper_bound=1.))
+
+        self.check_for_nans(angles, 'angles')
 
         return angles
 
@@ -171,6 +205,10 @@ class Geometry():
         dihedral_sines = self.sum(cp_base[:, ::2]*plane_vector[:, ::2],
                                   axis=2)/self.norm(
             cp_base[:, ::2], axis=2)/self.norm(plane_vector[:, ::2], axis=2)
+
+
+        self.check_for_nans(dihedral_cosines, 'dihedral cosines')
+        self.check_for_nans(dihedral_sines, 'dihedral sines')
 
         return dihedral_cosines, dihedral_sines
 
@@ -237,8 +275,12 @@ class Geometry():
     # # # # # # # # # # # # # # Versatile Methods # # # # # # # # # # # # # #
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+    # The methods implemented below should modify the originals as little as
+    # possible, such that the documentation for the respective method on the
+    # numpy and pytorch websites should be sufficient.
+
     # Methods defined: arccos, cross, norm, sum, arange, tile, eye, ones,
-    #                  to_type
+    #                  to_type, clip, isnan
 
     def arccos(self, x):
         if self.method == 'torch':
@@ -298,3 +340,15 @@ class Geometry():
             return x.type(dtype)
         elif self.method == 'numpy':
             return x.astype(dtype)
+
+    def clip(self, x, lower_bound, upper_bound, out=None):
+        if self.method == 'torch':
+            return torch.clamp(x, min=lower_bound, max=upper_bound, out=out)
+        elif self.method == 'numpy':
+            return np.clip(x, a_min=lower_bound, a_max=upper_bound, out=out)
+
+    def isnan(self, x):
+        if self.method == 'torch':
+            return torch.isnan(x)
+        elif self.method == 'numpy':
+            return np.isnan(x)

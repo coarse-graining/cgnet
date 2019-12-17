@@ -75,8 +75,13 @@ def lipschitz_projection(model, strength=10.0, mask=None):
 
 def dataset_loss(model, loader, optimizer=None,
                  regularization_function=None,
-                 verbose_interval=None):
-    """Compute average loss over arbitrary loader and dataset pair.
+                 verbose_interval=None,
+                 print_function=None):
+    r"""Compute average loss over arbitrary data loader.
+    This can be used during testing, in which `optimizer` and
+    `regularization_function` will remain None, or it can be used
+    during training, in which an optimizer and (optional)
+    regularization_function are provided.
 
     Parameters
     ----------
@@ -93,6 +98,10 @@ def dataset_loss(model, loader, optimizer=None,
     verbose_interval : integer or None (default=None)
         If not None, a printout of the batch number and loss will be provided
         at the specified interval (with respect to batch number).
+    print_function : python function or None (default=None)
+        Print function that takes (batch_number, batch_loss) as its only
+        two arguments, to print updates with our default or the style of
+        your choice when verbose_interval is not None.
 
     Returns
     -------
@@ -105,11 +114,31 @@ def dataset_loss(model, loader, optimizer=None,
 
     Example
     -------
-    test_set = MoleculeDataset(coords[test_indices], forces[test_indices])
-    test_sampler = torch.utils.data.RandomSubSetSampler(test_indices)
-    test_loader = torch.utils.data.DataLoader(test_set, sampler=test_sampler,
-                                              batch_size=512)
-    test_error = dataset_loss(MyModel, test_loader)
+    from torch.utils.data import DataLoader
+
+    # assume model is a CGNet object
+
+    # For test data, no optimizer or regularization are needed
+    test_data_loader = DataLoader(test_data, batch_size=batch_size)
+    test_loss = dataset_loss(net, test_data_loader)
+
+    # For training data, an optimizer is needed. Regularization may
+    # be used, too
+    training_data_loader = DataLoader(training_data, batch_size=batch_size)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
+
+    # Regularization must be in place
+    def my_reg_fxn(model, strength=lipschitz_strength):
+        lipschitz_projection(model, strength=strength)
+
+    def my_print_fxn(batch_num, batch_loss):
+        print("--> Batch #{}, loss = {}".format(batch_num, batch_loss))
+
+    training_loss = dataset_loss(net, training_data_loader,
+                                 optimizer = optimizer,
+                                 regularization_function = my_reg_fxn,
+                                 verbose_interval = 128,
+                                 print_function = my_print_fxn)
 
     Notes
     -----
@@ -156,8 +185,11 @@ def dataset_loss(model, loader, optimizer=None,
 
         if verbose_interval is not None:
             if(batch_num + 1) % verbose_interval == 0:
-                print("Batch: {}, Loss: {:.2f}".format(
-                    batch_num+1, batch_loss))
+                if print_function is None:
+                    print("Batch: {}, Loss: {:.2f}".format(batch_num+1,
+                                                           batch_loss))
+                else:
+                    print_function(batch_num+1, batch_loss)
 
         loss += batch_loss.cpu().detach().numpy() * batch_weight
 
