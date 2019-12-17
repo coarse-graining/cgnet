@@ -25,15 +25,20 @@ def _schnet_feature_linear_extractor(schnet_feature, return_weight_data_only=Fal
     -------
     linear_list : list of nn.Linear instances or np.arrays,
         The list of nn.Linear layers extracted from the supplied
-        SchnetFeature.
+        SchnetFeature. See notes below for the order of nn.Linear instances
+        in this list.
     weight_data : list of torch.Tensors
-         If 'return_data=True', the function instead returns the torch tensors
-         of each nn.Linear instance.
+        If 'return_data=True', the function instead returns the torch tensors
+        of each nn.Linear instance weight. See notes below for the order of
+        tensors in this list
+
     Notes
     -----
-    Add dense layers from each interaction block in the order: intial dense,
-    cfconv filter_layers, and output layers, all each within one interaction
-    block.
+    Each InteractionBlock contains nn.Linear instances in the following order:
+    an initial_dense layer, two cfconv.filter_generator layers, and two output
+    layers. This gives five linear layers in total per InteractionBlock. The
+    order of the nn.Linear instances are returned by
+    _schnet_feature_linear_extractor().
     """
 
     linear_list = []
