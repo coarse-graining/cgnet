@@ -35,12 +35,17 @@ def _schnet_feature_linear_extractor(schnet_feature, return_weight_data_only=Fal
     Notes
     -----
     Each InteractionBlock contains nn.Linear instances in the following order:
-    an initial_dense layer, two cfconv.filter_generator layers, and two output
-    layers. This gives five linear layers in total per InteractionBlock. The
-    order of the nn.Linear instances are returned by
-    _schnet_feature_linear_extractor(). This is a hardcoded choice, becasue we
-    assume that architectural structure of all InteractionBlocks are exactly the
-    same.
+
+    1. initial_dense layer
+    2. cfconv.filter_generator layer 1
+    3. cfconv.filter_generator layer 2
+    4. output layer 1
+    5. output layer 2
+
+    This gives five linear layers in total per InteractionBlock. The order of
+    the nn.Linear instances are returned by _schnet_feature_linear_extractor().
+    This is a hardcoded choice, becasue we assume that architectural structure
+    of all InteractionBlocks are exactly the same (i.e., 1-5 above).
     """
 
     linear_list = []
@@ -78,8 +83,13 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
         If an element is False, the corresponding weight layer is exempt from a
         lipschitz projection. The linear layers of a SchnetFeature InteractionBlock
         have the following arrangement:
-            [initial_dense, cfconv_filter #1, cfconv_filter #2, output_dense #1,
-             output_dense #2]
+
+        1. initial_dense layer
+        2. cfconv.filter_generator layer 1
+        3. cfconv.filter_generator layer 2
+        4. output layer 1
+        5. output layer 2
+
         that is, each InteractionBlock contains 5 nn.Linear instances
 
     Notes
@@ -104,8 +114,11 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
     fixed to be the same - that is the nn.Linear instances always appear
     in SchnetFeatures in the following fixed order:
 
-    1 initial_dense layer, 2 continous filter convolution dense layers,
-    and 2 dense output layers.
+    1. initial_dense layer
+    2. cfconv.filter_generator layer 1
+    3. cfconv.filter_generator layer 2
+    4. output layer 1
+    5. output layer 2
 
     References
     ----------
