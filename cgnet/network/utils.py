@@ -38,7 +38,9 @@ def _schnet_feature_linear_extractor(schnet_feature, return_weight_data_only=Fal
     an initial_dense layer, two cfconv.filter_generator layers, and two output
     layers. This gives five linear layers in total per InteractionBlock. The
     order of the nn.Linear instances are returned by
-    _schnet_feature_linear_extractor().
+    _schnet_feature_linear_extractor(). This is a hardcoded choice, becasue we
+    assume that architectural structure of all InteractionBlocks are exactly the
+    same.
     """
 
     linear_list = []
@@ -94,6 +96,16 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
     for weight matrix W, dominant singular value s_dom, and regularization
     strength lambda. In this form, a strong regularization is achieved for
     lambda -> 0, and a weak regularization is achieved for lambda -> inf.
+
+    For nn.Linear weights that exist in SchnetFeatures (in the form of dense
+    layers in InteractionBlocks and dense layers in the continuous filter
+    convolutions), we assume that the architectural structure of all
+    InteractionBlocks (and the continuous filter convolutions therein) is
+    fixed to be the same - that is the nn.Linear instances always appear
+    in SchnetFeatures in the following fixed order:
+
+    1 initial_dense layer, 2 continous filter convolution dense layers,
+    and 2 dense output layers.
 
     References
     ----------
