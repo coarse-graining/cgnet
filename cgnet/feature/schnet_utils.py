@@ -221,7 +221,8 @@ class InteractionBlock(nn.Module):
             *LinearLayer(n_inputs, n_filters, bias=False,
                          activation=None))
         # backwards compatibility for spelling error in initial dense
-        # layer attribute. This will be removed in the future.
+        # layer attribute. 
+        # WARNING : This will be removed in the future!
         self.inital_dense = self.initial_dense
         self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                                   n_filters=n_filters)
