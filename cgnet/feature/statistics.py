@@ -386,13 +386,13 @@ class GeometryStatistics():
         self.order += ['Dihedral_cosines']
         self.order += ['Dihedral_sines']
 
-    def _get_stats(self, X, key):
+    def _get_stats(self, X, key, tol=1e-8):
         """Populates stats dictionary with mean and std of feature.
         """
         mean = np.mean(X, axis=0)
         std = np.std(X, axis=0)
         var = np.var(X, axis=0)
-        k = 1/var/self.beta
+        k = np.array([1/v/self.beta if v > tol else 0. for v in var])
         self._stats_dict[key] = {}
         self._stats_dict[key]['mean'] = mean
         self._stats_dict[key]['std'] = std
