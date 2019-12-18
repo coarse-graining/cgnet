@@ -392,10 +392,10 @@ class GeometryStatistics():
         mean = np.mean(X, axis=0)
         std = np.std(X, axis=0)
         var = np.var(X, axis=0)
-        if var < tol:
-            k = 0.
-        else:
-            k = 1/var/self.beta
+        # if var < tol:
+        #     k = 0.
+        # else:
+        k = 1/var/self.beta
         self._stats_dict[key] = {}
         self._stats_dict[key]['mean'] = mean
         self._stats_dict[key]['std'] = std
