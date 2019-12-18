@@ -74,11 +74,13 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
         The magntitude of {dominant weight matrix eigenvalue / strength}
         is compared to unity, and the weight matrix is rescaled by the max
         of this comparison
-    network_mask : list of bool (default=None)
+    network_mask : None, 'all', or list of bool (default=None)
         mask used to exclude certain terminal network layers from lipschitz
         projection. If an element is False, the corresponding weight layer
-        is exempt from a lipschitz projection.
-    schnet_mask : list of bool (default=None)
+        is exempt from a lipschitz projection. If set to all, a False mask
+        is used for all terminal network weights. If None, all terminal network
+        weight layers are subject to Lipschitz constraint.
+    schnet_mask : None, 'all', or list of bool (default=None)
         mask used to exclude certain SchnetFeature layers from lipschitz projection.
         If an element is False, the corresponding weight layer is exempt from a
         lipschitz projection. The linear layers of a SchnetFeature InteractionBlock
@@ -90,7 +92,10 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
         4. output layer 1
         5. output layer 2
 
-        that is, each InteractionBlock contains 5 nn.Linear instances
+        that is, each InteractionBlock contains 5 nn.Linear instances. If set
+        to 'all', a False mask is used for all weight layers in every
+        InteractionBlock. If None, all weight layers are subject to Lipschitz
+        constraint.
 
     Notes
     -----
@@ -145,7 +150,12 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
     elif isinstance(model.feature, SchnetFeature):
         schnet_weight_layers += _schnet_feature_linear_extractor(model.feature)
 
-    # Next, we assemble a (possibly combined from network and SchnetFeature) mask
+    # Next, we assemble a (possibly combined from terminal network and
+    # SchnetFeature) mask
+    if network_mask is None:
+        network_mask = [True for _ in network_weight_layers]
+    elif network_mask is 'all':
+        network_mask = [False for _ in network_weight_layers]
     if network_mask is not None:
         if not isinstance(network_mask, list):
             raise ValueError("Lipschitz network mask must be list of booleans")
@@ -153,9 +163,11 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
             raise ValueError("Lipshitz network mask must have the same number "
                              "of elements as the number of nn.Linear "
                              "modules in the model.arch attribute.")
-    elif network_mask is None:
-        network_mask = [True for _ in network_weight_layers]
 
+    if schnet_mask is None:
+        schnet_mask = [True for _ in schnet_weight_layers]
+    elif schnet_mask is 'all':
+        schnet_mask = [False for _ in schnet_weight_layers]
     if schnet_mask is not None:
         if not isinstance(schnet_mask, list):
             raise ValueError("Lipschitz schnet mask must be list of booleans")
@@ -163,8 +175,6 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
             raise ValueError("Lipshitz schnet mask must have the same number "
                              "of elements as the number of nn.Linear "
                              "modules in the model SchnetFeature.")
-    elif schnet_mask is None:
-        schnet_mask = [True for _ in schnet_weight_layers]
 
     full_mask = network_mask + schnet_mask
     full_weight_layers = network_weight_layers + schnet_weight_layers

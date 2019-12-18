@@ -238,7 +238,7 @@ def test_lipschitz_schnet_mask():
             np.testing.assert_array_equal(pre.numpy(), post.numpy())
 
 
-def test_lipschitz_full_model_mask():
+def test_lipschitz_full_model_random_mask():
     # Test lipschitz mask functionality for random binary schnet mask
     # and random binary terminal network mask for a model that contains
     # both SchnetFeatures and a terminal network
@@ -311,6 +311,60 @@ def test_lipschitz_full_model_mask():
         # If the mask element is False then the weights should be unaffected
         if not mask_element:
             np.testing.assert_array_equal(pre.numpy(), post.numpy())
+
+def test_lipschitz_full_model_all_mask():
+    # Test lipschitz mask functionality for completely False schnet mask
+    # and completely False terminal network mask for a model that contains
+    # both SchnetFeatures and a terminal network
+    # using strong Lipschitz projection ( lambda_ << 1 )
+    # In this case, we expect all weight layers to remain unchanged
+
+    # Here we ceate a CGSchNet model with a GeometryFeature layer,
+    # 10 interaction blocks, a random feature size, embedding, and
+    # cutoff from the setup at the top of this file, and a terminal
+    # network of 10 layers and with a random width
+    width = np.random.randint(10, high=20)
+    test_arch = LinearLayer(feature_size, width, activation=nn.Tanh())
+    for _ in range(9):
+        test_arch += LinearLayer(width, width, activation=nn.Tanh())
+    test_arch += LinearLayer(width, 1, activation=None)
+    schnet_feature = SchnetFeature(feature_size=feature_size,
+                                   embedding_layer=embedding_layer,
+                                   n_interaction_blocks=10,
+                                   n_beads=beads,
+                                   neighbor_cutoff=neighbor_cutoff,
+                                   calculate_geometry=False)
+    feature_list = FeatureCombiner([GeometryFeature(feature_tuples='all_backbone',
+                                                    n_beads=beads), schnet_feature],
+                                   distance_indices=dist_idx)
+    full_test_model = CGnet(test_arch, ForceLoss(), feature=feature_list)
+
+    # The pre_projection weights are the terminal network weights followed by
+    # the SchnetFeature weights
+    lambda_ = float(1e-12)
+    pre_projection_terminal_network_weights = [layer.weight.data
+                                               for layer in full_test_model.arch
+                                               if isinstance(layer, nn.Linear)]
+    pre_projection_schnet_weights = _schnet_feature_linear_extractor(full_test_model.feature.layer_list[-1],
+                                                                     return_weight_data_only=True)
+    full_pre_projection_weights = pre_projection_terminal_network_weights + pre_projection_schnet_weights
+
+    # Here we make the lipschitz projection, specifying the 'all' option for
+    # both the terminal network mask and the schnet mask 
+    lipschitz_projection(full_test_model, lambda_, network_mask='all',
+                         schnet_mask='all')
+    post_projection_terminal_network_weights = [layer.weight.data
+                                                for layer in full_test_model.arch
+                                                if isinstance(layer, nn.Linear)]
+    post_projection_schnet_weights = _schnet_feature_linear_extractor(full_test_model.feature.layer_list[-1],
+                                                                      return_weight_data_only=True)
+    full_post_projection_weights = post_projection_terminal_network_weights + post_projection_schnet_weights
+
+    # Here we verify that all weight layers remain unaffected by the strong
+    # Lipschitz projection
+    for pre, post in zip(full_pre_projection_weights,
+                         full_post_projection_weights):
+        np.testing.assert_array_equal(pre.numpy(), post.numpy())
 
 
 def test_dataset_loss():
