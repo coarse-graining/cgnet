@@ -8,7 +8,7 @@ import warnings
 # https://github.com/ZiZ1/model_builder/blob/master/models/mappings/atom_types.py
 
 # The radii were calculated by assuming a sphere and solving for the radius
-# using the molar volumes reported in Table 6, column 1, of:
+# using the molar volumes at 25 Celcius reported in Table 6, column 1, of:
 # Haeckel, M., Hinz, H,-J., Hedwig, G. (1999). Partial molar volumes of
 # proteins: amino acid side-chain contributions derived from the partial
 # molar volumes of some tripeptides over the temperature range 10-90 C.
@@ -43,8 +43,8 @@ RESIDUE_MASSES = {
                 }
 
 
-def calculate_bond_minima(bond_pairs, cgmolecule, units='Angstroms',
-                          prefactor=0.7):
+def calculate_hard_sphere_minima(bead_pairs, cgmolecule, units='Angstroms',
+                                 prefactor=0.7):
     """This function uses amino acid radii to calculate a minimum contact
     distance between atoms in a CGMolecule in either Angstroms or nanometers.
     Both glycine-glycine pairs and atoms in the same residue will return
@@ -52,7 +52,7 @@ def calculate_bond_minima(bond_pairs, cgmolecule, units='Angstroms',
 
     Parameters
     ----------
-    bond_pairs : list of two-element tuples
+    bead_pairs : list of two-element tuples
         Each tuple contains the two atom indices in the coarse-grained for
         which a mininum distance should be calculated.
     cgmolecule : cgnet.molecule.CGMolecule instance
@@ -65,16 +65,16 @@ def calculate_bond_minima(bond_pairs, cgmolecule, units='Angstroms',
 
     Returns
     -------
-    bond_minima : list of floats
-        Each element contains the minimum bond distance corresponding to the
-        same index in the input list of bond_pairs
+    hard_sphere_minima : list of floats
+        Each element contains the minimum hard sphere distance corresponding
+        to the same index in the input list of bead_pairs
 
     Notes
     -----
     This method does NOT take into account the identity of the atom in the 
     residue. In other words, the CA-CA, CA-CB, CB-CB, etc. distances will all
     be identical between two residues. In the example provided below, the
-    bond_minima output will be a list of two identical distances.
+    hard_sphere_minima output will be a list of two identical distances.
 
     References
     ----------
@@ -92,10 +92,11 @@ def calculate_bond_minima(bond_pairs, cgmolecule, units='Angstroms',
     dipeptide = CGMolecule(names, resseq, resmap)
 
     # Our CA-CA distance is (0, 2), and our CB-CB distance is (1, 3)
-    bond_minima = calculate_bond_minima([(0, 2), (1, 3)], dipeptide)
+    hard_sphere_minima = calculate_hard_sphere_minima([(0, 2), (1, 3)],
+                                                       dipeptide)
 
-    # Note that in this example, bond_minima will have two entries with th
-    # same distance
+    # Note that in this example, hard_sphere_minima will have two entries
+    # with the same distance
     """
     if units.lower() not in ['angstroms', 'nanometers']:
         raise ValueError("units must Angstroms or nanometers")
@@ -112,20 +113,20 @@ def calculate_bond_minima(bond_pairs, cgmolecule, units='Angstroms',
     # want to provide the user with the problematic indices, and zeros
     # aren't unique because a GLY-GLY pair would also return a zero
     # even for different residue indices.
-    bond_minima = np.array(
+    hard_sphere_minima = np.array(
                     [(prefactor*residue_radii[resmap[resseq[b1]]] +
                     prefactor*residue_radii[resmap[resseq[b2]]])
                     if resseq[b1] != resseq[b2] else np.nan
-                    for b1, b2 in bond_pairs]
+                    for b1, b2 in bead_pairs]
                     )
 
-    nan_indices = np.where(np.isnan(bond_minima))[0]
+    nan_indices = np.where(np.isnan(hard_sphere_minima))[0]
     if len(nan_indices) > 0:
-        warnings.warn("The following bond pairs were in the same residue. Their "
+        warnings.warn("The following bead pairs were in the same residue. Their "
                       "minima were set to zero: {}".format(
-                      [bond_pairs[ni] for ni in nan_indices]))
-        bond_minima[nan_indices] = 0.
+                      [bead_pairs[ni] for ni in nan_indices]))
+        hard_sphere_minima[nan_indices] = 0.
 
-    bond_minima = [np.round(bond, 4) for bond in bond_minima]
+    hard_sphere_minima = [np.round(dist, 4) for dist in hard_sphere_minima]
 
-    return bond_minima
+    return hard_sphere_minima
