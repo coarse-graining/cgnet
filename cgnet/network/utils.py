@@ -194,7 +194,6 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
 
 def dataset_loss(model, loader, optimizer=None,
                  regularization_function=None,
-                 has_embeddings=True,
                  verbose_interval=None,
                  print_function=None):
     r"""Compute average loss over arbitrary data loader.
@@ -215,8 +214,6 @@ def dataset_loss(model, loader, optimizer=None,
         If not None, the regularization function will be applied after
         stepping the optimizer. It must take only "model" as its input
         and operate in-place.
-    has_embeddings : boolean (default=True)
-        Whether the dataset includes embeddings
     verbose_interval : integer or None (default=None)
         If not None, a printout of the batch number and loss will be provided
         at the specified interval (with respect to batch number).
@@ -293,7 +290,7 @@ def dataset_loss(model, loader, optimizer=None,
                 "dataset loss."
             )
 
-        if has_embeddings:
+        if loader.dataset.embeddings is not None:
             potential, predicted_force = model.forward(coords,
                                     embedding_property=embedding_property)
         else:
