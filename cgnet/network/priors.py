@@ -88,7 +88,16 @@ class _PriorLayer(nn.Module):
 
 
 class RepulsionLayer(_PriorLayer):
-    """Layer for calculating pairwise repulsion energy prior.
+    """Layer for calculating pairwise repulsion energy prior. Pairwise repulsion
+    energies are calculated using the following formula:
+
+        U_repulsion_ij = (sigma_{ij} / r_{ij}) ^ exp_{ij}
+
+    where U_repulsion_ij is the repulsion energy contribution in (kcal/mol) from
+    coarse grain beads i and j, sigma_ij is the excluded volume parameter between
+    the pair (in angstroms), r_ij is the pairwise distance (in angstroms) between
+    coarse grain beads i and j, and exp_ij is the repulsion exponenent that
+    characterizes the asymptotics of the interaction.
 
     Parameters
     ----------
@@ -172,7 +181,18 @@ class RepulsionLayer(_PriorLayer):
 
 
 class HarmonicLayer(_PriorLayer):
-    """Layer for calculating bond/angle harmonic energy prior
+    """Layer for calculating bond/angle harmonic energy prior. Harominc energy
+    contributions have the following form:
+
+        U_harmonic_{ij} = k_{ij} * (r_{ij} - r_0_{ij}) ^ 2
+
+    where U_harmonic_ij is the harmonic energy contribution (in kcal/mol) from
+    coarse grain beads i and j, k_ij is the harmonic spring constant
+    (in kcal/mol/angstrom**2) that characterizes the strength of the harmonic
+    interaction between coarse grain beads i and j, r_{ij} is the pairwise
+    distance (in angstroms) between coarse grain beads i and j, and r_0_ij is
+    the equilibrium/average pairwise distance between coarse grain beads i
+    and j.
 
     Parameters
     ----------
@@ -266,7 +286,15 @@ class HarmonicLayer(_PriorLayer):
 
 
 class ZscoreLayer(nn.Module):
-    """Layer for Zscore normalization
+    """Layer for Zscore normalization. Zscore normalization involves
+    scaling features by their mean and standard deviation in the following
+    way:
+
+        X_normalized = (X - X_avg) / sigma_X
+
+    where X_normalized is the zscore-normalized feature, X is the original
+    feature, X_avg is the average value of the orignal feature, and sigma_X
+    is the standard deviation of the original feature.
 
     Parameters
     ----------
