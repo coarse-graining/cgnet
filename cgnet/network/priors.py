@@ -61,6 +61,9 @@ class _PriorLayer(nn.Module):
     GeometryStatistics.return_indices() will ensure this is True for the same
     list of features.
 
+    The units of the interaction paramters for priors must correspond with the
+    units of the input coordinates and force labels used to train the CGnet.
+
     """
 
     def __init__(self, callback_indices, interaction_parameters):
@@ -93,11 +96,12 @@ class RepulsionLayer(_PriorLayer):
 
         U_repulsion_ij = (sigma_{ij} / r_{ij}) ^ exp_{ij}
 
-    where U_repulsion_ij is the repulsion energy contribution in (kcal/mol) from
-    coarse grain beads i and j, sigma_ij is the excluded volume parameter between
-    the pair (in angstroms), r_ij is the pairwise distance (in angstroms) between
-    coarse grain beads i and j, and exp_ij is the repulsion exponenent that
-    characterizes the asymptotics of the interaction.
+    where U_repulsion_ij is the repulsion energy contribution from
+    coarse grain beads i and j, sigma_ij is the excluded volume parameter
+    between the pair (in units of distance), r_ij is the pairwise distance
+    (in units of distance) between coarse grain beads i and j, and exp_ij
+    is the repulsion exponenent (dimensionless) that characterizes the
+    asymptotics of the interaction.
 
     Parameters
     ----------
@@ -186,13 +190,13 @@ class HarmonicLayer(_PriorLayer):
 
         U_harmonic_{ij} = k_{ij} * (r_{ij} - r_0_{ij}) ^ 2
 
-    where U_harmonic_ij is the harmonic energy contribution (in kcal/mol) from
+    where U_harmonic_ij is the harmonic energy contribution from
     coarse grain beads i and j, k_ij is the harmonic spring constant
-    (in kcal/mol/angstrom**2) that characterizes the strength of the harmonic
+    (in energy/distance**2) that characterizes the strength of the harmonic
     interaction between coarse grain beads i and j, r_{ij} is the pairwise
-    distance (in angstroms) between coarse grain beads i and j, and r_0_ij is
-    the equilibrium/average pairwise distance between coarse grain beads i
-    and j.
+    distance (in distance units) between coarse grain beads i and j, and r_0_ij
+    is the equilibrium/average pairwise distance (in distance units) between
+    coarse grain beads i and j.
 
     Parameters
     ----------
