@@ -290,8 +290,11 @@ def dataset_loss(model, loader, optimizer=None,
                 "dataset loss."
             )
 
-        potential, predicted_force = model.forward(coords,
-                                                   embedding_property=embedding_property)
+        if loader.dataset.embeddings is not None:
+            potential, predicted_force = model.forward(coords,
+                                    embedding_property=embedding_property)
+        else:
+            potential, predicted_force = model.forward(coords)
 
         batch_loss = model.criterion(predicted_force, force)
 
