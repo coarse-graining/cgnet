@@ -217,9 +217,13 @@ class InteractionBlock(nn.Module):
     def __init__(self, n_inputs, n_gaussians, n_filters):
         super(InteractionBlock, self).__init__()
 
-        self.inital_dense = nn.Sequential(
+        self.initial_dense = nn.Sequential(
             *LinearLayer(n_inputs, n_filters, bias=False,
                          activation=None))
+        # backwards compatibility for spelling error in initial dense
+        # layer attribute. 
+        # WARNING : This will be removed in the future!
+        self.inital_dense = self.initial_dense
         self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                                   n_filters=n_filters)
         output_layers = LinearLayer(n_filters, n_filters, bias=True,
@@ -256,7 +260,7 @@ class InteractionBlock(nn.Module):
             Size [n_frames, n_beads, n_filters]
 
         """
-        init_feature_output = self.inital_dense(features)
+        init_feature_output = self.initial_dense(features)
         conv_output = self.cfconv(init_feature_output, rbf_expansion,
                                   neighbor_list, neighbor_mask)
         output_features = self.output_dense(conv_output)
