@@ -6,9 +6,10 @@ import itertools
 from cgnet.molecule import (CGMolecule, RESIDUE_RADII,
                             calculate_hard_sphere_minima)
 
+
 def test_angstrom_conversion():
     # This tests in a somewhat roundabout way whether the angstrom
-    # conversion from the master dictionary is correct 
+    # conversion from the master dictionary is correct
 
     # Create a CG molecule with each amino acid doubled
     all_residues = list(RESIDUE_RADII.keys())
@@ -16,7 +17,7 @@ def test_angstrom_conversion():
                                                  all_residues]).T)
     names = ['CA'] * len(doubled_res_list)
     resseq = np.arange(1, len(doubled_res_list)+1)
-    resmap = {i+1 : doubled_res_list[i] for i in range(len(doubled_res_list))}
+    resmap = {i+1: doubled_res_list[i] for i in range(len(doubled_res_list))}
     mypeptide = CGMolecule(names, resseq, resmap)
 
     # Enumerate the bonds between same residues only
@@ -49,7 +50,7 @@ def test_minima_calculation_valuess():
     num_residues = np.random.randint(3, 10)
     names = ['CA'] * num_residues
     resseq = np.arange(1, num_residues+1)
-    resmap = {i+1 : possible_residues[i] for i in range(num_residues)}
+    resmap = {i+1: possible_residues[i] for i in range(num_residues)}
     mypeptide = CGMolecule(names, resseq, resmap)
 
     # Enumerate all the bonds
@@ -86,8 +87,9 @@ def test_CA_vs_CB_minima_correspondence():
     # Make a CA+CB CGMolecule object with a random number of residues
     num_residues = np.random.randint(3, 10)
     names = ['CA', 'CB'] * num_residues
-    resseq = list(np.concatenate([np.repeat(i+1, 2) for i in range(num_residues)]))
-    resmap = {i+1 : possible_residues[i] for i in range(num_residues)}
+    resseq = list(np.concatenate([np.repeat(i+1, 2)
+                                  for i in range(num_residues)]))
+    resmap = {i+1: possible_residues[i] for i in range(num_residues)}
     mypeptide = CGMolecule(names, resseq, resmap)
 
     # Enumerate each set of inds
@@ -118,8 +120,8 @@ def test_intra_residue_zeros():
     num_residues = np.random.randint(3, 10)
     names = ['CA', 'CB'] * num_residues
     resseq = list(np.concatenate([np.repeat(i+1, 2)
-                  for i in range(num_residues)]))
-    resmap = {i+1 : possible_residues[i] for i in range(num_residues)}
+                                  for i in range(num_residues)]))
+    resmap = {i+1: possible_residues[i] for i in range(num_residues)}
     mypeptide = CGMolecule(names, resseq, resmap)
 
     # Enumerate the intraresidue CA-CB bonds
