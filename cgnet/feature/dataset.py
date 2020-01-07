@@ -31,16 +31,17 @@ class MoleculeDataset(Dataset):
         Default device is the local CPU.
     """
 
-    def __init__(self, coordinates, forces, embeddings=None, selection=None,
-                 stride=1, device=torch.device('cpu')):
+    def __init__(self, coordinates, forces, embeddings=None, dummy_atoms=False,
+                 selection=None, stride=1, device=torch.device('cpu')):
         self.stride = stride
 
         self.coordinates = self._make_array(coordinates, selection)
         self.forces = self._make_array(forces, selection)
         if embeddings is not None:
-            # if (np.any(embeddings < 1) or
-            #     not np.all(embeddings.astype(int) == embeddings)):
-            #     raise ValueError("Embeddings must be positive integers.")
+            if not np.all(embeddings.astype(int) == embeddings):
+                raise ValueError("Embeddings must be integers.")
+            if np.any(embeddings < 1) and not dummy_atoms:
+                raise ValueError("Embeddings must be positive.")
             self.embeddings = self._make_array(embeddings, selection)
         else:
             self.embeddings = None
