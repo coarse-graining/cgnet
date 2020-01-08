@@ -48,7 +48,8 @@ def calculate_hard_sphere_minima(bead_pairs, cgmolecule, units='Angstroms',
     """This function uses amino acid radii to calculate a minimum contact
     distance between atoms in a CGMolecule in either Angstroms or nanometers.
     Both glycine-glycine pairs and atoms in the same residue will return
-    a distance of zero (the latter will also raise a warning).
+    a distance of zero (the latter will also raise a warning). See also Notes,
+    below.
 
     Parameters
     ----------
@@ -75,6 +76,12 @@ def calculate_hard_sphere_minima(bead_pairs, cgmolecule, units='Angstroms',
     residue. In other words, the CA-CA, CA-CB, CB-CB, etc. distances will all
     be identical between two residues. In the example provided below, the
     hard_sphere_minima output will be a list of two identical distances.
+
+    This method does NOT account for distances between atoms within the same
+    residue (i.e., the same residue index). These distances will be returned
+    as zero and a warning will be raised. If you are using this method to 
+    populate a repulsion prior, consider applying harmonic priors to such
+    intra-residue distances.
 
     References
     ----------
