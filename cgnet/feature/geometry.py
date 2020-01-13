@@ -264,7 +264,6 @@ class Geometry():
         return neighbors, neighbor_mask
 
     def hide_dummy_atoms(self, embedding_property, neighbors, neighbor_mask):
-
         # First look for places where the embedding is zero, which indicates
         # a dummy atom that we don't want to calculate features for
         frame_dummy_inds, bead_dummy_inds = np.where(embedding_property == 0.)
