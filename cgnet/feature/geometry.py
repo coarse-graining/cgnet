@@ -276,11 +276,13 @@ class Geometry():
             dummy_dict[frame_ind].append(bead_ind)
 
         # The dummy mask gives TRUE for where the dummy atoms are
+        dummy_mask = self.to_type(self.zeros_like(neighbor_mask), self.bool)
+
         for frame_ind in dummy_dict.keys():
             dummy_mask[frame_ind] = sum(
                         [neighbors[frame_ind] == bead_ind
                          for bead_ind in dummy_dict[frame_ind]]
-                                        ).type(g.bool)
+                                        ).type(self.bool)
 
         # Set neighbor index to zero when the dummy_mask is TRUE to hide the
         # dummy atoms as neighbors
