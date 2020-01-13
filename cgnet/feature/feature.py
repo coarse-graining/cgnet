@@ -333,6 +333,15 @@ class SchnetFeature(nn.Module):
 
         neighbors, neighbor_mask = self.geometry.get_neighbors(distances,
                                                    cutoff=self.neighbor_cutoff)
+
+        # If we need to hide any dummy atoms, we do it here by updating
+        # the neighbor list and neighbor mask
+        if 0 in embedding_property:
+            neighbors, neighbor_mask = self.geometry.hide_dummy_atoms(
+                                                    embedding_property,
+                                                    neighbors,
+                                                    neighbor_mask)
+
         neighbors = neighbors.to(self.device)
         neighbor_mask = neighbor_mask.to(self.device)
         features = self.embedding_layer(embedding_property)

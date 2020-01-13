@@ -263,6 +263,40 @@ class Geometry():
 
         return neighbors, neighbor_mask
 
+    def hide_dummy_atoms(self, embedding_property, neighbors, neighbor_mask):
+
+        # First look for places where the embedding is zero, which indicates
+        # a dummy atom that we don't want to calculate features for
+        frame_dummy_inds, bead_dummy_inds = np.where(embedding_property == 0.)
+
+        # The dictionary is keyed by the frame index, and the values are a list
+        # of bead indices where the dummy atoms are located
+        dummy_dict = {frame_ind : [] for frame_ind in frame_dummy_inds}
+        dummy_pairs = [z for z in zip(frame_dummy_inds, bead_dummy_inds)]
+        for frame_ind, bead_ind in dummy_pairs:
+            dummy_dict[frame_ind].append(bead_ind)
+
+        # The dummy mask gives TRUE for where the dummy atoms are
+        dummy_mask = torch.cat([
+                                (
+                                sum(
+                                    [neighbors[frame_ind] == bead_ind
+                                   for bead_ind in dummy_dict[frame_ind]]
+                                   ).type(self.bool)
+                                ).reshape([1, *neighbor_mask.shape[1:]])
+                                for frame_ind in dummy_dict.keys()], axis=0)
+
+        # Set neighbor index to zero when the dummy_mask is TRUE to hide the
+        # dummy atoms as neighbors
+        neighbors[dummy_mask] = 0
+
+        # Now we update the neighbor mask to be False/0 for dummy atoms
+        neighbor_mask = self.clamp(
+                            neighbor_mask - dummy_mask.type(torch.float32),
+                            0, None)
+
+        return neighbors, neighbor_mask
+
     def _torch_eye(self, n, dtype):
         if dtype == torch.bool:
             # Only in pytorch>=1.2!
