@@ -277,7 +277,7 @@ class Geometry():
             dummy_dict[frame_ind].append(bead_ind)
 
         # The dummy mask gives TRUE for where the dummy atoms are
-        dummy_mask = torch.cat([
+        dummy_mask = self.cat([
                                 (
                                 sum(
                                     [neighbors[frame_ind] == bead_ind
@@ -291,8 +291,8 @@ class Geometry():
         neighbors[dummy_mask] = 0
 
         # Now we update the neighbor mask to be False/0 for dummy atoms
-        neighbor_mask = self.clamp(
-                            neighbor_mask - dummy_mask.type(torch.float32),
+        neighbor_mask = self.clip(
+                            neighbor_mask - dummy_mask.type(self.float32),
                             0, None)
 
         return neighbors, neighbor_mask
@@ -385,3 +385,9 @@ class Geometry():
             return torch.isnan(x)
         elif self.method == 'numpy':
             return np.isnan(x)
+
+    def cat(self, x, axis):
+        if self.method == 'torch':
+            return torch.cat(x, dim=axis)
+        elif self.method == 'numpy':
+            return np.concatenate(x, axis=axis)
