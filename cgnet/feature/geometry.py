@@ -276,14 +276,11 @@ class Geometry():
             dummy_dict[frame_ind].append(bead_ind)
 
         # The dummy mask gives TRUE for where the dummy atoms are
-        dummy_mask = self.cat([
-                                (
-                                sum(
-                                    [neighbors[frame_ind] == bead_ind
-                                   for bead_ind in dummy_dict[frame_ind]]
-                                   ).type(self.bool)
-                                ).reshape([1, *neighbor_mask.shape[1:]])
-                                for frame_ind in dummy_dict.keys()], axis=0)
+        for frame_ind in dummy_dict.keys():
+            dummy_mask[frame_ind] = sum(
+                        [neighbors[frame_ind] == bead_ind
+                         for bead_ind in dummy_dict[frame_ind]]
+                                        ).type(g.bool)
 
         # Set neighbor index to zero when the dummy_mask is TRUE to hide the
         # dummy atoms as neighbors
@@ -312,7 +309,7 @@ class Geometry():
     # numpy and pytorch websites should be sufficient.
 
     # Methods defined: arccos, cross, norm, sum, arange, tile, eye, ones,
-    #                  to_type, clip, isnan
+    #                  to_type, clip, isnan, cat, zeros_like
 
     def arccos(self, x):
         if self.method == 'torch':
@@ -390,3 +387,9 @@ class Geometry():
             return torch.cat(x, dim=axis)
         elif self.method == 'numpy':
             return np.concatenate(x, axis=axis)
+
+    def zeros_like(self, x):
+        if self.method == 'torch':
+            return torch.zeros_like(x)
+        elif self.method == 'numpy':
+            return np.zeros_like(x)
