@@ -22,7 +22,7 @@ _distance_pairs, _ = g_numpy.get_distance_indices(beads, [], [])
 redundant_distance_mapping = g_numpy.get_redundant_distance_mapping(
     _distance_pairs)
 
-neighbor_cutoff = np.random.uniform(0, 1)
+neighbor_cutoff = np.random.uniform(0, 3)
 
 
 def test_tile_methods_numpy_vs_torch():
@@ -82,6 +82,71 @@ def test_distances_and_neighbors_numpy_vs_torch():
     np.testing.assert_array_equal(neighbors_numpy, neighbors_torch)
     np.testing.assert_array_equal(neighbors_mask_numpy, neighbors_mask_torch)
 
+
+def test_hide_dummy_atoms_numpy():
+    #
+
+    # Calculate distances, neighbors, and neighbor mask using the numpy
+    # version of Geometry
+    distances_numpy = g_numpy.get_distances(_distance_pairs,
+                                            coords,
+                                            norm=True)
+    distances_numpy = distances_numpy[:, redundant_distance_mapping]
+    neighbors_numpy, neighbors_mask_numpy = g_numpy.get_neighbors(
+        distances_numpy,
+        cutoff=neighbor_cutoff)
+
+    possible_neighbors = np.unique(neighbors_numpy)
+    if 0 in possible_neighbors:
+        possible_neighbors = possible_neighbors[1:]
+
+    np.random.shuffle(possible_neighbors)
+    dummy_atoms = possible_neighbors[:3]
+
+    n_embeddings = np.random.randint(3, 5)
+    embedding_property = np.random.randint(low=1, high=n_embeddings,
+                                       size=(frames, beads))
+
+    embedding_property[:, dummy_atoms] = 0
+
+    new_neighbors_numpy, new_neighbors_mask_numpy = g_numpy.hide_dummy_atoms(
+                                                         embedding_property,
+                                                         neighbors_numpy,
+                                                         neighbors_mask_numpy)
+
+    assert len(np.intersect1d(dummy_atoms, np.unique(new_neighbors_numpy))) == 0
+
+
+def test_hide_dummy_atoms_torch():
+    # Calculate distances, neighbors, and neighbor mask using the numpy
+    # version of Geometry
+    distances_torch = g_torch.get_distances(_distance_pairs,
+                                            torch.from_numpy(coords),
+                                            norm=True)
+    distances_torch = distances_torch[:, redundant_distance_mapping]
+    neighbors_torch, neighbors_mask_torch = g_torch.get_neighbors(
+        distances_torch,
+        cutoff=neighbor_cutoff)
+
+    possible_neighbors = np.unique(neighbors_torch)
+    if 0 in possible_neighbors:
+        possible_neighbors = possible_neighbors[1:]
+    
+    np.random.shuffle(possible_neighbors)
+    dummy_atoms = possible_neighbors[:3]
+
+    n_embeddings = np.random.randint(3, 5)
+    embedding_property = torch.randint(low=1, high=n_embeddings,
+                                       size=(frames, beads))
+
+    embedding_property[:, dummy_atoms] = 0
+
+    new_neighbors_torch, new_neighbors_mask_torch = g_torch.hide_dummy_atoms(
+                                                         embedding_property,
+                                                         neighbors_torch,
+                                                         neighbors_mask_torch)
+
+    assert len(np.intersect1d(dummy_atoms, np.unique(new_neighbors_torch))) == 0
 
 def test_nan_check():
     # Test if an assert is raised during the computation of distances, angles
