@@ -283,17 +283,13 @@ class Geometry():
                                      for bead_ind in dummy_dict[frame_ind]]),
                                      self.bool)
 
-        # Set neighbor index to zero when the dummy_mask is TRUE to hide the
-        # dummy atoms as neighbors
-        neighbors[dummy_mask] = 0
-
         # Now we update the neighbor mask to be False/0 for dummy atoms
         neighbor_mask = self.clip(
                             neighbor_mask - self.to_type(dummy_mask,
                                                          self.float32),
                             0, None)
 
-        return neighbors, neighbor_mask
+        return neighbor_mask
 
     def _torch_eye(self, n, dtype):
         if dtype == torch.bool:
