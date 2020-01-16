@@ -106,20 +106,21 @@ def test_hide_dummy_atoms_numpy():
 
     n_embeddings = np.random.randint(3, 5)
     embedding_property = np.random.randint(low=1, high=n_embeddings,
-                                       size=(frames, beads))
+                                           size=(frames, beads))
 
     embedding_property[:, dummy_atoms] = 0
 
     new_neighbors_mask_numpy = g_numpy.hide_dummy_atoms(
-                                             embedding_property,
-                                             neighbors_numpy,
-                                             neighbors_mask_numpy)
+        embedding_property,
+        neighbors_numpy,
+        neighbors_mask_numpy)
 
     masked_neighbors_numpy = np.copy(neighbors_numpy)
     masked_neighbors_numpy[~g_numpy.to_type(
-                                    new_neighbors_mask_numpy, g_numpy.bool)] = -1
+        new_neighbors_mask_numpy, g_numpy.bool)] = -1
 
-    assert len(np.intersect1d(dummy_atoms, np.unique(masked_neighbors_numpy))) == 0
+    assert len(np.intersect1d(
+        dummy_atoms, np.unique(masked_neighbors_numpy))) == 0
 
 
 def test_hide_dummy_atoms_torch():
@@ -150,15 +151,17 @@ def test_hide_dummy_atoms_torch():
     embedding_property[:, dummy_atoms] = 0
 
     new_neighbors_mask_torch = g_torch.hide_dummy_atoms(
-                                             embedding_property,
-                                             neighbors_torch,
-                                             neighbors_mask_torch)
+        embedding_property,
+        neighbors_torch,
+        neighbors_mask_torch)
 
     masked_neighbors_torch = neighbors_torch.clone()
     masked_neighbors_torch[~g_torch.to_type(
-                                    new_neighbors_mask_torch, g_torch.bool)] = -1
+        new_neighbors_mask_torch, g_torch.bool)] = -1
 
-    assert len(np.intersect1d(dummy_atoms, np.unique(masked_neighbors_torch))) == 0
+    assert len(np.intersect1d(
+        dummy_atoms, np.unique(masked_neighbors_torch))) == 0
+
 
 def test_nan_check():
     # Test if an assert is raised during the computation of distances, angles
