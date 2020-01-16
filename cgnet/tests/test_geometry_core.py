@@ -84,7 +84,8 @@ def test_distances_and_neighbors_numpy_vs_torch():
 
 
 def test_hide_dummy_atoms_numpy():
-    #
+    # Test that any atoms with embeddings of zero don't show up in
+    # the neighbor list (numpy version)
 
     # Calculate distances, neighbors, and neighbor mask using the numpy
     # version of Geometry
@@ -118,6 +119,9 @@ def test_hide_dummy_atoms_numpy():
 
 
 def test_hide_dummy_atoms_torch():
+    # Test that any atoms with embeddings of zero don't show up in
+    # the neighbor list (torch version)
+
     # Calculate distances, neighbors, and neighbor mask using the numpy
     # version of Geometry
     distances_torch = g_torch.get_distances(_distance_pairs,
@@ -131,7 +135,7 @@ def test_hide_dummy_atoms_torch():
     possible_neighbors = np.unique(neighbors_torch)
     if 0 in possible_neighbors:
         possible_neighbors = possible_neighbors[1:]
-    
+
     np.random.shuffle(possible_neighbors)
     dummy_atoms = possible_neighbors[:3]
 
