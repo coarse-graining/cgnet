@@ -227,7 +227,8 @@ class Geometry():
         Returns
         -------
         neighbors: torch.Tensor or np.array
-            Indices of all neighbors of each bead.
+            Indices of all neighbors of each bead. This is not affected by the
+            mask.
             Shape [n_frames, n_beads, n_neighbors]
         neighbor_mask: torch.Tensor or np.array
             Index mask to filter out non-existing neighbors that were
@@ -254,8 +255,6 @@ class Geometry():
         if cutoff is not None:
             # Create an index mask for neighbors that are inside the cutoff
             neighbor_mask = distances < cutoff
-            # Set the indices of beads outside the cutoff to 0
-            neighbors[~neighbor_mask] = 0
             neighbor_mask = self.to_type(neighbor_mask, self.float32)
         else:
             neighbor_mask = self.ones((n_frames, n_beads, n_neighbors),
