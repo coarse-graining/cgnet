@@ -212,7 +212,7 @@ def test_schnet_with_dummy_atoms_is_different():
     # Tests whether forwarding through a schnet feature returns a different
     # result when some atoms are dummy atoms
     embedding_property = torch.randint(low=1, high=n_embeddings,
-                                   size=(frames, beads))
+                                       size=(frames, beads))
 
     # Initialize the embedding and SchnetFeature class
     embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
@@ -233,7 +233,7 @@ def test_schnet_with_dummy_atoms_is_different():
     embedding_property_dummy = (embedding_property -
                                 torch.min(embedding_property))
     schnet_features_dummy = schnet_feature(torch.from_numpy(coords),
-                                embedding_property_dummy)
+                                           embedding_property_dummy)
 
     # These arrays shouldn't be equal because one has dummy atoms and
     # one doesn't
