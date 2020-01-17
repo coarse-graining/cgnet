@@ -265,7 +265,7 @@ class Geometry():
     def hide_dummy_atoms(self, embedding_property, neighbors, neighbor_mask):
         # First look for places where the embedding is zero, which indicates
         # a dummy atom that we don't want to calculate features for
-        frame_dummy_inds, bead_dummy_inds = np.where(embedding_property == 0.)
+        frame_dummy_inds, bead_dummy_inds = self._get_dummy_inds(embedding_property)
 
         # The dictionary is keyed by the frame index, and the values are a list
         # of bead indices where the dummy atoms are located
@@ -283,6 +283,8 @@ class Geometry():
                                      for bead_ind in dummy_dict[frame_ind]]),
                                      self.bool)
 
+
+
         # Now we update the neighbor mask to be False/0 for dummy atoms
         neighbor_mask = self.clip(
                             neighbor_mask - self.to_type(dummy_mask,
@@ -299,6 +301,19 @@ class Geometry():
             return torch.BoolTensor(np.eye(n, dtype=np.bool))
         else:
             return torch.eye(n, dtype=dtype)
+
+    def _get_dummy_inds(self, embedding_property):
+        if self.method == 'torch':
+            frame_dummy_inds = []
+            bead_dummy_inds = []
+            for row_ind in range(embedding_property.shape[0]):
+                for col_ind in range(embedding_property.shape[1]):
+                    if embedding_property[row_ind, col_ind] == 0:
+                        frame_dummy_inds.append(row_ind)
+                        bead_dummy_inds.append(col_ind)
+            return frame_dummy_inds, bead_dummy_inds
+        elif self.method == 'numpy':
+            return np.where(embedding_property == 0.)
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # # # # # # # # # # # # # # Versatile Methods # # # # # # # # # # # # # #
