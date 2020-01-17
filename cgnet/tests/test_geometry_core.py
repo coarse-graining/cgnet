@@ -22,7 +22,7 @@ _distance_pairs, _ = g_numpy.get_distance_indices(beads, [], [])
 redundant_distance_mapping = g_numpy.get_redundant_distance_mapping(
     _distance_pairs)
 
-neighbor_cutoff = np.random.uniform(0, 1)
+neighbor_cutoff = np.random.uniform(0, 3)
 
 
 def test_tile_methods_numpy_vs_torch():
@@ -81,6 +81,96 @@ def test_distances_and_neighbors_numpy_vs_torch():
     np.testing.assert_array_equal(distances_numpy, distances_torch)
     np.testing.assert_array_equal(neighbors_numpy, neighbors_torch)
     np.testing.assert_array_equal(neighbors_mask_numpy, neighbors_mask_torch)
+
+
+def test_hide_dummy_atoms_numpy():
+    # Test that any atoms with embeddings of zero don't show up in
+    # the neighbor list (numpy version)
+
+    # Calculate distances, neighbors, and neighbor mask using the numpy
+    # version of Geometry
+    distances_numpy = g_numpy.get_distances(_distance_pairs,
+                                            coords,
+                                            norm=True)
+    distances_numpy = distances_numpy[:, redundant_distance_mapping]
+    neighbors_numpy, neighbors_mask_numpy = g_numpy.get_neighbors(
+        distances_numpy,
+        cutoff=neighbor_cutoff)
+
+    # Enumerate all the neighbor indices that might be made dummy atoms
+    # and choose three of them
+    possible_neighbors = np.unique(neighbors_numpy)
+    np.random.shuffle(possible_neighbors)
+    dummy_atoms = possible_neighbors[:3]
+
+    # Create a random embedding
+    n_embeddings = np.random.randint(3, 5)
+    embedding_property = np.random.randint(low=1, high=n_embeddings,
+                                           size=(frames, beads))
+
+    # Set the embeddings for the chosen dummy atoms to zero, identifying
+    # them as dummy atoms
+    embedding_property[:, dummy_atoms] = 0
+
+    # Hide these dummy atoms by modifying the neighbor mask to also mask them
+    new_neighbors_mask_numpy = g_numpy.hide_dummy_atoms(
+        embedding_property,
+        neighbors_numpy,
+        neighbors_mask_numpy)
+
+    # To test that the mask worked, we set every neighbor index that's masked
+    # to -1. Then, we assert that none of our dummy atom indices show up
+    # in the neighbor matrix.
+    masked_neighbors_numpy = np.copy(neighbors_numpy)
+    masked_neighbors_numpy[~g_numpy.to_type(
+        new_neighbors_mask_numpy, g_numpy.bool)] = -1
+    assert len(np.intersect1d(
+        dummy_atoms, np.unique(masked_neighbors_numpy))) == 0
+
+
+def test_hide_dummy_atoms_torch():
+    # Test that any atoms with embeddings of zero don't show up in
+    # the neighbor list (torch version)
+
+    # Calculate distances, neighbors, and neighbor mask using the numpy
+    # version of Geometry
+    distances_torch = g_torch.get_distances(_distance_pairs,
+                                            torch.from_numpy(coords),
+                                            norm=True)
+    distances_torch = distances_torch[:, redundant_distance_mapping]
+    neighbors_torch, neighbors_mask_torch = g_torch.get_neighbors(
+        distances_torch,
+        cutoff=neighbor_cutoff)
+
+    # Enumerate all the neighbor indices that might be made dummy atoms
+    # and choose three of them
+    possible_neighbors = np.unique(neighbors_torch)
+    np.random.shuffle(possible_neighbors)
+    dummy_atoms = possible_neighbors[:3]
+
+    # Create a random embedding
+    n_embeddings = np.random.randint(3, 5)
+    embedding_property = torch.randint(low=1, high=n_embeddings,
+                                       size=(frames, beads))
+
+    # Set the embeddings for the chosen dummy atoms to zero, identifying
+    # them as dummy atoms
+    embedding_property[:, dummy_atoms] = 0
+
+    # Hide these dummy atoms by modifying the neighbor mask to also mask them
+    new_neighbors_mask_torch = g_torch.hide_dummy_atoms(
+        embedding_property,
+        neighbors_torch,
+        neighbors_mask_torch)
+
+    # To test that the mask worked, we set every neighbor index that's masked
+    # to -1. Then, we assert that none of our dummy atom indices show up
+    # in the neighbor matrix.
+    masked_neighbors_torch = neighbors_torch.clone()
+    masked_neighbors_torch[~g_torch.to_type(
+        new_neighbors_mask_torch, g_torch.bool)] = -1
+    assert len(np.intersect1d(
+        dummy_atoms, np.unique(masked_neighbors_torch))) == 0
 
 
 def test_nan_check():

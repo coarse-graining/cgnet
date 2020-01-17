@@ -227,7 +227,8 @@ class Geometry():
         Returns
         -------
         neighbors: torch.Tensor or np.array
-            Indices of all neighbors of each bead.
+            Indices of all neighbors of each bead. This is not affected by the
+            mask.
             Shape [n_frames, n_beads, n_neighbors]
         neighbor_mask: torch.Tensor or np.array
             Index mask to filter out non-existing neighbors that were
@@ -254,14 +255,43 @@ class Geometry():
         if cutoff is not None:
             # Create an index mask for neighbors that are inside the cutoff
             neighbor_mask = distances < cutoff
-            # Set the indices of beads outside the cutoff to 0
-            neighbors[~neighbor_mask] = 0
             neighbor_mask = self.to_type(neighbor_mask, self.float32)
         else:
             neighbor_mask = self.ones((n_frames, n_beads, n_neighbors),
                                       dtype=self.float32)
 
         return neighbors, neighbor_mask
+
+    def hide_dummy_atoms(self, embedding_property, neighbors, neighbor_mask):
+        # First look for places where the embedding is zero, which indicates
+        # a dummy atom that we don't want to calculate features for
+        frame_dummy_inds, bead_dummy_inds = np.where(embedding_property == 0.)
+
+        # The dictionary is keyed by the frame index, and the values are a list
+        # of bead indices where the dummy atoms are located
+        dummy_dict = {frame_ind : [] for frame_ind in frame_dummy_inds}
+        dummy_pairs = [z for z in zip(frame_dummy_inds, bead_dummy_inds)]
+        for frame_ind, bead_ind in dummy_pairs:
+            dummy_dict[frame_ind].append(bead_ind)
+
+        # The dummy mask gives TRUE for where the dummy atoms are
+        dummy_mask = self.to_type(self.zeros_like(neighbor_mask), self.bool)
+
+        for frame_ind in dummy_dict.keys():
+            dummy_mask[frame_ind] = self.to_type(sum(
+                                    [neighbors[frame_ind] == bead_ind
+                                     for bead_ind in dummy_dict[frame_ind]]),
+                                     self.bool)
+
+        # Now we update the neighbor mask to be False/0 for dummy atoms
+        neighbor_mask = self.clip(
+                            neighbor_mask - self.to_type(dummy_mask,
+                                                         self.float32),
+                            0, None)
+
+        # Note that we never return the dummy mask! We only return the
+        # neighbor mask with modifications accounting for the dummy atoms.
+        return neighbor_mask
 
     def _torch_eye(self, n, dtype):
         if dtype == torch.bool:
@@ -280,7 +310,7 @@ class Geometry():
     # numpy and pytorch websites should be sufficient.
 
     # Methods defined: arccos, cross, norm, sum, arange, tile, eye, ones,
-    #                  to_type, clip, isnan
+    #                  to_type, clip, isnan, cat, zeros_like
 
     def arccos(self, x):
         if self.method == 'torch':
@@ -352,3 +382,15 @@ class Geometry():
             return torch.isnan(x)
         elif self.method == 'numpy':
             return np.isnan(x)
+
+    def cat(self, x, axis):
+        if self.method == 'torch':
+            return torch.cat(x, dim=axis)
+        elif self.method == 'numpy':
+            return np.concatenate(x, axis=axis)
+
+    def zeros_like(self, x):
+        if self.method == 'torch':
+            return torch.zeros_like(x)
+        elif self.method == 'numpy':
+            return np.zeros_like(x)

@@ -79,3 +79,25 @@ def test_embedding_shape():
 
     assert ds[:][2].shape == (frames, beads)
     np.testing.assert_array_equal(ds.embeddings, embeddings)
+
+
+def test_embedding_with_dummy_atoms():
+    # Test whether embeddings are rejected with zeros unless dummy_atoms
+    # is specified to be true
+
+    # Make some embeddings that have zeros
+    embeddings = np.random.randint(1, 10, size=(frames, beads))
+    # Subtracting the minimum ensures that some zeros will show up
+    embeddings -= np.min(embeddings)
+
+    # This should raise an error because we've given MoleculeDataset
+    # zeros but haven't specified that we have dummy atoms
+    np.testing.assert_raises(ValueError,
+                             MoleculeDataset, coords, forces, embeddings)
+
+    # This should not raise an error
+    ds = MoleculeDataset(coords, forces, embeddings, dummy_atoms=True)
+
+    # Our embeddings are preserved, with zeros
+    assert 0 in embeddings
+    np.testing.assert_array_equal(embeddings, ds.embeddings)

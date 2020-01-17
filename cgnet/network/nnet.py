@@ -67,6 +67,16 @@ class CGnet(nn.Module):
     external prior functions, which are useful for regularizing network behavior
     in sparsely sampled, unphysical regions of molecular configuration space.
 
+    The inputs to CGnet (coordinates and forces) determine the units
+    that are learned/used by CGnet. It is important to make sure that the units
+    between the input coordinates and force labels are consistent with one
+    another. These units must also be consistent with the interaction
+    parameters for and specified priors. If one desires to use CGnet to make
+    predictions in a different unit system, the predictions must be made using
+    original unit system, and then converted to the desired unit system
+    outside of the CGnet. Otherwise, a new CGnet model must be trained using the
+    desired units. 
+
     Examples
     --------
     From Jiang et. al. (2019), the optimal architecture for a 5-bead coarse
