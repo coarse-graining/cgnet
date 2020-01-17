@@ -237,8 +237,10 @@ def test_schnet_with_dummy_atoms_is_different():
 
     # These arrays shouldn't be equal because one has dummy atoms and
     # one doesn't
-    np.testing.assert_raises(AssertionError, assert_array_equal,
-                             schnet_features, schnet_features_dummy)
+    np.testing.assert_raises(AssertionError,
+                             np.testing.assert_array_equal,
+                             schnet_features.detach().numpy(),
+                             schnet_features_dummy.detach().numpy())
 
 
 def test_cg_embedding():
