@@ -1,5 +1,5 @@
 # Author: Dominik Lemm
-# Contributors: Nick Charron
+# Contributors: Nick Charron, Brooke Husic
 
 import numpy as np
 import torch
@@ -206,6 +206,39 @@ def test_schnet_feature():
     # The manually computed features and the feature from the forward pass
     # should be the same.
     np.testing.assert_allclose(schnet_features.detach(), features.detach())
+
+
+def test_schnet_with_dummy_atoms_is_different():
+    # Tests whether forwarding through a schnet feature returns a different
+    # result when some atoms are dummy atoms
+    embedding_property = torch.randint(low=1, high=n_embeddings,
+                                   size=(frames, beads))
+
+    # Initialize the embedding and SchnetFeature class
+    embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
+                                      embedding_dim=n_feats)
+    schnet_feature = SchnetFeature(feature_size=n_feats,
+                                   embedding_layer=embedding_layer,
+                                   n_interaction_blocks=2,
+                                   calculate_geometry=True,
+                                   n_beads=beads,
+                                   neighbor_cutoff=neighbor_cutoff)
+
+    # Next, we check that forwarding cartesian coordinates through SchnetFeature
+    # produces the correct output feature sizes
+    schnet_features = schnet_feature(torch.from_numpy(coords),
+                                     embedding_property)
+
+    # Force the embedding property to have zeros
+    embedding_property_dummy = (embedding_property -
+                                torch.min(embedding_property))
+    schnet_features_dummy = schnet_feature(torch.from_numpy(coords),
+                                embedding_property_dummy)
+
+    # These arrays shouldn't be equal because one has dummy atoms and
+    # one doesn't
+    np.testing.assert_raises(AssertionError, assert_array_equal,
+                             schnet_features, schnet_features_dummy)
 
 
 def test_cg_embedding():

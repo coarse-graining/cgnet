@@ -97,28 +97,33 @@ def test_hide_dummy_atoms_numpy():
         distances_numpy,
         cutoff=neighbor_cutoff)
 
+    # Enumerate all the neighbor indices that might be made dummy atoms
+    # and choose three of them
     possible_neighbors = np.unique(neighbors_numpy)
-    if 0 in possible_neighbors:
-        possible_neighbors = possible_neighbors[1:]
-
     np.random.shuffle(possible_neighbors)
     dummy_atoms = possible_neighbors[:3]
 
+    # Create a random embedding
     n_embeddings = np.random.randint(3, 5)
     embedding_property = np.random.randint(low=1, high=n_embeddings,
                                            size=(frames, beads))
 
+    # Set the embeddings for the chosen dummy atoms to zero, identifying
+    # them as dummy atoms
     embedding_property[:, dummy_atoms] = 0
 
+    # Hide these dummy atoms by modifying the neighbor mask to also mask them
     new_neighbors_mask_numpy = g_numpy.hide_dummy_atoms(
         embedding_property,
         neighbors_numpy,
         neighbors_mask_numpy)
 
+    # To test that the mask worked, we set every neighbor index that's masked
+    # to -1. Then, we assert that none of our dummy atom indices show up
+    # in the neighbor matrix.
     masked_neighbors_numpy = np.copy(neighbors_numpy)
     masked_neighbors_numpy[~g_numpy.to_type(
         new_neighbors_mask_numpy, g_numpy.bool)] = -1
-
     assert len(np.intersect1d(
         dummy_atoms, np.unique(masked_neighbors_numpy))) == 0
 
@@ -137,28 +142,33 @@ def test_hide_dummy_atoms_torch():
         distances_torch,
         cutoff=neighbor_cutoff)
 
+    # Enumerate all the neighbor indices that might be made dummy atoms
+    # and choose three of them
     possible_neighbors = np.unique(neighbors_torch)
-    if 0 in possible_neighbors:
-        possible_neighbors = possible_neighbors[1:]
-
     np.random.shuffle(possible_neighbors)
     dummy_atoms = possible_neighbors[:3]
 
+    # Create a random embedding
     n_embeddings = np.random.randint(3, 5)
     embedding_property = torch.randint(low=1, high=n_embeddings,
                                        size=(frames, beads))
 
+    # Set the embeddings for the chosen dummy atoms to zero, identifying
+    # them as dummy atoms
     embedding_property[:, dummy_atoms] = 0
 
+    # Hide these dummy atoms by modifying the neighbor mask to also mask them
     new_neighbors_mask_torch = g_torch.hide_dummy_atoms(
         embedding_property,
         neighbors_torch,
         neighbors_mask_torch)
 
+    # To test that the mask worked, we set every neighbor index that's masked
+    # to -1. Then, we assert that none of our dummy atom indices show up
+    # in the neighbor matrix.
     masked_neighbors_torch = neighbors_torch.clone()
     masked_neighbors_torch[~g_torch.to_type(
         new_neighbors_mask_torch, g_torch.bool)] = -1
-
     assert len(np.intersect1d(
         dummy_atoms, np.unique(masked_neighbors_torch))) == 0
 

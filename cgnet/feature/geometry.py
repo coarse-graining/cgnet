@@ -289,6 +289,8 @@ class Geometry():
                                                          self.float32),
                             0, None)
 
+        # Note that we never return the dummy mask! We only return the
+        # neighbor mask with modifications accounting for the dummy atoms.
         return neighbor_mask
 
     def _torch_eye(self, n, dtype):
