@@ -167,8 +167,10 @@ def test_hide_dummy_atoms_torch():
     # to -1. Then, we assert that none of our dummy atom indices show up
     # in the neighbor matrix.
     masked_neighbors_torch = neighbors_torch.clone()
+    # masked_neighbors_torch[~g_torch.to_type(
+    #     new_neighbors_mask_torch, g_torch.bool)] = -1 # pytorch >=1.2
     masked_neighbors_torch[~g_torch.to_type(
-        new_neighbors_mask_torch, g_torch.bool)] = -1
+        new_neighbors_mask_torch, torch.ByteTensor)] = -1 # pytorch 1.1
     assert len(np.intersect1d(
         dummy_atoms, np.unique(masked_neighbors_torch))) == 0
 
