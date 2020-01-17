@@ -1,7 +1,7 @@
 cgnet (pytorch 1.1 compatible)
 ===
 
-The three changes are:
+The changes are:
 
 In `feature/geometry.py`:
 
@@ -20,6 +20,15 @@ energy = energy.sum(dim=1) # pytorch 1.1
 ```
 # energy = torch.sum(energy, axis=-2) # pytorch >=1.2
 energy = energy.sum(dim=-2) # pytorch 1.1
+```
+
+in `tests/test_geometry_core.py`:
+
+```
+# masked_neighbors_torch[~g_torch.to_type(
+#     new_neighbors_mask_torch, g_torch.bool)] = -1 # pytorch >=1.2
+masked_neighbors_torch[~g_torch.to_type(
+    new_neighbors_mask_torch, torch.ByteTensor)] = -1 # pytorch 1.1
 ```
 
 Dependencies
