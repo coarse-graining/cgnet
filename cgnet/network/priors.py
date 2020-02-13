@@ -188,7 +188,7 @@ class HarmonicLayer(_PriorLayer):
     """Layer for calculating bond/angle harmonic energy prior. Harominc energy
     contributions have the following form:
 
-        U_harmonic_{ij} = k_{ij} * (r_{ij} - r_0_{ij}) ^ 2
+        U_harmonic_{ij} = 0.5 * k_{ij} * ((r_{ij} - r_0_{ij}) ^ 2)
 
     where U_harmonic_ij is the harmonic energy contribution from
     coarse grain beads i and j, k_ij is the harmonic spring constant
