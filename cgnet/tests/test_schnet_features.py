@@ -3,11 +3,11 @@
 
 import numpy as np
 import torch
+import torch.nn as nn
 
 from cgnet.feature import (ContinuousFilterConvolution, InteractionBlock,
                            SchnetFeature, CGBeadEmbedding, GeometryStatistics,
-                           Geometry)
-
+                           Geometry, ShiftedSoftplus)
 g = Geometry(method='torch')
 
 # Define sizes for a pseudo-dataset
@@ -234,3 +234,47 @@ def test_cg_embedding():
     random_embedding = embedding_layer.forward(
         random_properties).detach().numpy()
     assert not np.all(random_embedding)
+
+
+def test_schnet_activations():
+    # Tests whether setting the activation function from the SchnetFeature
+    # level correctly sets the activation for the InteractionBlocks and
+    # ContinuousFilterConvolutions
+
+    alt_activations = [nn.Tanh(), nn.ReLU(), nn.ELU(), nn.Sigmoid()]
+    alt_activation_classes = [nn.Tanh, nn.ReLU, nn.ELU, nn.Sigmoid]
+    interaction_blocks = np.random.randint(1, high=5,
+                                           size=len(alt_activations))
+
+    for activation, activation_class, iblock in zip(alt_activations,
+                                                    alt_activation_classes,
+                                                    interaction_blocks):
+        schnet_feature = SchnetFeature(feature_size=n_feats,
+                                       embedding_layer=None,
+                                       activation=activation,
+                                       n_interaction_blocks=iblock,
+                                       calculate_geometry=True,
+                                       n_beads=beads)
+        # check all atom-wise layers and the filter generator networks
+        # in both cases, the second index of the nn.Sequential objects
+        # that hold the LinearLayers
+        for interaction_block in schnet_feature.interaction_blocks:
+            assert isinstance(interaction_block.output_dense[1],
+                              activation_class)
+            assert isinstance(interaction_block.cfconv.filter_generator[1],
+                              activation_class)
+
+    # Lastly, we check to see if the default activation, ShiftedSoftplus,
+    # is correctly placed
+    schnet_feature = SchnetFeature(feature_size=n_feats,
+                                   embedding_layer=None,
+                                   n_interaction_blocks=iblock,
+                                   calculate_geometry=True,
+                                   n_beads=beads)
+    # check all atom-wise layers and the filter generator networks
+    # in both cases, the second index of the nn.Sequential objects
+    # that hold the LinearLayers
+    for interaction_block in schnet_feature.interaction_blocks:
+        assert isinstance(interaction_block.output_dense[1], ShiftedSoftplus)
+        assert isinstance(interaction_block.cfconv.filter_generator[1],
+                          ShiftedSoftplus)

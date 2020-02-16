@@ -84,6 +84,8 @@ class ContinuousFilterConvolution(nn.Module):
         Number of filters that will be created. Also determines the output size.
         Needs to be the same size as the features of the residual connection in
         the interaction block.
+    activation: nn.Module (default=ShiftedSoftplus())
+        Activation function for the filter generating network.
 
     Notes
     -----
@@ -100,10 +102,10 @@ class ContinuousFilterConvolution(nn.Module):
         https://doi.org/10.1063/1.5019779
     """
 
-    def __init__(self, n_gaussians, n_filters):
+    def __init__(self, n_gaussians, n_filters, activation=ShiftedSoftplus()):
         super(ContinuousFilterConvolution, self).__init__()
         filter_layers = LinearLayer(n_gaussians, n_filters, bias=True,
-                                    activation=ShiftedSoftplus())
+                                    activation=activation)
         # No activation function in the last layer allows the filter generator
         # to contain negative values.
         filter_layers += LinearLayer(n_filters, n_filters, bias=True)
@@ -198,6 +200,8 @@ class InteractionBlock(nn.Module):
         Number of filters that will be created in the continuous filter convolution.
         The same feature size will be used for the output linear layers of the
         interaction block.
+    activation: nn.Module (default=ShiftedSoftplus)
+        The 
 
     Notes
     -----
@@ -214,20 +218,22 @@ class InteractionBlock(nn.Module):
         https://doi.org/10.1063/1.5019779
     """
 
-    def __init__(self, n_inputs, n_gaussians, n_filters):
+    def __init__(self, n_inputs, n_gaussians, n_filters,
+                 activation=ShiftedSoftplus()):
         super(InteractionBlock, self).__init__()
 
         self.initial_dense = nn.Sequential(
             *LinearLayer(n_inputs, n_filters, bias=False,
                          activation=None))
         # backwards compatibility for spelling error in initial dense
-        # layer attribute. 
+        # layer attribute.
         # WARNING : This will be removed in the future!
         self.inital_dense = self.initial_dense
         self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
-                                                  n_filters=n_filters)
+                                                  n_filters=n_filters,
+                                                  activation=activation)
         output_layers = LinearLayer(n_filters, n_filters, bias=True,
-                                    activation=ShiftedSoftplus())
+                                    activation=activation)
         output_layers += LinearLayer(n_filters, n_filters, bias=True,
                                      activation=None)
         self.output_dense = nn.Sequential(*output_layers)
