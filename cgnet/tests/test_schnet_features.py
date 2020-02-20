@@ -241,11 +241,19 @@ def test_schnet_activations():
     # level correctly sets the activation for the InteractionBlocks and
     # ContinuousFilterConvolutions
 
+    # Here, we instance some common activation functions and shuffle them
     alt_activations = [nn.Tanh(), nn.ReLU(), nn.ELU(), nn.Sigmoid()]
     alt_activation_classes = [nn.Tanh, nn.ReLU, nn.ELU, nn.Sigmoid]
+    alt_lists = list(zip(alt_activations, alt_activation_classes))
+    np.random.shuffle(alt_lists)
+    alt_activations, alt_activation_classes = zip(*alt_lists)
+
+    # Here we instance an random number of interaction blocks
     interaction_blocks = np.random.randint(1, high=5,
                                            size=len(alt_activations))
 
+    # Here, we loop through all the activations and make sure that 
+    # they appear where they should in the model
     for activation, activation_class, iblock in zip(alt_activations,
                                                     alt_activation_classes,
                                                     interaction_blocks):
@@ -265,7 +273,7 @@ def test_schnet_activations():
                               activation_class)
 
     # Lastly, we check to see if the default activation, ShiftedSoftplus,
-    # is correctly placed
+    # is correctly placed in the model
     schnet_feature = SchnetFeature(feature_size=n_feats,
                                    embedding_layer=None,
                                    n_interaction_blocks=iblock,
