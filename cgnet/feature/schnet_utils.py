@@ -87,9 +87,9 @@ class ContinuousFilterConvolution(nn.Module):
     activation: nn.Module (default=ShiftedSoftplus())
         Activation function for the filter generating network. By default, we choose
         ShiftedSoftplus to follow Schütt et al (2018), however we have observerd
-        in practice that ShiftedSoftplus can lead to simulation instabilites.
-        Therefore, we encourage users to try otehr activation functions such as
-        nn.Tanh().
+        in practice that ShiftedSoftplus with CGSchNet can lead to simulation
+        instabilites. Therefore, we encourage users to try otehr activation functions
+        such as nn.Tanh() when using CGSchNet, especially for larger proteins.
 
     Notes
     -----
