@@ -197,11 +197,7 @@ class SchnetFeature(nn.Module):
         SchnetFeature - including within the atom-wise layers and
         the filter-generating networks. Following Schütt et al,
         the default value is ShiftedSoftplus, but any differentiable
-        activation function can be used. Note that in practice, we have
-        obsevred that ShiftedSoftplus as an activation function for a
-        SchnetFeature can lead to simulation instabilities for larger
-        protein systems, so we encourage users to explore other activation
-        functions such as nn.Tanh()
+        activation function can be used (see Notes).
     calculate_geometry: boolean (default=False)
         Allows calls to Geometry instance for calculating distances for a
         standalone SchnetFeature instance (i.e. one that is not
@@ -230,6 +226,11 @@ class SchnetFeature(nn.Module):
     -----
     Default values for radial basis function related variables (rbf_cutoff,
     n_gaussians, variance) are taken as suggested in SchnetPack.
+
+    In practice, we have observed that ShiftedSoftplus as an activation
+    function for a SchnetFeature that is used for a CGnet will lead
+    to simulation instabilities when using that CGnet to generate new
+    data. We have experienced more success with nn.Tanh().
 
     Example
     -------
