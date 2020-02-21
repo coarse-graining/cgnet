@@ -84,12 +84,22 @@ class ContinuousFilterConvolution(nn.Module):
         Number of filters that will be created. Also determines the output size.
         Needs to be the same size as the features of the residual connection in
         the interaction block.
+    activation: nn.Module (default=ShiftedSoftplus())
+        Activation function for the filter generating network. Following
+        Schütt et al, the default value is ShiftedSoftplus, but any
+        differentiable activation function can be used (see Notes).
 
     Notes
     -----
     Following the current implementation in SchNetPack, the last linear layer of
     the filter generator does not contain an activation function.
     This allows the filter generator to contain negative values.
+
+    In practice, we have observed that ShiftedSoftplus as an activation
+    function for a SchnetFeature (i.e., within its ContinuousFilterConvolution)
+    that is used for a CGnet will lead to simulation instabilities when using
+    that CGnet to generate new data. We have experienced more success with
+    nn.Tanh().
 
     References
     ----------
@@ -100,10 +110,10 @@ class ContinuousFilterConvolution(nn.Module):
         https://doi.org/10.1063/1.5019779
     """
 
-    def __init__(self, n_gaussians, n_filters):
+    def __init__(self, n_gaussians, n_filters, activation=ShiftedSoftplus()):
         super(ContinuousFilterConvolution, self).__init__()
         filter_layers = LinearLayer(n_gaussians, n_filters, bias=True,
-                                    activation=ShiftedSoftplus())
+                                    activation=activation)
         # No activation function in the last layer allows the filter generator
         # to contain negative values.
         filter_layers += LinearLayer(n_filters, n_filters, bias=True)
@@ -198,12 +208,22 @@ class InteractionBlock(nn.Module):
         Number of filters that will be created in the continuous filter convolution.
         The same feature size will be used for the output linear layers of the
         interaction block.
+    activation: nn.Module (default=ShiftedSoftplus())
+        Activation function for the atom-wise layers. Following Schütt et al, 
+        the default value is ShiftedSoftplus, but any differentiable activation
+        function can be used (see Notes).
 
     Notes
     -----
     The additive residual connection between interaction blocks is not
     included in the output of this forward pass. The residual connection
     will be computed separately outside of this class.
+
+    In practice, we have observed that ShiftedSoftplus as an activation
+    function for a SchnetFeature (i.e., within its InteractionBlock)
+    that is used for a CGnet will lead to simulation instabilities when using
+    that CGnet to generate new data. We have experienced more success with
+    nn.Tanh().
 
     References
     ----------
@@ -214,20 +234,22 @@ class InteractionBlock(nn.Module):
         https://doi.org/10.1063/1.5019779
     """
 
-    def __init__(self, n_inputs, n_gaussians, n_filters):
+    def __init__(self, n_inputs, n_gaussians, n_filters,
+                 activation=ShiftedSoftplus()):
         super(InteractionBlock, self).__init__()
 
         self.initial_dense = nn.Sequential(
             *LinearLayer(n_inputs, n_filters, bias=False,
                          activation=None))
         # backwards compatibility for spelling error in initial dense
-        # layer attribute. 
+        # layer attribute.
         # WARNING : This will be removed in the future!
         self.inital_dense = self.initial_dense
         self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
-                                                  n_filters=n_filters)
+                                                  n_filters=n_filters,
+                                                  activation=activation)
         output_layers = LinearLayer(n_filters, n_filters, bias=True,
-                                    activation=ShiftedSoftplus())
+                                    activation=activation)
         output_layers += LinearLayer(n_filters, n_filters, bias=True,
                                      activation=None)
         self.output_dense = nn.Sequential(*output_layers)

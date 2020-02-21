@@ -7,7 +7,7 @@ import numpy as np
 import warnings
 
 from .geometry import Geometry
-from .utils import RadialBasisFunction, ModulatedRBF
+from .utils import RadialBasisFunction, ModulatedRBF, ShiftedSoftplus
 from .schnet_utils import InteractionBlock
 
 
@@ -81,14 +81,15 @@ class GeometryFeature(nn.Module):
                 self._dihedral_quads = [
                     feat for feat in feature_tuples if len(feat) == 4]
             else:
-                raise RuntimeError("Either a list of feature tuples or " \
+                raise RuntimeError("Either a list of feature tuples or "
                                    "'all_backbone' must be specified.")
         else:
             if n_beads is None:
                 raise RuntimeError(
                     "Must specify n_beads if feature_tuples is 'all_backone'."
                 )
-            self._distance_pairs, _ = self.geometry.get_distance_indices(n_beads)
+            self._distance_pairs, _ = self.geometry.get_distance_indices(
+                n_beads)
             if n_beads > 2:
                 self._angle_trips = [(i, i+1, i+2)
                                      for i in range(n_beads-2)]
@@ -191,6 +192,12 @@ class SchnetFeature(nn.Module):
         filters that will be used.
     embedding_layer: torch.nn.Module
         Class that embeds a property into a feature vector.
+    activation: nn.Module (default=ShiftedSoftplus())
+        Activation function that will be used throughout the
+        SchnetFeature - including within the atom-wise layers and
+        the filter-generating networks. Following Schütt et al,
+        the default value is ShiftedSoftplus, but any differentiable
+        activation function can be used (see Notes).
     calculate_geometry: boolean (default=False)
         Allows calls to Geometry instance for calculating distances for a
         standalone SchnetFeature instance (i.e. one that is not
@@ -220,6 +227,11 @@ class SchnetFeature(nn.Module):
     Default values for radial basis function related variables (rbf_cutoff,
     n_gaussians, variance) are taken as suggested in SchnetPack.
 
+    In practice, we have observed that ShiftedSoftplus as an activation
+    function for a SchnetFeature that is used for a CGnet will lead
+    to simulation instabilities when using that CGnet to generate new
+    data. We have experienced more success with nn.Tanh().
+
     Example
     -------
     # Basic example on how to initialize and use the SchnetFeature class.
@@ -247,11 +259,20 @@ class SchnetFeature(nn.Module):
     # In case SchnetFeature is initialized with calculate_geometry=False,
     # distances instead of coordinates can passed.
     # Distances should have the size [n_frames, n_beads, n_beads-1].
+
+    References
+    ----------
+    K.T. Schütt. P.-J. Kindermans, H. E. Sauceda, S. Chmiela,
+        A. Tkatchenko, K.-R. Müller. (2018)
+        SchNet - a deep learning architecture for molecules and materials.
+        The Journal of Chemical Physics.
+        https://doi.org/10.1063/1.5019779
     """
 
     def __init__(self,
                  feature_size,
                  embedding_layer,
+                 activation=ShiftedSoftplus(),
                  calculate_geometry=None,
                  n_beads=None,
                  basis_function_type='uniform',
@@ -268,25 +289,28 @@ class SchnetFeature(nn.Module):
         self.embedding_layer = embedding_layer
         if basis_function_type == 'uniform':
             self.rbf_layer = RadialBasisFunction(cutoff=rbf_cutoff,
-                                             n_gaussians=n_gaussians,
-                                             variance=variance)
+                                                 n_gaussians=n_gaussians,
+                                                 variance=variance)
         elif basis_function_type == 'modulated':
             self.rbf_layer = ModulatedRBF(cutoff=rbf_cutoff,
-                                            n_gaussians=n_gaussians,
-                                            device = self.device)
+                                          n_gaussians=n_gaussians,
+                                          device=self.device)
         else:
-            raise RuntimeError("Basis function type must be 'uniform' or 'modulated'.")
+            raise RuntimeError(
+                "Basis function type must be 'uniform' or 'modulated'.")
 
         if share_weights:
             # Lets the interaction blocks share the weights
             self.interaction_blocks = nn.ModuleList(
-                [InteractionBlock(feature_size, n_gaussians, feature_size)]
+                [InteractionBlock(feature_size, n_gaussians,
+                                  feature_size, activation=activation)]
                 * n_interaction_blocks
             )
         else:
             # Every interaction block has their own weights
             self.interaction_blocks = nn.ModuleList(
-                [InteractionBlock(feature_size, n_gaussians, feature_size)
+                [InteractionBlock(feature_size, n_gaussians,
+                                  feature_size, activation=activation)
                  for _ in range(n_interaction_blocks)]
             )
 
@@ -294,12 +318,12 @@ class SchnetFeature(nn.Module):
         self.calculate_geometry = calculate_geometry
         if self.calculate_geometry:
             self._distance_pairs, _ = self.geometry.get_distance_indices(n_beads,
-                                                                          [], [])
+                                                                         [], [])
             self.redundant_distance_mapping = self.geometry.get_redundant_distance_mapping(
                 self._distance_pairs)
         else:
             self._distance_pairs, _ = self.geometry.get_distance_indices(n_beads,
-                                                                          [], [])
+                                                                         [], [])
             self.redundant_distance_mapping = None
 
     def forward(self, in_features, embedding_property):
@@ -332,7 +356,7 @@ class SchnetFeature(nn.Module):
             distances = in_features
 
         neighbors, neighbor_mask = self.geometry.get_neighbors(distances,
-                                                   cutoff=self.neighbor_cutoff)
+                                                               cutoff=self.neighbor_cutoff)
         neighbors = neighbors.to(self.device)
         neighbor_mask = neighbor_mask.to(self.device)
         features = self.embedding_layer(embedding_property)
