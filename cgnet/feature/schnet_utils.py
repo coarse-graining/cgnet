@@ -85,17 +85,21 @@ class ContinuousFilterConvolution(nn.Module):
         Needs to be the same size as the features of the residual connection in
         the interaction block.
     activation: nn.Module (default=ShiftedSoftplus())
-        Activation function for the filter generating network. By default, we choose
-        ShiftedSoftplus to follow Schütt et al (2018). However, we have observed
-        in practice that ShiftedSoftplus as an activation for a ContinuousFilterConvolution
-        can lead to simulation instabilites. Therefore, we encourage users to try other
-        activation functions such as nn.Tanh(), especially for larger proteins.
+        Activation function for the filter generating network. Following
+        Schütt et al, the default value is ShiftedSoftplus, but any
+        differentiable activation function can be used (see Notes).
 
     Notes
     -----
     Following the current implementation in SchNetPack, the last linear layer of
     the filter generator does not contain an activation function.
     This allows the filter generator to contain negative values.
+
+    In practice, we have observed that ShiftedSoftplus as an activation
+    function for a SchnetFeature (i.e., within its ContinuousFilterConvolution)
+    that is used for a CGnet will lead to simulation instabilities when using
+    that CGnet to generate new data. We have experienced more success with
+    nn.Tanh().
 
     References
     ----------
@@ -205,17 +209,21 @@ class InteractionBlock(nn.Module):
         The same feature size will be used for the output linear layers of the
         interaction block.
     activation: nn.Module (default=ShiftedSoftplus())
-        Activation function for the atom-wise layers. By default, we choose
-        ShiftedSoftplus to follow Schütt et al (2018). However we have observed
-        in practice that ShiftedSoftplus as an activation for an InteractionBlock
-        can lead to simulation instabilites. Therefore, we encourage users to try other
-        activation functions such as nn.Tanh(), especially for larger proteins.
+        Activation function for the atom-wise layers. Following Schütt et al, 
+        the default value is ShiftedSoftplus, but any differentiable activation
+        function can be used (see Notes).
 
     Notes
     -----
     The additive residual connection between interaction blocks is not
     included in the output of this forward pass. The residual connection
     will be computed separately outside of this class.
+
+    In practice, we have observed that ShiftedSoftplus as an activation
+    function for a SchnetFeature (i.e., within its InteractionBlock)
+    that is used for a CGnet will lead to simulation instabilities when using
+    that CGnet to generate new data. We have experienced more success with
+    nn.Tanh().
 
     References
     ----------
