@@ -86,10 +86,10 @@ class ContinuousFilterConvolution(nn.Module):
         the interaction block.
     activation: nn.Module (default=ShiftedSoftplus())
         Activation function for the filter generating network. By default, we choose
-        ShiftedSoftplus to follow Schütt et al (2018), however we have observerd
-        in practice that ShiftedSoftplus with CGSchNet can lead to simulation
-        instabilites. Therefore, we encourage users to try otehr activation functions
-        such as nn.Tanh() when using CGSchNet, especially for larger proteins.
+        ShiftedSoftplus to follow Schütt et al (2018). However, we have observed
+        in practice that ShiftedSoftplus as an activation for a ContinuousFilterConvolution
+        can lead to simulation instabilites. Therefore, we encourage users to try other
+        activation functions such as nn.Tanh(), especially for larger proteins.
 
     Notes
     -----
@@ -204,8 +204,12 @@ class InteractionBlock(nn.Module):
         Number of filters that will be created in the continuous filter convolution.
         The same feature size will be used for the output linear layers of the
         interaction block.
-    activation: nn.Module (default=ShiftedSoftplus)
-        The 
+    activation: nn.Module (default=ShiftedSoftplus())
+        Activation function for the atom-wise layers. By default, we choose
+        ShiftedSoftplus to follow Schütt et al (2018). However we have observed
+        in practice that ShiftedSoftplus as an activation for an InteractionBlock
+        can lead to simulation instabilites. Therefore, we encourage users to try other
+        activation functions such as nn.Tanh(), especially for larger proteins.
 
     Notes
     -----
