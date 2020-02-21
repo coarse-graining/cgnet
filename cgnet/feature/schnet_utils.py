@@ -85,7 +85,11 @@ class ContinuousFilterConvolution(nn.Module):
         Needs to be the same size as the features of the residual connection in
         the interaction block.
     activation: nn.Module (default=ShiftedSoftplus())
-        Activation function for the filter generating network.
+        Activation function for the filter generating network. By default, we choose
+        ShiftedSoftplus to follow Schütt et al (2018), however we have observerd
+        in practice that ShiftedSoftplus can lead to simulation instabilites.
+        Therefore, we encourage users to try otehr activation functions such as
+        nn.Tanh().
 
     Notes
     -----
