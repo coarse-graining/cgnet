@@ -272,16 +272,22 @@ def test_schnet_activations():
             assert isinstance(interaction_block.cfconv.filter_generator[1],
                               activation_class)
 
-    # Lastly, we check to see if the default activation, ShiftedSoftplus,
-    # is correctly placed in the model
+def test_schnet_activation_default():
+    # We check to see if the default activation, ShiftedSoftplus,
+    # is correctly placed in the SchnetFeature
+
+    interaction_blocks = np.random.randint(1, high=5)
+    print(interaction_blocks)
     schnet_feature = SchnetFeature(feature_size=n_feats,
                                    embedding_layer=None,
-                                   n_interaction_blocks=iblock,
+                                   n_interaction_blocks=interaction_blocks,
                                    calculate_geometry=True,
                                    n_beads=beads)
     # check all atom-wise layers and the filter generator networks
     # in both cases, the second index of the nn.Sequential objects
     # that hold the LinearLayers
+
+
     for interaction_block in schnet_feature.interaction_blocks:
         assert isinstance(interaction_block.output_dense[1], ShiftedSoftplus)
         assert isinstance(interaction_block.cfconv.filter_generator[1],
