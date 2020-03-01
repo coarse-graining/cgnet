@@ -252,7 +252,7 @@ def test_schnet_activations():
     interaction_blocks = np.random.randint(1, high=5,
                                            size=len(alt_activations))
 
-    # Here, we loop through all the activations and make sure that 
+    # Here, we loop through all the activations and make sure that
     # they appear where they should in the model
     for activation, activation_class, iblock in zip(alt_activations,
                                                     alt_activation_classes,
@@ -272,6 +272,7 @@ def test_schnet_activations():
             assert isinstance(interaction_block.cfconv.filter_generator[1],
                               activation_class)
 
+
 def test_schnet_activation_default():
     # We check to see if the default activation, ShiftedSoftplus,
     # is correctly placed in the SchnetFeature
@@ -286,7 +287,6 @@ def test_schnet_activation_default():
     # check all atom-wise layers and the filter generator networks
     # in both cases, the second index of the nn.Sequential objects
     # that hold the LinearLayers
-
 
     for interaction_block in schnet_feature.interaction_blocks:
         assert isinstance(interaction_block.output_dense[1], ShiftedSoftplus)
@@ -316,6 +316,7 @@ def test_batchnorm_instancing_share_weights_true():
     for interaction_block in schnet_feature.interaction_blocks:
         assert isinstance(interaction_block.cfconv.normlayer, nn.BatchNorm1d)
         assert interaction_block.cfconv.normlayer.num_features == beads
+
 
 def test_batchnorm_instancing_share_weights_false():
     # Test to see if the batchnorm is properly instanced in the cfconv
@@ -385,7 +386,6 @@ def test_batchnorm_default_shared_weights_false():
         assert interaction_block.cfconv.normlayer == None
 
 
-
 def test_cfconv_batchnorm():
     # Tests the usage of batch normalization after application of the
     # continuous filter convolution in
@@ -393,7 +393,7 @@ def test_cfconv_batchnorm():
     test_cfconv_features = torch.randn((frames, beads, n_filters))
     # Calculate continuous convolution output with the created layer
     cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
-                                         n_filters=n_filters,beadwise_batchnorm=beads)
+                                         n_filters=n_filters, beadwise_batchnorm=beads)
     # Check to see if batchnorm is embedded properly in the cfconv
     assert isinstance(cfconv.normlayer, nn.BatchNorm1d)
 
@@ -439,6 +439,5 @@ def test_cfconv_batchnorm():
     # Test if the torch and numpy calculation are the same
     batchnorm_layer = nn.BatchNorm1d(beads)
     normed_manual_out = batchnorm_layer(torch.tensor(cfconv_manual_out))
-    np.testing.assert_allclose(cfconv_layer_out, normed_manual_out.detach().numpy())
-
-
+    np.testing.assert_allclose(
+        cfconv_layer_out, normed_manual_out.detach().numpy())
