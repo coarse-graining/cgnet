@@ -126,7 +126,8 @@ class ContinuousFilterConvolution(nn.Module):
 
         if beadwise_batchnorm != None:
             if not isinstance(beadwise_batchnorm, int):
-                raise ValueError("beadwise_batchnorm must specify the number of beads")
+                raise ValueError(
+                    "beadwise_batchnorm must specify the number of beads")
             else:
                 self.normlayer = nn.BatchNorm1d(beadwise_batchnorm)
         else:
