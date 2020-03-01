@@ -215,6 +215,10 @@ class SchnetFeature(nn.Module):
     n_gaussians: int (default=50)
         Number of gaussians for the gaussian expansion in the radial basis
         function.
+    beadwise_batchnorm: int (default=None)
+        Number of beads over which batch normalization will be applied after
+        application of the continuous filter convolution. If None, batch
+        normalization will not be used
     variance: float (default=1.0)
         The variance (standard deviation squared) of the Gaussian functions.
     n_interaction_blocks: int (default=1)
@@ -279,6 +283,7 @@ class SchnetFeature(nn.Module):
                  neighbor_cutoff=None,
                  rbf_cutoff=5.0,
                  n_gaussians=50,
+                 beadwise_batchnorm=None,
                  variance=1.0,
                  n_interaction_blocks=1,
                  share_weights=False,
@@ -303,14 +308,16 @@ class SchnetFeature(nn.Module):
             # Lets the interaction blocks share the weights
             self.interaction_blocks = nn.ModuleList(
                 [InteractionBlock(feature_size, n_gaussians,
-                                  feature_size, activation=activation)]
+                                  feature_size, activation=activation,
+                                  beadwise_batchnorm=beadwise_batchnorm)]
                 * n_interaction_blocks
             )
         else:
             # Every interaction block has their own weights
             self.interaction_blocks = nn.ModuleList(
                 [InteractionBlock(feature_size, n_gaussians,
-                                  feature_size, activation=activation)
+                                  feature_size, activation=activation,
+                                  beadwise_batchnorm=beadwise_batchnorm)
                  for _ in range(n_interaction_blocks)]
             )
 
