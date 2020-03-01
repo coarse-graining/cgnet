@@ -88,6 +88,10 @@ class ContinuousFilterConvolution(nn.Module):
         Activation function for the filter generating network. Following
         Schütt et al, the default value is ShiftedSoftplus, but any
         differentiable activation function can be used (see Notes).
+    beadwise_batchnorm: int (default=None)
+        Number of beads over which batch normalization will be applied after
+        application of the continuous filter convolution. If None, batch
+        normalization will not be used
 
     Notes
     -----
@@ -110,7 +114,8 @@ class ContinuousFilterConvolution(nn.Module):
         https://doi.org/10.1063/1.5019779
     """
 
-    def __init__(self, n_gaussians, n_filters, activation=ShiftedSoftplus()):
+    def __init__(self, n_gaussians, n_filters, activation=ShiftedSoftplus(),
+                 beadwise_batchnorm=None):
         super(ContinuousFilterConvolution, self).__init__()
         filter_layers = LinearLayer(n_gaussians, n_filters, bias=True,
                                     activation=activation)
@@ -118,6 +123,12 @@ class ContinuousFilterConvolution(nn.Module):
         # to contain negative values.
         filter_layers += LinearLayer(n_filters, n_filters, bias=True)
         self.filter_generator = nn.Sequential(*filter_layers)
+
+        if beadwise_batchnorm != None:
+            if not isinstance(beadwise_batchnorm, int):
+                raise ValueError("beadwise_batchnorm must specify the number of beads")
+            else:
+                self.normlayer = nn.BatchNorm1d(beadwise_batchnorm)
 
     def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask):
         """ Compute convolutional block
@@ -177,7 +188,11 @@ class ContinuousFilterConvolution(nn.Module):
         # Aggregate/pool the features from (n_frames, n_beads, n_neighs, n_feats)
         # to (n_frames, n_beads, n_features)
         aggregated_features = torch.sum(conv_features, dim=2)
-        return aggregated_features
+
+        if self.normlayer is not None:
+            return self.normlayer(aggregated_features)
+        else:
+            return aggregated_features
 
 
 class InteractionBlock(nn.Module):
@@ -212,6 +227,10 @@ class InteractionBlock(nn.Module):
         Activation function for the atom-wise layers. Following Schütt et al, 
         the default value is ShiftedSoftplus, but any differentiable activation
         function can be used (see Notes).
+    beadwise_batchnorm: int (default=None)
+        Number of beads over which batch normalization will be applied after
+        application of the continuous filter convolution. If None, batch
+        normalization will not be used
 
     Notes
     -----
@@ -235,7 +254,7 @@ class InteractionBlock(nn.Module):
     """
 
     def __init__(self, n_inputs, n_gaussians, n_filters,
-                 activation=ShiftedSoftplus()):
+                 activation=ShiftedSoftplus(), beadwise_batchnorm=None):
         super(InteractionBlock, self).__init__()
 
         self.initial_dense = nn.Sequential(
@@ -247,7 +266,8 @@ class InteractionBlock(nn.Module):
         self.inital_dense = self.initial_dense
         self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                                   n_filters=n_filters,
-                                                  activation=activation)
+                                                  activation=activation,
+                                                  beadwise_batchnorm=beadwise_batchnorm)
         output_layers = LinearLayer(n_filters, n_filters, bias=True,
                                     activation=activation)
         output_layers += LinearLayer(n_filters, n_filters, bias=True,
