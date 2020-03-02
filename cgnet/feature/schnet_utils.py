@@ -125,9 +125,9 @@ class ContinuousFilterConvolution(nn.Module):
         self.filter_generator = nn.Sequential(*filter_layers)
 
         if beadwise_batchnorm != None:
-            if not isinstance(beadwise_batchnorm, int):
+            if isinstance(beadwise_batchnorm, int) and beadwise_batchnorm < 1:
                 raise ValueError(
-                    "beadwise_batchnorm must specify the number of beads")
+                    "beadwise_batchnorm must be an integer number of beads greater than zero.")
             else:
                 self.normlayer = nn.BatchNorm1d(beadwise_batchnorm)
         else:
@@ -267,6 +267,11 @@ class InteractionBlock(nn.Module):
         # layer attribute.
         # WARNING : This will be removed in the future!
         self.inital_dense = self.initial_dense
+        if beadwise_batchnorm != None:
+            if isinstance(beadwise_batchnorm, int) and beadwise_batchnorm < 1:
+                raise ValueError(
+                    "beadwise_batchnorm must be an integer number of beads greater than zero.")
+
         self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                                   n_filters=n_filters,
                                                   activation=activation,
