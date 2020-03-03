@@ -123,13 +123,19 @@ class ContinuousFilterConvolution(nn.Module):
         # to contain negative values.
         filter_layers += LinearLayer(n_filters, n_filters, bias=True)
         self.filter_generator = nn.Sequential(*filter_layers)
-
         if beadwise_batchnorm != None:
-            if isinstance(beadwise_batchnorm, int) and beadwise_batchnorm < 1:
-                raise ValueError(
-                    "beadwise_batchnorm must be an integer number of beads greater than zero.")
+            if not isinstance(beadwise_batchnorm, bool):
+                if isinstance(beadwise_batchnorm, int):
+                    if beadwise_batchnorm < 1:
+                        raise ValueError(
+                            "beadwise_batchnorm must be None or an integer greater than or equal to 1.")
+                    else:
+                        self.normlayer = nn.BatchNorm1d(beadwise_batchnorm)
+                else:
+                    raise ValueError("beadwise_batchnorm must be an int.")
             else:
-                self.normlayer = nn.BatchNorm1d(beadwise_batchnorm)
+                raise ValueError(
+                    "beadwise_batchnorm must be None or an integer greater than or equal to 1.")
         else:
             self.normlayer = None
 
@@ -268,10 +274,16 @@ class InteractionBlock(nn.Module):
         # WARNING : This will be removed in the future!
         self.inital_dense = self.initial_dense
         if beadwise_batchnorm != None:
-            if isinstance(beadwise_batchnorm, int) and beadwise_batchnorm < 1:
+            if not isinstance(beadwise_batchnorm, bool):
+                if isinstance(beadwise_batchnorm, int):
+                    if beadwise_batchnorm < 1:
+                        raise ValueError(
+                            "beadwise_batchnorm must be None or an integer greater than or equal to 1.")
+                else:
+                    raise ValueError("beadwise_batchnorm must be an int.")
+            else:
                 raise ValueError(
-                    "beadwise_batchnorm must be an integer number of beads greater than zero.")
-
+                    "beadwise_batchnorm must be None or an integer greater than or equal to 1.")
         self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                                   n_filters=n_filters,
                                                   activation=activation,
