@@ -1,6 +1,7 @@
 # Author: Dominik Lemm
 # Contributors: Nick Charron
 
+from nose.tools import assert_raises
 import numpy as np
 import torch
 import torch.nn as nn
@@ -384,6 +385,77 @@ def test_batchnorm_default_shared_weights_false():
 
     for interaction_block in schnet_feature.interaction_blocks:
         assert interaction_block.cfconv.normlayer == None
+
+
+def test_beadwise_batchnorm_logic_bools():
+    # Tests to make sure the beadwise batchnorm logic is working properly
+    # in SchnetFeature, InteractionBlock, and ContinuousFilterConvolution
+    # Specifically, this test checks to see if passing a boolean value
+    # as a beadwise_batchnorm value raises a ValueError
+    embedding_property = torch.randint(low=1, high=n_embeddings,
+                                       size=(frames, beads))
+
+    # Initialize the embedding and SchnetFeature class
+    embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
+                                      embedding_dim=n_feats)
+
+    feature_size = np.random.randint(4, 8)
+    # We test beadwise_batchnorm = True or False (Booleans)
+    # This should raise a ValueError
+    classes = [SchnetFeature, InteractionBlock, ContinuousFilterConvolution]
+    bools = [True, False]
+    for _bool in bools:
+        for _class in classes:
+            if _class == SchnetFeature:
+                assert_raises(ValueError, _class, *[feature_size,
+                                                    embedding_layer],
+                              **{'n_interaction_blocks': 2,
+                                 'n_beads': beads,
+                                 'beadwise_batchnorm': _bool})
+            if _class == ContinuousFilterConvolution:
+                assert_raises(ValueError, _class, *[n_gaussians,
+                                                    n_filters],
+                              **{'beadwise_batchnorm': _bool})
+            if _class == InteractionBlock:
+                assert_raises(ValueError, _class, *[n_feats,
+                                                    n_gaussians,
+                                                    n_filters],
+                              **{'beadwise_batchnorm': _bool})
+
+
+def test_beadwise_batchnorm_logic_ints():
+    # Tests to make sure the beadwise batchnorm logic is working properly
+    # in SchnetFeature, InteractionBlock, and ContinuousFilterConvolution
+    # Specifically, this test checks to see if setting beadwise_batchnorm to
+    # an integer less than 1 raises a ValueError
+    embedding_property = torch.randint(low=1, high=n_embeddings,
+                                       size=(frames, beads))
+
+    # Initialize the embedding and SchnetFeature class
+    embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
+                                      embedding_dim=n_feats)
+
+    feature_size = np.random.randint(4, 8)
+    # We test a random case where beadwise_batchnorm is an integer less
+    # than one - this should raise a ValueError
+    classes = [SchnetFeature, InteractionBlock, ContinuousFilterConvolution]
+    beadwise_batchnorm = np.random.randint(-100, high=1)
+    for _class in classes:
+        if _class == SchnetFeature:
+            assert_raises(ValueError, _class, *[feature_size,
+                                                embedding_layer],
+                          **{'n_interaction_blocks': 2,
+                             'n_beads': beads,
+                             'beadwise_batchnorm': beadwise_batchnorm})
+        if _class == ContinuousFilterConvolution:
+            assert_raises(ValueError, _class, *[n_gaussians,
+                                                n_filters],
+                          **{'beadwise_batchnorm': beadwise_batchnorm})
+        if _class == InteractionBlock:
+            assert_raises(ValueError, _class, *[n_feats,
+                                                n_gaussians,
+                                                n_filters],
+                          **{'beadwise_batchnorm': beadwise_batchnorm})
 
 
 def test_cfconv_batchnorm():
