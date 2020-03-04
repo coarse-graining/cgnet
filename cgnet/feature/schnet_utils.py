@@ -139,7 +139,8 @@ class ContinuousFilterConvolution(nn.Module):
                         "beadwise_batchnorm must be an integer greater than or equal to one.")
                 else:
                     self.normlayer = nn.BatchNorm1d(beadwise_batchnorm)
-        self.normlayer = None
+        else:
+            self.normlayer = None
 
     def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask):
         """ Compute convolutional block
