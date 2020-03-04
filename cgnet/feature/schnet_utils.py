@@ -165,7 +165,7 @@ class ContinuousFilterConvolution(nn.Module):
         if beadwise_batchnorm != None:
             _check_beadwise_batchnorm(beadwise_batchnorm)
             # self.normlayer = nn.BatchNorm1d(beadwise_batchnorm)
-            self.normlayer = _my_batchnorm1d(beadwise_batchnorm)
+            self.normlayer = _my_batchnorm1d(beadwise_batchnorm) # pytorch 1.1
         else:
             self.normlayer = None
 

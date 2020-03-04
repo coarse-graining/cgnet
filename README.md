@@ -31,6 +31,28 @@ masked_neighbors_torch[~g_torch.to_type(
     new_neighbors_mask_torch, torch.ByteTensor)] = -1 # pytorch 1.1
 ```
 
+in `feature/schnet_utils.py`:
+
+```
+def _my_batchnorm1d(beadwise_batchnorm): # pytorch 1.1
+    my_batchnorm1d = nn.BatchNorm1d(beadwise_batchnorm)
+    my_batchnorm1d.weight = torch.nn.Parameter(torch.ones(beadwise_batchnorm))
+    return my_batchnorm1d
+```
+
+and
+
+```
+# self.normlayer = nn.BatchNorm1d(beadwise_batchnorm)
+self.normlayer = _my_batchnorm1d(beadwise_batchnorm) # pytorch 1.1
+```
+
+in `tests/test_schnet_features.py`:
+
+```
+batchnorm_layer.weight = torch.nn.Parameter(torch.ones(beads)) # pytorch 1.1
+```
+
 Dependencies
 ---
 Required:
