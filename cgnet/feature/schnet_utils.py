@@ -37,7 +37,7 @@ def _check_beadwise_batchnorm(beadwise_batchnorm):
         # Make sure beadwise_batchnorm, if an integer, is greater than or equal to one
         if beadwise_batchnorm < 1:
             raise ValueError(
-                "beadwise_batchnorm must be an integer greater than or equal to one.")
+                "beadwise_batchnorm must be positive.")
 
 
 class CGBeadEmbedding(torch.nn.Module):
