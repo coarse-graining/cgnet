@@ -7,6 +7,11 @@ import torch.nn as nn
 from cgnet.feature.utils import ShiftedSoftplus, LinearLayer
 
 
+def _my_batchnorm1d(beadwise_batchnorm): # pytorch 1.1
+    my_batchnorm1d = nn.BatchNorm1d(beadwise_batchnorm)
+    my_batchnorm1d.weight = torch.nn.Parameter(torch.ones(beadwise_batchnorm))
+    return my_batchnorm1d
+
 def _check_beadwise_batchnorm(beadwise_batchnorm):
     """Helper function for ensuring beadwise_batchnorm is an
     integer greater than or equal to one
@@ -159,7 +164,8 @@ class ContinuousFilterConvolution(nn.Module):
 
         if beadwise_batchnorm != None:
             _check_beadwise_batchnorm(beadwise_batchnorm)
-            self.normlayer = nn.BatchNorm1d(beadwise_batchnorm)
+            # self.normlayer = nn.BatchNorm1d(beadwise_batchnorm)
+            self.normlayer = _my_batchnorm1d(beadwise_batchnorm)
         else:
             self.normlayer = None
 

@@ -545,6 +545,7 @@ def test_cfconv_batchnorm():
             np.bool))
     # Test if the torch and numpy calculation are the same
     batchnorm_layer = nn.BatchNorm1d(beads)
+    batchnorm_layer.weight = torch.nn.Parameter(torch.ones(beads)) # pytorch 1.1
     normed_manual_out = batchnorm_layer(torch.tensor(cfconv_manual_out))
     np.testing.assert_allclose(
         cfconv_layer_out, normed_manual_out.detach().numpy())
