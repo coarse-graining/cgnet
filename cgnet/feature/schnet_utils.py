@@ -7,6 +7,39 @@ import torch.nn as nn
 from cgnet.feature.utils import ShiftedSoftplus, LinearLayer
 
 
+def _check_beadwise_batchnorm(beadwise_batchnorm):
+    """Helper function for ensuring beadwise_batchnorm is an
+    integer greater than or equal to one
+
+    Parameters
+    ----------
+    beadwise_batchnorm: any type
+        the input value of beadwise_batchnorm that will
+        be used to construct an nn.BatchNorm1d instance
+        within a ContinuousFilterConvolution after
+        element-wise filter convolution. In order for
+        the batch normalization to be properly instanced,
+        beadwise_batchnorm must be an integer greater
+        than one (not a bool). If this condition is not
+        met, a ValueError is raised.
+
+    """
+
+    # Make sure beadwise_batchnorm is an integer
+    if not isinstance(beadwise_batchnorm, int):
+        raise ValueError(
+            "beadwise_batchnorm must be an integer.")
+    else:
+        # Make sure beadwise batchnorm is specifically not a bool
+        if isinstance(beadwise_batchnorm, bool):
+            raise ValueError(
+                "beadwise_batchnorm must be specified by an integer, not a bool.")
+        # Make sure beadwise_batchnorm, if an integer, is greater than or equal to one
+        if beadwise_batchnorm < 1:
+            raise ValueError(
+                "beadwise_batchnorm must be an integer greater than or equal to one.")
+
+
 class CGBeadEmbedding(torch.nn.Module):
     """Simple embedding class for coarse-grain beads.
     Serves as a lookup table that returns a fixed size embedding.
@@ -123,22 +156,10 @@ class ContinuousFilterConvolution(nn.Module):
         # to contain negative values.
         filter_layers += LinearLayer(n_filters, n_filters, bias=True)
         self.filter_generator = nn.Sequential(*filter_layers)
+
         if beadwise_batchnorm != None:
-            # Make sure beadwise_batchnorm is an integer
-            if not isinstance(beadwise_batchnorm, int):
-                raise ValueError(
-                    "beadwise_batchnorm must be an integer greater than or equal to one.")
-            else:
-                # Make sure beadwise batchnorm is specifically not a bool
-                if isinstance(beadwise_batchnorm, bool):
-                    raise ValueError(
-                        "beadwise_batchnorm must be specified by an integer greater than or equal to one, not a bool.")
-                # Make sure beadwise_batchnorm, if an integer, is greater than or equal to one
-                if beadwise_batchnorm < 1:
-                    raise ValueError(
-                        "beadwise_batchnorm must be an integer greater than or equal to one.")
-                else:
-                    self.normlayer = nn.BatchNorm1d(beadwise_batchnorm)
+            _check_beadwise_batchnorm(beadwise_batchnorm)
+            self.normlayer = nn.BatchNorm1d(beadwise_batchnorm)
         else:
             self.normlayer = None
 
@@ -278,20 +299,7 @@ class InteractionBlock(nn.Module):
         self.inital_dense = self.initial_dense
 
         if beadwise_batchnorm != None:
-            # Make sure beadwise_batchnorm is an integer
-            if not isinstance(beadwise_batchnorm, int):
-                raise ValueError(
-                    "beadwise_batchnorm must be an integer greater than or equal to one.")
-            else:
-                # Make sure beadwise batchnorm is specifically not a bool
-                if isinstance(beadwise_batchnorm, bool):
-                    raise ValueError(
-                        "beadwise_batchnorm must be specified by an integer greater than or equal to one, not a bool.")
-                # Make sure beadwise_batchnorm, if an integer, is greater than or equal to one
-                if beadwise_batchnorm < 1:
-                    raise ValueError(
-                        "beadwise_batchnorm must be an integer greater than or equal to one.")
-
+            _check_beadwise_batchnorm(beadwise_batchnorm)
         self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                                   n_filters=n_filters,
                                                   activation=activation,
