@@ -305,16 +305,20 @@ class SchnetFeature(nn.Module):
                 "Basis function type must be 'uniform' or 'modulated'.")
 
         if beadwise_batchnorm != None:
-            if not isinstance(beadwise_batchnorm, bool):
-                if isinstance(beadwise_batchnorm, int):
-                    if beadwise_batchnorm < 1:
-                        raise ValueError(
-                            "beadwise_batchnorm must be None or an integer greater than or equal to 1.")
-                else:
-                    raise ValueError("beadwise_batchnorm must be an int.")
-            else:
+            # Make sure beadwise_batchnorm is an integer
+            if not isinstance(beadwise_batchnorm, int):
                 raise ValueError(
-                    "beadwise_batchnorm must be None or an integer greater than or equal to 1.")
+                    "beadwise_batchnorm must be an integer greater than or equal to one.")
+            else:
+                # Make sure beadwise batchnorm is specifically not a bool
+                if isinstance(beadwise_batchnorm, bool):
+                    raise ValueError(
+                        "beadwise_batchnorm must be specified by an integer greater than or equal to one, not a bool.")
+                # Make sure beadwise_batchnorm, if an integer, is greater than or equal to one
+                if beadwise_batchnorm < 1:
+                    raise ValueError(
+                        "beadwise_batchnorm must be an integer greater than or equal to one.")
+
         if share_weights:
             # Lets the interaction blocks share the weights
             self.interaction_blocks = nn.ModuleList(

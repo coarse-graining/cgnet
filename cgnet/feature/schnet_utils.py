@@ -124,20 +124,22 @@ class ContinuousFilterConvolution(nn.Module):
         filter_layers += LinearLayer(n_filters, n_filters, bias=True)
         self.filter_generator = nn.Sequential(*filter_layers)
         if beadwise_batchnorm != None:
-            if not isinstance(beadwise_batchnorm, bool):
-                if isinstance(beadwise_batchnorm, int):
-                    if beadwise_batchnorm < 1:
-                        raise ValueError(
-                            "beadwise_batchnorm must be None or an integer greater than or equal to 1.")
-                    else:
-                        self.normlayer = nn.BatchNorm1d(beadwise_batchnorm)
-                else:
-                    raise ValueError("beadwise_batchnorm must be an int.")
-            else:
+            # Make sure beadwise_batchnorm is an integer
+            if not isinstance(beadwise_batchnorm, int):
                 raise ValueError(
-                    "beadwise_batchnorm must be None or an integer greater than or equal to 1.")
-        else:
-            self.normlayer = None
+                    "beadwise_batchnorm must be an integer greater than or equal to one.")
+            else:
+                # Make sure beadwise batchnorm is specifically not a bool
+                if isinstance(beadwise_batchnorm, bool):
+                    raise ValueError(
+                        "beadwise_batchnorm must be specified by an integer greater than or equal to one, not a bool.")
+                # Make sure beadwise_batchnorm, if an integer, is greater than or equal to one
+                if beadwise_batchnorm < 1:
+                    raise ValueError(
+                        "beadwise_batchnorm must be an integer greater than or equal to one.")
+                else:
+                    self.normlayer = BatchNorm1d(beadwise_batchnorm)
+        self.normlayer = None
 
     def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask):
         """ Compute convolutional block
@@ -273,17 +275,22 @@ class InteractionBlock(nn.Module):
         # layer attribute.
         # WARNING : This will be removed in the future!
         self.inital_dense = self.initial_dense
+
         if beadwise_batchnorm != None:
-            if not isinstance(beadwise_batchnorm, bool):
-                if isinstance(beadwise_batchnorm, int):
-                    if beadwise_batchnorm < 1:
-                        raise ValueError(
-                            "beadwise_batchnorm must be None or an integer greater than or equal to 1.")
-                else:
-                    raise ValueError("beadwise_batchnorm must be an int.")
-            else:
+            # Make sure beadwise_batchnorm is an integer
+            if not isinstance(beadwise_batchnorm, int):
                 raise ValueError(
-                    "beadwise_batchnorm must be None or an integer greater than or equal to 1.")
+                    "beadwise_batchnorm must be an integer greater than or equal to one.")
+            else:
+                # Make sure beadwise batchnorm is specifically not a bool
+                if isinstance(beadwise_batchnorm, bool):
+                    raise ValueError(
+                        "beadwise_batchnorm must be specified by an integer greater than or equal to one, not a bool.")
+                # Make sure beadwise_batchnorm, if an integer, is greater than or equal to one
+                if beadwise_batchnorm < 1:
+                    raise ValueError(
+                        "beadwise_batchnorm must be an integer greater than or equal to one.")
+
         self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                                   n_filters=n_filters,
                                                   activation=activation,
