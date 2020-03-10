@@ -50,7 +50,7 @@ class MoleculeDataset(Dataset):
         self.device = device
 
     def __getitem__(self, index):
-        """This will always return 3 items: coordinates, frames, embeddings.
+        """This will always return 3 items: coordinates, forces, embeddings.
         If embeddings are not given, then the third object returned will
         be an empty tensor.
         """
