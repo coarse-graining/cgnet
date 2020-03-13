@@ -125,6 +125,9 @@ class ContinuousFilterConvolution(nn.Module):
         Number of beads over which batch normalization will be applied after
         application of the continuous filter convolution. If None, batch
         normalization will not be used
+    batchnorm_running_stats: bool (default=False)
+        If beadwise_batchnorm is not None, this argument populates the
+        track_running_stats argument in torch.nn.Batchnorm1d
 
     Notes
     -----
@@ -148,7 +151,7 @@ class ContinuousFilterConvolution(nn.Module):
     """
 
     def __init__(self, n_gaussians, n_filters, activation=ShiftedSoftplus(),
-                 beadwise_batchnorm=None):
+                 beadwise_batchnorm=None, batchnorm_running_stats=False):
         super(ContinuousFilterConvolution, self).__init__()
         filter_layers = LinearLayer(n_gaussians, n_filters, bias=True,
                                     activation=activation)
@@ -159,7 +162,8 @@ class ContinuousFilterConvolution(nn.Module):
 
         if beadwise_batchnorm != None:
             _check_beadwise_batchnorm(beadwise_batchnorm)
-            self.normlayer = nn.BatchNorm1d(beadwise_batchnorm)
+            self.normlayer = nn.BatchNorm1d(beadwise_batchnorm,
+                                            track_running_stats=batchnorm_running_stats)
         else:
             self.normlayer = None
 
@@ -264,6 +268,9 @@ class InteractionBlock(nn.Module):
         Number of beads over which batch normalization will be applied after
         application of the continuous filter convolution. If None, batch
         normalization will not be used
+    batchnorm_running_stats: bool (default=False)
+        If beadwise_batchnorm is not None, this argument populates the
+        track_running_stats argument in torch.nn.Batchnorm1d
 
     Notes
     -----
@@ -287,7 +294,8 @@ class InteractionBlock(nn.Module):
     """
 
     def __init__(self, n_inputs, n_gaussians, n_filters,
-                 activation=ShiftedSoftplus(), beadwise_batchnorm=None):
+                 activation=ShiftedSoftplus(), beadwise_batchnorm=None,
+                 batchnorm_running_stats=False):
         super(InteractionBlock, self).__init__()
 
         self.initial_dense = nn.Sequential(
@@ -303,7 +311,8 @@ class InteractionBlock(nn.Module):
         self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                                   n_filters=n_filters,
                                                   activation=activation,
-                                                  beadwise_batchnorm=beadwise_batchnorm)
+                                                  beadwise_batchnorm=beadwise_batchnorm,
+                                                  batchnorm_running_stats=batchnorm_running_stats)
         output_layers = LinearLayer(n_filters, n_filters, bias=True,
                                     activation=activation)
         output_layers += LinearLayer(n_filters, n_filters, bias=True,

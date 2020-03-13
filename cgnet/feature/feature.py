@@ -217,6 +217,9 @@ class SchnetFeature(nn.Module):
     beadwise_batchnorm: bool (default=False)
         If True, batch normalization will be applied after application of the
         continuous filter convolution according to n_beads.
+    batchnorm_running_stats: bool (default=False)
+        If beadwise_batchnorm is True, this argument populates the
+        track_running_stats argument in torch.nn.Batchnorm1d
     variance: float (default=1.0)
         The variance (standard deviation squared) of the Gaussian functions.
     n_interaction_blocks: int (default=1)
@@ -282,6 +285,7 @@ class SchnetFeature(nn.Module):
                  rbf_cutoff=5.0,
                  n_gaussians=50,
                  beadwise_batchnorm=False,
+                 batchnorm_running_stats=False,
                  variance=1.0,
                  n_interaction_blocks=1,
                  share_weights=False,
@@ -312,7 +316,8 @@ class SchnetFeature(nn.Module):
             self.interaction_blocks = nn.ModuleList(
                 [InteractionBlock(feature_size, n_gaussians,
                                   feature_size, activation=activation,
-                                  beadwise_batchnorm=beadwise_batchnorm)]
+                                  beadwise_batchnorm=beadwise_batchnorm,
+                                  batchnorm_running_stats=batchnorm_running_stats)]
                 * n_interaction_blocks
             )
         else:
@@ -320,7 +325,8 @@ class SchnetFeature(nn.Module):
             self.interaction_blocks = nn.ModuleList(
                 [InteractionBlock(feature_size, n_gaussians,
                                   feature_size, activation=activation,
-                                  beadwise_batchnorm=beadwise_batchnorm)
+                                  beadwise_batchnorm=beadwise_batchnorm,
+                                  batchnorm_running_stats=batchnorm_running_stats)
                  for _ in range(n_interaction_blocks)]
             )
 
