@@ -402,16 +402,10 @@ def test_beadwise_batchnorm_logic_bools():
     feature_size = np.random.randint(4, 8)
     # We test beadwise_batchnorm = True or False (Booleans)
     # This should raise a ValueError
-    classes = [SchnetFeature, InteractionBlock, ContinuousFilterConvolution]
+    classes = [InteractionBlock, ContinuousFilterConvolution]
     bools = [True, False]
     for _bool in bools:
         for _class in classes:
-            if _class == SchnetFeature:
-                assert_raises(ValueError, _class, *[feature_size,
-                                                    embedding_layer],
-                              **{'n_interaction_blocks': 2,
-                                 'n_beads': beads,
-                                 'beadwise_batchnorm': _bool})
             if _class == ContinuousFilterConvolution:
                 assert_raises(ValueError, _class, *[n_gaussians,
                                                     n_filters],
@@ -438,15 +432,9 @@ def test_beadwise_batchnorm_logic_ints():
     feature_size = np.random.randint(4, 8)
     # We test a random case where beadwise_batchnorm is an integer less
     # than one - this should raise a ValueError
-    classes = [SchnetFeature, InteractionBlock, ContinuousFilterConvolution]
+    classes = [InteractionBlock, ContinuousFilterConvolution]
     beadwise_batchnorm = np.random.randint(-100, high=1)
     for _class in classes:
-        if _class == SchnetFeature:
-            assert_raises(ValueError, _class, *[feature_size,
-                                                embedding_layer],
-                          **{'n_interaction_blocks': 2,
-                             'n_beads': beads,
-                             'beadwise_batchnorm': beadwise_batchnorm})
         if _class == ContinuousFilterConvolution:
             assert_raises(ValueError, _class, *[n_gaussians,
                                                 n_filters],

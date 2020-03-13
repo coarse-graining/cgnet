@@ -215,7 +215,7 @@ def dataset_loss(model, loader, optimizer=None,
         If not None, the regularization function will be applied after
         stepping the optimizer. It must take only "model" as its input
         and operate in-place.
-    train_mode : Boolean (default=True)
+    train_mode : bool (default=True)
         Specifies whether to put the model into train mode for training/learning
         or eval mode for testing/inference. See Notes about the important
         distinction between these two modes. The model will always be reverted
