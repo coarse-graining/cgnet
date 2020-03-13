@@ -194,9 +194,9 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
 
 def dataset_loss(model, loader, optimizer=None,
                  regularization_function=None,
+                 train_mode=True,
                  verbose_interval=None,
-                 print_function=None,
-                 model_mode='train'):
+                 print_function=None):
     r"""Compute average loss over arbitrary data loader.
     This can be used during testing, in which `optimizer` and
     `regularization_function` will remain None, or it can be used
@@ -215,6 +215,10 @@ def dataset_loss(model, loader, optimizer=None,
         If not None, the regularization function will be applied after
         stepping the optimizer. It must take only "model" as its input
         and operate in-place.
+    train_mode : Boolean (default=True)
+        Specifies whether to put the model into train mode for training/learning
+        or eval mode for testing/inference. See Notes about the important
+        distinction between these two modes.
     verbose_interval : integer or None (default=None)
         If not None, a printout of the batch number and loss will be provided
         at the specified interval (with respect to batch number).
@@ -222,10 +226,6 @@ def dataset_loss(model, loader, optimizer=None,
         Print function that takes (batch_number, batch_loss) as its only
         two arguments, to print updates with our default or the style of
         your choice when verbose_interval is not None.
-    model_mode : str (default='train')
-        Specifies whether to put the model into 'eval' for testing/inference
-        or 'train' mode for training/learning. See note below about the
-        important distinction between these two modes.
 
     Returns
     -------
@@ -261,6 +261,7 @@ def dataset_loss(model, loader, optimizer=None,
     training_loss = dataset_loss(net, training_data_loader,
                                  optimizer = optimizer,
                                  regularization_function = my_reg_fxn,
+                                 train_mode=True,
                                  verbose_interval = 128,
                                  print_function = my_print_fxn)
 
@@ -270,26 +271,29 @@ def dataset_loss(model, loader, optimizer=None,
     end: namely, we assume that the size of the first batch is the largest
     batch size.
 
-    It is important to use 'eval' mode when performing inference/assessing a
-    model on test data because certain PyTorch layer types, such as BatchNorm1d
-    and Dropout, behave differently in 'eval' and 'train' modes. For more
-    information, please see
+    It is important to use train_mode=False when performing inference/assessing
+    a model on test data because certain PyTorch layer types, such as
+    BatchNorm1d and Dropout, behave differently in 'eval' and 'train' modes.
+    For more information, please see
 
         https://pytorch.org/docs/stable/nn.html#torch.nn.Module.eval
 
     """
-    if optimizer is None and regularization_function is not None:
-        raise RuntimeError(
-            "regularization_function is only used when there is an optimizer, "
-            "but you have optimizer=None."
-        )
+    if optimizer is None:
+        if regularization_function is not None:
+            raise RuntimeError(
+                "regularization_function is only used when there is an optimizer, "
+                "but you have optimizer=None."
+            )
+        if regularization_function is None and train_mode:
+            raise RuntimeError(
+                "Without an optimizer, you probably wanted train_model=False"
+                )
 
-    if model_mode is 'train':
+    if train_mode:
         model.train()
-    if model_mode is 'eval':
+    else:
         model.eval()
-    if model_mode is not 'train' and model_mode is not 'eval':
-        raise ValueError("model_mode must be 'train' or 'eval'")
 
     loss = 0
     effective_number_of_batches = 0
@@ -311,7 +315,7 @@ def dataset_loss(model, loader, optimizer=None,
 
         if loader.dataset.embeddings is not None:
             potential, predicted_force = model.forward(coords,
-                                                       embedding_property=embedding_property)
+                                    embedding_property=embedding_property)
         else:
             potential, predicted_force = model.forward(coords)
 
