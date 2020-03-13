@@ -287,7 +287,7 @@ def dataset_loss(model, loader, optimizer=None,
             )
         if regularization_function is None and train_mode:
             raise RuntimeError(
-                "Without an optimizer, you probably wanted train_model=False"
+                "Without an optimizer, you probably wanted train_mode=False"
                 )
 
     if train_mode:
