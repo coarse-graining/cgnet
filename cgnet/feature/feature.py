@@ -219,7 +219,7 @@ class SchnetFeature(nn.Module):
         continuous filter convolution according to n_beads.
     batchnorm_running_stats: bool (default=False)
         If beadwise_batchnorm is True, this argument populates the
-        track_running_stats argument in torch.nn.Batchnorm1d
+        track_running_stats argument in torch.nn.BatchNorm1d
     variance: float (default=1.0)
         The variance (standard deviation squared) of the Gaussian functions.
     n_interaction_blocks: int (default=1)

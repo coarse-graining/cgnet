@@ -127,7 +127,7 @@ class ContinuousFilterConvolution(nn.Module):
         normalization will not be used
     batchnorm_running_stats: bool (default=False)
         If beadwise_batchnorm is not None, this argument populates the
-        track_running_stats argument in torch.nn.Batchnorm1d
+        track_running_stats argument in torch.nn.BatchNorm1d
 
     Notes
     -----
@@ -270,7 +270,7 @@ class InteractionBlock(nn.Module):
         normalization will not be used
     batchnorm_running_stats: bool (default=False)
         If beadwise_batchnorm is not None, this argument populates the
-        track_running_stats argument in torch.nn.Batchnorm1d
+        track_running_stats argument in torch.nn.BatchNorm1d
 
     Notes
     -----
