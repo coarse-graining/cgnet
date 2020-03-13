@@ -339,8 +339,8 @@ def dataset_loss(model, loader, optimizer=None,
     loss /= effective_number_of_batches
 
     # put model back into default training mode
-    if model_mode = 'eval':
-        model_mode.train()
+    if model.training == False:
+        model.train()
 
     return loss
 

@@ -12,6 +12,7 @@ from cgnet.network import CGnet, ForceLoss
 from cgnet.feature import (MoleculeDataset, LinearLayer, SchnetFeature,
                            CGBeadEmbedding, GeometryFeature, FeatureCombiner,
                            GeometryStatistics)
+from nose.tools import assert_raises
 
 # Here we create testing data from a random linear protein
 # with a random number of frames
@@ -384,6 +385,47 @@ def test_dataset_loss():
 
     # Here, we verify that the two losses over the dataset are equal
     np.testing.assert_allclose(loss, single_point_loss, rtol=1e-5)
+
+
+def test_dataset_loss_model_modes():
+    # Test whether models are returned to train mode after eval is specified
+
+    # Define mode to pass into the dataset
+    model_dataset = CGnet(copy.deepcopy(arch), ForceLoss()).float()
+    # model should be in training mode by default
+    assert model_dataset.training == True
+
+    # Simple datalaoder
+    loader = DataLoader(dataset, batch_size=batch_size)
+
+    loss_dataset = dataset_loss(model_dataset,
+                                loader, model_mode='eval')
+
+    # The model should be returned to the default train state
+    assert model_dataset.training == True
+
+
+def test_dataset_loss_model_mode_error():
+    # This test ensures that the a ValueError is raised for model_mode
+    # options that are neither 'train' nor 'eval'
+    # This is important because it may provent the user from mistakenly 
+    # training or testing a model in the wrong mode.
+
+    # Define mode to pass into the dataset
+    model_dataset = CGnet(copy.deepcopy(arch), ForceLoss()).float()
+    # model should be in training mode by default
+    assert model_dataset.training == True
+
+    # Simple datalaoder
+    loader = DataLoader(dataset, batch_size=batch_size)
+
+    # Here we define a bank of potentially insidious mistakes
+    mistakes = ['tain', 'evl', 'ecal', 'evsl', 'traon', 'traib']
+
+    # A ValueError should be raised for any of the mistake otions above
+    mistake_mode = np.random.choice(mistakes, size=1)
+    assert_raises(ValueError, dataset_loss, *[model_dataset,
+                  loader], **{'model_mode': mistake_mode})
 
 
 def test_dataset_loss_with_optimizer():
