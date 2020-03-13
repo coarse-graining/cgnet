@@ -206,7 +206,7 @@ def test_lipschitz_schnet_mask():
 
     lambda_ = float(1e-12)
     pre_projection_schnet_weights = _schnet_feature_linear_extractor(schnet_test_model.feature,
-                                                              return_weight_data_only=True)
+                                                                     return_weight_data_only=True)
     # Convert torch tensors to numpy arrays for testing
     pre_projection_schnet_weights = [weight
                                      for weight in pre_projection_schnet_weights]
@@ -219,7 +219,7 @@ def test_lipschitz_schnet_mask():
     # Here we make the lipschitz projection
     lipschitz_projection(schnet_test_model, lambda_, schnet_mask=lip_mask)
     post_projection_schnet_weights = _schnet_feature_linear_extractor(schnet_test_model.feature,
-                                                               return_weight_data_only=True)
+                                                                      return_weight_data_only=True)
     # Convert torch tensors to numpy arrays for testing
     post_projection_schnet_weights = [weight
                                       for weight in post_projection_schnet_weights]
@@ -275,7 +275,8 @@ def test_lipschitz_full_model_random_mask():
                                                if isinstance(layer, nn.Linear)]
     pre_projection_schnet_weights = _schnet_feature_linear_extractor(full_test_model.feature.layer_list[-1],
                                                                      return_weight_data_only=True)
-    full_pre_projection_weights = pre_projection_terminal_network_weights + pre_projection_schnet_weights
+    full_pre_projection_weights = pre_projection_terminal_network_weights + \
+        pre_projection_schnet_weights
 
     # Next, we assemble the masks for both the terminal network and the
     # SchnetFeature weights. There are 5 instances of nn.Linear for each
@@ -296,7 +297,8 @@ def test_lipschitz_full_model_random_mask():
                                                 if isinstance(layer, nn.Linear)]
     post_projection_schnet_weights = _schnet_feature_linear_extractor(full_test_model.feature.layer_list[-1],
                                                                       return_weight_data_only=True)
-    full_post_projection_weights = post_projection_terminal_network_weights + post_projection_schnet_weights
+    full_post_projection_weights = post_projection_terminal_network_weights + \
+        post_projection_schnet_weights
 
     # Here we verify that the masked layers remain unaffected by the strong
     # Lipschitz projection
@@ -312,6 +314,7 @@ def test_lipschitz_full_model_random_mask():
         # If the mask element is False then the weights should be unaffected
         if not mask_element:
             np.testing.assert_array_equal(pre.numpy(), post.numpy())
+
 
 def test_lipschitz_full_model_all_mask():
     # Test lipschitz mask functionality for completely False schnet mask
@@ -348,10 +351,11 @@ def test_lipschitz_full_model_all_mask():
                                                if isinstance(layer, nn.Linear)]
     pre_projection_schnet_weights = _schnet_feature_linear_extractor(full_test_model.feature.layer_list[-1],
                                                                      return_weight_data_only=True)
-    full_pre_projection_weights = pre_projection_terminal_network_weights + pre_projection_schnet_weights
+    full_pre_projection_weights = pre_projection_terminal_network_weights + \
+        pre_projection_schnet_weights
 
     # Here we make the lipschitz projection, specifying the 'all' option for
-    # both the terminal network mask and the schnet mask 
+    # both the terminal network mask and the schnet mask
     lipschitz_projection(full_test_model, lambda_, network_mask='all',
                          schnet_mask='all')
     post_projection_terminal_network_weights = [layer.weight.data
@@ -359,7 +363,8 @@ def test_lipschitz_full_model_all_mask():
                                                 if isinstance(layer, nn.Linear)]
     post_projection_schnet_weights = _schnet_feature_linear_extractor(full_test_model.feature.layer_list[-1],
                                                                       return_weight_data_only=True)
-    full_post_projection_weights = post_projection_terminal_network_weights + post_projection_schnet_weights
+    full_post_projection_weights = post_projection_terminal_network_weights + \
+        post_projection_schnet_weights
 
     # Here we verify that all weight layers remain unaffected by the strong
     # Lipschitz projection
@@ -408,7 +413,7 @@ def test_dataset_loss_model_modes():
 def test_dataset_loss_model_mode_error():
     # This test ensures that the a ValueError is raised for model_mode
     # options that are neither 'train' nor 'eval'
-    # This is important because it may provent the user from mistakenly 
+    # This is important because it may provent the user from mistakenly
     # training or testing a model in the wrong mode.
 
     # Define mode to pass into the dataset
@@ -425,7 +430,7 @@ def test_dataset_loss_model_mode_error():
     # A ValueError should be raised for any of the mistake otions above
     mistake_mode = np.random.choice(mistakes, size=1)
     assert_raises(ValueError, dataset_loss, *[model_dataset,
-                  loader], **{'model_mode': mistake_mode})
+                                              loader], **{'model_mode': mistake_mode})
 
 
 def test_dataset_loss_with_optimizer():
