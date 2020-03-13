@@ -411,29 +411,6 @@ def test_dataset_loss_model_modes():
     assert model_dataset.training == True
 
 
-# def test_dataset_loss_model_mode_error():
-#     # This test ensures that the a ValueError is raised for model_mode
-#     # options that are neither 'train' nor 'eval'
-#     # This is important because it may provent the user from mistakenly
-#     # training or testing a model in the wrong mode.
-
-#     # Define mode to pass into the dataset
-#     model_dataset = CGnet(copy.deepcopy(arch), ForceLoss()).float()
-#     # model should be in training mode by default
-#     assert model_dataset.training == True
-
-#     # Simple datalaoder
-#     loader = DataLoader(dataset, batch_size=batch_size)
-
-#     # Here we define a bank of potentially insidious mistakes
-#     mistakes = ['tain', 'evl', 'ecal', 'evsl', 'traon', 'traib']
-
-#     # A ValueError should be raised for any of the mistake otions above
-#     mistake_mode = np.random.choice(mistakes, size=1)
-#     assert_raises(ValueError, dataset_loss, *[model_dataset,
-#                                               loader], **{'model_mode': mistake_mode})
-
-
 def test_dataset_loss_with_optimizer():
     # Test manual batch processing vs. dataset_loss during training
     # Make a simple model and test that a manual on-the-fly loss calculation

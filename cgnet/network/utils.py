@@ -218,7 +218,8 @@ def dataset_loss(model, loader, optimizer=None,
     train_mode : Boolean (default=True)
         Specifies whether to put the model into train mode for training/learning
         or eval mode for testing/inference. See Notes about the important
-        distinction between these two modes.
+        distinction between these two modes. The model will always be reverted
+        back to training mode.
     verbose_interval : integer or None (default=None)
         If not None, a printout of the batch number and loss will be provided
         at the specified interval (with respect to batch number).
@@ -342,7 +343,7 @@ def dataset_loss(model, loader, optimizer=None,
 
     loss /= effective_number_of_batches
 
-    # put model back into default training mode
+    # If the model was in eval mode, put model back into training mode
     if model.training == False:
         model.train()
 
