@@ -10,6 +10,7 @@ from .geometry import Geometry
 from .utils import RadialBasisFunction, ModulatedRBF, ShiftedSoftplus
 from .schnet_utils import InteractionBlock
 
+
 class GeometryFeature(nn.Module):
     """Featurization of coarse-grained beads into pairwise distances,
     angles, and dihedrals.

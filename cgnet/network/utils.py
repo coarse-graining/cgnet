@@ -289,7 +289,7 @@ def dataset_loss(model, loader, optimizer=None,
         if train_mode:
             raise RuntimeError(
                 "Without an optimizer, you probably wanted train_mode=False"
-                )
+            )
 
     if train_mode:
         model.train()
@@ -316,7 +316,7 @@ def dataset_loss(model, loader, optimizer=None,
 
         if loader.dataset.embeddings is not None:
             potential, predicted_force = model.forward(coords,
-                                    embedding_property=embedding_property)
+                                                       embedding_property=embedding_property)
         else:
             potential, predicted_force = model.forward(coords)
 

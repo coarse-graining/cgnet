@@ -1,5 +1,5 @@
 # Author: Dominik Lemm
-# Contributors: Nick Charron
+# Contributors: Nick Charron, Brooke Husic
 
 import torch
 import torch.nn as nn
