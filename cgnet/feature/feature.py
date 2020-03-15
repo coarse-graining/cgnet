@@ -312,12 +312,14 @@ class SchnetFeature(nn.Module):
                 "Basis function type must be 'uniform' or 'modulated'.")
 
         if beadwise_batchnorm and bead_number_norm:
-            raise RuntimeError("beadwise_batchnorm and bead_number_norm cannot be used simultaneously")
+            raise RuntimeError('beadwise_batchnorm and bead_number_norm '
+                               'cannot be used simultaneously')
         else:
             if beadwise_batchnorm:
                 beadwise_batchnorm = n_beads
             else:
                 beadwise_batchnorm = None
+
             if bead_number_norm:
                 bead_number_norm = n_beads
             else:
