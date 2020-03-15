@@ -163,7 +163,8 @@ class ContinuousFilterConvolution(nn.Module):
         self.filter_generator = nn.Sequential(*filter_layers)
 
         if beadwise_batchnorm and bead_number_norm:
-            raise RuntimeError("beadwise_batchnorm and bead_number_norm cannot be used simultaneously")
+            raise RuntimeError('beadwise_batchnorm and bead_number_norm '
+                               'cannot be used simultaneously')
         if beadwise_batchnorm != None:
             _check_bead_norm(beadwise_batchnorm)
             self.normlayer = nn.BatchNorm1d(beadwise_batchnorm,
@@ -320,7 +321,8 @@ class InteractionBlock(nn.Module):
         self.inital_dense = self.initial_dense
 
         if beadwise_batchnorm and bead_number_norm:
-            raise RuntimeError("beadwise_batchnorm and bead_number_norm cannot be used simultaneously")
+            raise RuntimeError('beadwise_batchnorm and bead_number_norm '
+                               'cannot be used simultaneously')
         else:
             if beadwise_batchnorm != None:
                 _check_bead_norm(beadwise_batchnorm)
