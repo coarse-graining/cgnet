@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 import numpy as np
+import warnings
 
 from cgnet.feature import GeometryFeature, SchnetFeature, FeatureCombiner
 
@@ -451,6 +452,12 @@ class Simulation():
             initial_coordinates.requires_grad = True
 
         self.model = model
+        if self.model.training:
+            warnings.warn('model is in training mode, and certain PyTorch '
+                          'layers, such as BatchNorm1d, behave differently '
+                          'in training mode in ways that can negatively bias '
+                          'simulations. We recommend that you put the model '
+                          'into inference mode by calling `model.eval`.')
 
         self.initial_coordinates = initial_coordinates
         self.embeddings = embeddings

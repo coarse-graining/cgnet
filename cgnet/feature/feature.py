@@ -218,6 +218,9 @@ class SchnetFeature(nn.Module):
     beadwise_batchnorm: bool (default=False)
         If True, batch normalization will be applied after application of the
         continuous filter convolution according to n_beads.
+    bead_number_norm: bool (default=False)
+        If True, the output of the continuous filter convolution will be
+        be normalized by the number of beads in the system.
     batchnorm_running_stats: bool (default=False)
         If beadwise_batchnorm is True, this argument populates the
         track_running_stats argument in torch.nn.BatchNorm1d
@@ -286,6 +289,7 @@ class SchnetFeature(nn.Module):
                  rbf_cutoff=5.0,
                  n_gaussians=50,
                  beadwise_batchnorm=False,
+                 bead_number_norm=False,
                  batchnorm_running_stats=False,
                  variance=1.0,
                  n_interaction_blocks=1,
@@ -307,16 +311,24 @@ class SchnetFeature(nn.Module):
             raise RuntimeError(
                 "Basis function type must be 'uniform' or 'modulated'.")
 
-        if beadwise_batchnorm:
-            beadwise_batchnorm = n_beads
+        if beadwise_batchnorm and bead_number_norm:
+            raise RuntimeError("beadwise_batchnorm and bead_number_norm cannot be used simultaneously")
         else:
-            beadwise_batchnorm = None
+            if beadwise_batchnorm:
+                beadwise_batchnorm = n_beads
+            else:
+                beadwise_batchnorm = None
+            if bead_number_norm:
+                bead_number_norm = n_beads
+            else:
+                bead_number_norm = None
 
         if share_weights:
             # Lets the interaction blocks share the weights
             self.interaction_blocks = nn.ModuleList(
                 [InteractionBlock(feature_size, n_gaussians,
                                   feature_size, activation=activation,
+                                  bead_number_norm=bead_number_norm,
                                   beadwise_batchnorm=beadwise_batchnorm,
                                   batchnorm_running_stats=batchnorm_running_stats)]
                 * n_interaction_blocks
@@ -326,6 +338,7 @@ class SchnetFeature(nn.Module):
             self.interaction_blocks = nn.ModuleList(
                 [InteractionBlock(feature_size, n_gaussians,
                                   feature_size, activation=activation,
+                                  bead_number_norm=bead_number_norm,
                                   beadwise_batchnorm=beadwise_batchnorm,
                                   batchnorm_running_stats=batchnorm_running_stats)
                  for _ in range(n_interaction_blocks)]
