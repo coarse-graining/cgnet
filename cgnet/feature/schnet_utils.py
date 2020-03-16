@@ -121,7 +121,7 @@ class ContinuousFilterConvolution(nn.Module):
         Activation function for the filter generating network. Following
         Schütt et al, the default value is ShiftedSoftplus, but any
         differentiable activation function can be used (see Notes).
-    bead_number_norm: int (default=None)
+    simple_norm: int (default=None)
         Number of beads in the system, with which the output of the continuous
         filter convolution will be normalized
     beadwise_batchnorm: int (default=None)
@@ -154,7 +154,7 @@ class ContinuousFilterConvolution(nn.Module):
     """
 
     def __init__(self, n_gaussians, n_filters, activation=ShiftedSoftplus(),
-                 bead_number_norm=None, beadwise_batchnorm=None,
+                 simple_norm=None, beadwise_batchnorm=None,
                  batchnorm_running_stats=False):
         super(ContinuousFilterConvolution, self).__init__()
         filter_layers = LinearLayer(n_gaussians, n_filters, bias=True,
@@ -164,17 +164,17 @@ class ContinuousFilterConvolution(nn.Module):
         filter_layers += LinearLayer(n_filters, n_filters, bias=True)
         self.filter_generator = nn.Sequential(*filter_layers)
 
-        if beadwise_batchnorm and bead_number_norm:
-            raise RuntimeError('beadwise_batchnorm and bead_number_norm '
+        if beadwise_batchnorm and simple_norm:
+            raise RuntimeError('beadwise_batchnorm and simple_norm '
                                'cannot be used simultaneously')
         elif beadwise_batchnorm != None:
             _check_normalization_input(beadwise_batchnorm)
             self.normlayer = nn.BatchNorm1d(beadwise_batchnorm,
                                             track_running_stats=batchnorm_running_stats)
-        elif bead_number_norm != None:
-            _check_normalization_input(bead_number_norm)
-            self.normlayer = bead_number_norm
-        elif beadwise_batchnorm == None and bead_number_norm == None:
+        elif simple_norm != None:
+            _check_normalization_input(simple_norm)
+            self.normlayer = simple_norm
+        elif beadwise_batchnorm == None and simple_norm == None:
             self.normlayer = None
 
     def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask):
@@ -277,7 +277,7 @@ class InteractionBlock(nn.Module):
         Activation function for the atom-wise layers. Following Schütt et al,
         the default value is ShiftedSoftplus, but any differentiable activation
         function can be used (see Notes).
-    bead_number_norm: int (default=None)
+    simple_norm: int (default=None)
         Number of beads in the system, with which the output of the continuous
         filter convolution will be normalized
     beadwise_batchnorm: int (default=None)
@@ -310,7 +310,7 @@ class InteractionBlock(nn.Module):
     """
 
     def __init__(self, n_inputs, n_gaussians, n_filters,
-                 activation=ShiftedSoftplus(), bead_number_norm=None,
+                 activation=ShiftedSoftplus(), simple_norm=None,
                  beadwise_batchnorm=None, batchnorm_running_stats=False):
         super(InteractionBlock, self).__init__()
 
@@ -322,18 +322,18 @@ class InteractionBlock(nn.Module):
         # WARNING : This will be removed in the future!
         self.inital_dense = self.initial_dense
 
-        if beadwise_batchnorm and bead_number_norm:
-            raise RuntimeError('beadwise_batchnorm and bead_number_norm '
+        if beadwise_batchnorm and simple_norm:
+            raise RuntimeError('beadwise_batchnorm and simple_norm '
                                'cannot be used simultaneously')
         else:
             if beadwise_batchnorm != None:
                 _check_normalization_input(beadwise_batchnorm)
-            if bead_number_norm != None:
-                _check_normalization_input(bead_number_norm)
+            if simple_norm != None:
+                _check_normalization_input(simple_norm)
         self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                                   n_filters=n_filters,
                                                   activation=activation,
-                                                  bead_number_norm=bead_number_norm,
+                                                  simple_norm=simple_norm,
                                                   beadwise_batchnorm=beadwise_batchnorm,
                                                   batchnorm_running_stats=batchnorm_running_stats)
         output_layers = LinearLayer(n_filters, n_filters, bias=True,

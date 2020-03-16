@@ -438,30 +438,30 @@ def test_beadwise_batchnorm_logic_ints():
                                                 n_filters],
                           **{'beadwise_batchnorm': beadwise_batchnorm})
 
-def test_bead_number_norm_logic_ints():
+def test_simple_norm_logic_ints():
     # Tests to make sure the bead number norm logic is working properly
     # in SchnetFeature, InteractionBlock, and ContinuousFilterConvolution
     # Specifically, this test checks to see if setting beadwise_batchnorm to
     # an integer less than 1 raises a ValueError
 
-    # We test a random case where bead_number_norm is an integer less
+    # We test a random case where simple_norm is an integer less
     # than one - this should raise a ValueError
     classes = [InteractionBlock, ContinuousFilterConvolution]
-    bead_number_norm = np.random.randint(-100, high=1)
+    simple_norm = np.random.randint(-100, high=1)
     for _class in classes:
         if _class == ContinuousFilterConvolution:
             assert_raises(ValueError, _class, *[n_gaussians,
                                                 n_filters],
-                          **{'bead_number_norm': bead_number_norm})
+                          **{'simple_norm': simple_norm})
         if _class == InteractionBlock:
             assert_raises(ValueError, _class, *[n_feats,
                                                 n_gaussians,
                                                 n_filters],
-                          **{'bead_number_norm': bead_number_norm})
+                          **{'simple_norm': simple_norm})
 
-def test_simultaneous_beadwise_and_bead_number_norm():
+def test_simultaneous_beadwise_and_simple_norm():
     # Tests to make sure a RuntimeError is raised if both beadwise_batchnorm
-    # and bead_number_norm are specified
+    # and simple_norm are specified
     embedding_property = torch.randint(low=1, high=n_embeddings,
                                        size=(frames, beads))
 
@@ -470,39 +470,39 @@ def test_simultaneous_beadwise_and_bead_number_norm():
                                       embedding_dim=n_feats)
 
     feature_size = np.random.randint(4, 8)
-    # We test a random case where bead_number_norm is an integer less
+    # We test a random case where simple_norm is an integer less
     # than one - this should raise a ValueError
     classes = [SchnetFeature, InteractionBlock, ContinuousFilterConvolution]
     beadwise_batchnorm = np.random.randint(-100, high=100)
-    bead_number_norm = np.random.randint(-100, high=100)
+    simple_norm = np.random.randint(-100, high=100)
     for _class in classes:
         if _class == ContinuousFilterConvolution:
             assert_raises(RuntimeError, _class, *[n_gaussians,
                                                 n_filters],
-                          **{'bead_number_norm': bead_number_norm,
+                          **{'simple_norm': simple_norm,
                              'beadwise_batchnorm': beadwise_batchnorm})
         if _class == InteractionBlock:
             assert_raises(RuntimeError, _class, *[n_feats,
                                                 n_gaussians,
                                                 n_filters],
-                          **{'bead_number_norm': bead_number_norm,
+                          **{'simple_norm': simple_norm,
                              'beadwise_batchnorm': beadwise_batchnorm})
         if _class == SchnetFeature:
             assert_raises(RuntimeError, _class, *[feature_size,
                                                   embedding_layer,
                                                   beads],
-                          **{'bead_number_norm': True,
+                          **{'simple_norm': True,
                              'beadwise_batchnorm': True})
 
 
-def test_cfconv_bead_number_norm():
+def test_cfconv_simple_norm():
     # Tests to make sure simple bead number normalization on the output
     # of continuous filter convolution produces the expected numerical result
 
     test_cfconv_features = torch.randn((frames, beads, n_filters))
     # Calculate continuous convolution output with the created layer
     cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
-                                         n_filters=n_filters, bead_number_norm=beads)
+                                         n_filters=n_filters, simple_norm=beads)
     # Check to see if batchnorm is embedded properly in the cfconv
     assert isinstance(cfconv.normlayer, int)
 
