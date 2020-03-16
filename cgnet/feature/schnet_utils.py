@@ -24,20 +24,20 @@ def _check_normalization_input(n_beads):
         normalization after element-wise filter convolution.
     """
 
-    # Make sure bead_norm is an integer
-    if not isinstance(bead_norm, int):
+    # Make sure n_beads is an integer
+    if not isinstance(n_beads, int):
         raise ValueError(
-            "bead_norm must be an integer.")
+            "n_beads must be an integer.")
     else:
-        # Make sure bead norm is specifically not a bool (Python 3.7 types
+        # Make sure n_beads is specifically not a bool (Python 3.7 types
         # bools as integers)
-        if isinstance(bead_norm, bool):
+        if isinstance(n_beads, bool):
             raise ValueError(
-                "bead_norm must be specified by an integer, not a bool.")
-        # Make sure bead_norm, if an integer, is greater than or equal to one
-        if bead_norm < 1:
+                "n_beads must be specified by an integer, not a bool.")
+        # Make sure n_beads, if an integer, is greater than or equal to one
+        if n_beads < 1:
             raise ValueError(
-                "bead_norm must be positive.")
+                "n_beads must be positive.")
 
 
 class CGBeadEmbedding(torch.nn.Module):
@@ -167,14 +167,14 @@ class ContinuousFilterConvolution(nn.Module):
         if beadwise_batchnorm and bead_number_norm:
             raise RuntimeError('beadwise_batchnorm and bead_number_norm '
                                'cannot be used simultaneously')
-        if beadwise_batchnorm != None:
+        elif beadwise_batchnorm != None:
             _check_normalization_input(beadwise_batchnorm)
             self.normlayer = nn.BatchNorm1d(beadwise_batchnorm,
                                             track_running_stats=batchnorm_running_stats)
-        if bead_number_norm != None:
+        elif bead_number_norm != None:
             _check_normalization_input(bead_number_norm)
             self.normlayer = bead_number_norm
-        if beadwise_batchnorm == None and bead_number_norm == None:
+        elif beadwise_batchnorm == None and bead_number_norm == None:
             self.normlayer = None
 
     def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask):
