@@ -559,7 +559,6 @@ def test_cfconv_batchnorm():
     cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                          n_filters=n_filters, beadwise_batchnorm=beads)
     # Check to see if batchnorm is embedded properly in the cfconv
-    print(cfconv.normlayer)
     assert isinstance(cfconv.normlayer, nn.BatchNorm1d)
 
     cfconv_layer_out = cfconv.forward(test_cfconv_features, test_rbf,
