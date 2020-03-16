@@ -376,6 +376,7 @@ def test_cgnet_simulation():
     # with force matching as a loss criterion
     model = CGnet(arch, ForceLoss(), feature=feature_layer,
                   priors=[harmonic_potential])
+    model.eval()
 
     # Here, we produce mock target protein force data
     forces = torch.randn((frames, beads, 3), requires_grad=False)
