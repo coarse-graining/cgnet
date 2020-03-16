@@ -239,7 +239,7 @@ class ContinuousFilterConvolution(nn.Module):
         if self.normlayer is not None:
             if isinstance(self.normlayer, nn.BatchNorm1d):
                 return self.normlayer(aggregated_features)
-            if isinstance(self.normlayer, int):
+            elif isinstance(self.normlayer, int):
                 return aggregated_features / self.normlayer
         else:
             return aggregated_features
