@@ -12,6 +12,7 @@ from cgnet.network import CGnet, ForceLoss
 from cgnet.feature import (MoleculeDataset, LinearLayer, SchnetFeature,
                            CGBeadEmbedding, GeometryFeature, FeatureCombiner,
                            GeometryStatistics)
+from nose.tools import assert_raises
 
 # Here we create testing data from a random linear protein
 # with a random number of frames
@@ -49,6 +50,7 @@ arch = (LinearLayer(dims, dims, activation=nn.Tanh()) +
 # Here we construct a CGnet model using the above architecture
 # as well as variables to be used in CG simulation tests
 model = CGnet(arch, ForceLoss()).float()
+model.eval()
 length = np.random.choice([2, 4])*2  # Number of frames to simulate
 save = np.random.choice([2, 4])  # Frequency with which to save simulation
 # frames (choice of 2 or 4)
@@ -205,7 +207,7 @@ def test_lipschitz_schnet_mask():
 
     lambda_ = float(1e-12)
     pre_projection_schnet_weights = _schnet_feature_linear_extractor(schnet_test_model.feature,
-                                                              return_weight_data_only=True)
+                                                                     return_weight_data_only=True)
     # Convert torch tensors to numpy arrays for testing
     pre_projection_schnet_weights = [weight
                                      for weight in pre_projection_schnet_weights]
@@ -218,7 +220,7 @@ def test_lipschitz_schnet_mask():
     # Here we make the lipschitz projection
     lipschitz_projection(schnet_test_model, lambda_, schnet_mask=lip_mask)
     post_projection_schnet_weights = _schnet_feature_linear_extractor(schnet_test_model.feature,
-                                                               return_weight_data_only=True)
+                                                                      return_weight_data_only=True)
     # Convert torch tensors to numpy arrays for testing
     post_projection_schnet_weights = [weight
                                       for weight in post_projection_schnet_weights]
@@ -274,7 +276,8 @@ def test_lipschitz_full_model_random_mask():
                                                if isinstance(layer, nn.Linear)]
     pre_projection_schnet_weights = _schnet_feature_linear_extractor(full_test_model.feature.layer_list[-1],
                                                                      return_weight_data_only=True)
-    full_pre_projection_weights = pre_projection_terminal_network_weights + pre_projection_schnet_weights
+    full_pre_projection_weights = (pre_projection_terminal_network_weights +
+                                   pre_projection_schnet_weights)
 
     # Next, we assemble the masks for both the terminal network and the
     # SchnetFeature weights. There are 5 instances of nn.Linear for each
@@ -295,7 +298,8 @@ def test_lipschitz_full_model_random_mask():
                                                 if isinstance(layer, nn.Linear)]
     post_projection_schnet_weights = _schnet_feature_linear_extractor(full_test_model.feature.layer_list[-1],
                                                                       return_weight_data_only=True)
-    full_post_projection_weights = post_projection_terminal_network_weights + post_projection_schnet_weights
+    full_post_projection_weights = (post_projection_terminal_network_weights +
+                                    post_projection_schnet_weights)
 
     # Here we verify that the masked layers remain unaffected by the strong
     # Lipschitz projection
@@ -311,6 +315,7 @@ def test_lipschitz_full_model_random_mask():
         # If the mask element is False then the weights should be unaffected
         if not mask_element:
             np.testing.assert_array_equal(pre.numpy(), post.numpy())
+
 
 def test_lipschitz_full_model_all_mask():
     # Test lipschitz mask functionality for completely False schnet mask
@@ -347,10 +352,11 @@ def test_lipschitz_full_model_all_mask():
                                                if isinstance(layer, nn.Linear)]
     pre_projection_schnet_weights = _schnet_feature_linear_extractor(full_test_model.feature.layer_list[-1],
                                                                      return_weight_data_only=True)
-    full_pre_projection_weights = pre_projection_terminal_network_weights + pre_projection_schnet_weights
+    full_pre_projection_weights = (pre_projection_terminal_network_weights +
+                                   pre_projection_schnet_weights)
 
     # Here we make the lipschitz projection, specifying the 'all' option for
-    # both the terminal network mask and the schnet mask 
+    # both the terminal network mask and the schnet mask
     lipschitz_projection(full_test_model, lambda_, network_mask='all',
                          schnet_mask='all')
     post_projection_terminal_network_weights = [layer.weight.data
@@ -358,7 +364,8 @@ def test_lipschitz_full_model_all_mask():
                                                 if isinstance(layer, nn.Linear)]
     post_projection_schnet_weights = _schnet_feature_linear_extractor(full_test_model.feature.layer_list[-1],
                                                                       return_weight_data_only=True)
-    full_post_projection_weights = post_projection_terminal_network_weights + post_projection_schnet_weights
+    full_post_projection_weights = (post_projection_terminal_network_weights +
+                                    post_projection_schnet_weights)
 
     # Here we verify that all weight layers remain unaffected by the strong
     # Lipschitz projection
@@ -375,15 +382,34 @@ def test_dataset_loss():
 
     # First, we get dataset loss using the greater-than-one batch size
     # loader from the preamble
-    loss = dataset_loss(model, loader)
+    loss = dataset_loss(model, loader, train_mode=False)
 
     # Next, we do the same but use a loader with a batch size of 1
     single_point_loader = DataLoader(dataset, sampler=sampler,
                                      batch_size=1)
-    single_point_loss = dataset_loss(model, single_point_loader)
+    single_point_loss = dataset_loss(model, single_point_loader,
+                                     train_mode=False)
 
     # Here, we verify that the two losses over the dataset are equal
     np.testing.assert_allclose(loss, single_point_loss, rtol=1e-5)
+
+
+def test_dataset_loss_model_modes():
+    # Test whether models are returned to train mode after eval is specified
+
+    # Define mode to pass into the dataset
+    model_dataset = CGnet(copy.deepcopy(arch), ForceLoss()).float()
+    # model should be in training mode by default
+    assert model_dataset.training == True
+
+    # Simple datalaoder
+    loader = DataLoader(dataset, batch_size=batch_size)
+
+    loss_dataset = dataset_loss(model_dataset,
+                                loader, train_mode=False)
+
+    # The model should be returned to the default train state
+    assert model_dataset.training == True
 
 
 def test_dataset_loss_with_optimizer():
@@ -530,12 +556,13 @@ def test_schnet_dataset_loss():
 
     # First, we get dataset loss using the greater-than-one batch size
     # loader from the preamble
-    loss = dataset_loss(schnet_model, schnet_loader)
+    loss = dataset_loss(schnet_model, schnet_loader, train_mode=False)
 
     # Next, we do the same but use a loader with a batch size of 1
     single_point_loader = DataLoader(schnet_dataset, sampler=sampler,
                                      batch_size=1)
-    single_point_loss = dataset_loss(schnet_model, single_point_loader)
+    single_point_loss = dataset_loss(schnet_model, single_point_loader,
+                                     train_mode=False)
 
     # Here, we verify that the two losses over the dataset are equal
     np.testing.assert_allclose(loss, single_point_loss, rtol=1e-5)
@@ -552,6 +579,7 @@ def test_regular_simulation_shape():
     save_interval = np.random.choice([2, 4])
 
     # Here, we generate the simulation
+    model.eval()
     my_sim = Simulation(model, initial_coordinates, length=sim_length,
                         save_interval=save_interval)
     traj = my_sim.simulate()
@@ -571,6 +599,7 @@ def test_simulation_saved_forces_shape():
     initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
 
     # Here, we generate the simulation
+    model.eval()
     my_sim = Simulation(model, initial_coordinates, length=length,
                         save_interval=save, save_forces=True)
     traj = my_sim.simulate()
@@ -588,6 +617,7 @@ def test_simulation_saved_potential_shape():
     # Test shape of simulation with both forces and potential saved
     # Grab intitial coordinates as a simulation starting configuration
     # from the moleular dataset
+    model.eval()
     initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
     my_sim = Simulation(model, initial_coordinates, length=length,
                         save_interval=save, save_potential=True)
@@ -613,6 +643,7 @@ def test_simulation_seeding():
     seed = np.random.randint(1000)  # Save random seed for simulations
 
     # Generate simulation number one
+    model.eval()
     sim1 = Simulation(model, initial_coordinates, length=length,
                       save_interval=save, save_forces=True,
                       save_potential=True, random_seed=seed)
@@ -637,6 +668,7 @@ def test_simulation_safety():
     initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
 
     # Generate simulation
+    model.eval()
     sim = Simulation(model, initial_coordinates, length=length,
                      save_interval=save)
     # Check that no simulation is stored

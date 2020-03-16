@@ -279,7 +279,6 @@ def test_schnet_activation_default():
     # is correctly placed in the SchnetFeature
 
     interaction_blocks = np.random.randint(1, high=5)
-    print(interaction_blocks)
     schnet_feature = SchnetFeature(feature_size=n_feats,
                                    embedding_layer=None,
                                    n_interaction_blocks=interaction_blocks,
@@ -402,16 +401,10 @@ def test_beadwise_batchnorm_logic_bools():
     feature_size = np.random.randint(4, 8)
     # We test beadwise_batchnorm = True or False (Booleans)
     # This should raise a ValueError
-    classes = [SchnetFeature, InteractionBlock, ContinuousFilterConvolution]
+    classes = [InteractionBlock, ContinuousFilterConvolution]
     bools = [True, False]
     for _bool in bools:
         for _class in classes:
-            if _class == SchnetFeature:
-                assert_raises(ValueError, _class, *[feature_size,
-                                                    embedding_layer],
-                              **{'n_interaction_blocks': 2,
-                                 'n_beads': beads,
-                                 'beadwise_batchnorm': _bool})
             if _class == ContinuousFilterConvolution:
                 assert_raises(ValueError, _class, *[n_gaussians,
                                                     n_filters],
@@ -428,25 +421,12 @@ def test_beadwise_batchnorm_logic_ints():
     # in SchnetFeature, InteractionBlock, and ContinuousFilterConvolution
     # Specifically, this test checks to see if setting beadwise_batchnorm to
     # an integer less than 1 raises a ValueError
-    embedding_property = torch.randint(low=1, high=n_embeddings,
-                                       size=(frames, beads))
-
-    # Initialize the embedding and SchnetFeature class
-    embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
-                                      embedding_dim=n_feats)
-
-    feature_size = np.random.randint(4, 8)
     # We test a random case where beadwise_batchnorm is an integer less
     # than one - this should raise a ValueError
-    classes = [SchnetFeature, InteractionBlock, ContinuousFilterConvolution]
+
+    classes = [InteractionBlock, ContinuousFilterConvolution]
     beadwise_batchnorm = np.random.randint(-100, high=1)
     for _class in classes:
-        if _class == SchnetFeature:
-            assert_raises(ValueError, _class, *[feature_size,
-                                                embedding_layer],
-                          **{'n_interaction_blocks': 2,
-                             'n_beads': beads,
-                             'beadwise_batchnorm': beadwise_batchnorm})
         if _class == ContinuousFilterConvolution:
             assert_raises(ValueError, _class, *[n_gaussians,
                                                 n_filters],
@@ -456,6 +436,117 @@ def test_beadwise_batchnorm_logic_ints():
                                                 n_gaussians,
                                                 n_filters],
                           **{'beadwise_batchnorm': beadwise_batchnorm})
+
+def test_simple_norm_logic_ints():
+    # Tests to make sure the bead number norm logic is working properly
+    # in SchnetFeature, InteractionBlock, and ContinuousFilterConvolution
+    # Specifically, this test checks to see if setting beadwise_batchnorm to
+    # an integer less than 1 raises a ValueError
+
+    # We test a random case where simple_norm is an integer less
+    # than one - this should raise a ValueError
+    classes = [InteractionBlock, ContinuousFilterConvolution]
+    simple_norm = np.random.randint(-100, high=1)
+    for _class in classes:
+        if _class == ContinuousFilterConvolution:
+            assert_raises(ValueError, _class, *[n_gaussians,
+                                                n_filters],
+                          **{'simple_norm': simple_norm})
+        if _class == InteractionBlock:
+            assert_raises(ValueError, _class, *[n_feats,
+                                                n_gaussians,
+                                                n_filters],
+                          **{'simple_norm': simple_norm})
+
+def test_simultaneous_beadwise_and_simple_norm():
+    # Tests to make sure a RuntimeError is raised if both beadwise_batchnorm
+    # and simple_norm are specified
+    embedding_property = torch.randint(low=1, high=n_embeddings,
+                                       size=(frames, beads))
+
+    # Initialize the embedding and SchnetFeature class
+    embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
+                                      embedding_dim=n_feats)
+
+    feature_size = np.random.randint(4, 8)
+    # We test a random case where simple_norm is an integer less
+    # than one - this should raise a ValueError
+    classes = [SchnetFeature, InteractionBlock, ContinuousFilterConvolution]
+    beadwise_batchnorm = np.random.randint(-100, high=100)
+    simple_norm = np.random.randint(-100, high=100)
+    for _class in classes:
+        if _class == ContinuousFilterConvolution:
+            assert_raises(RuntimeError, _class, *[n_gaussians,
+                                                n_filters],
+                          **{'simple_norm': simple_norm,
+                             'beadwise_batchnorm': beadwise_batchnorm})
+        if _class == InteractionBlock:
+            assert_raises(RuntimeError, _class, *[n_feats,
+                                                n_gaussians,
+                                                n_filters],
+                          **{'simple_norm': simple_norm,
+                             'beadwise_batchnorm': beadwise_batchnorm})
+        if _class == SchnetFeature:
+            assert_raises(RuntimeError, _class, *[feature_size,
+                                                  embedding_layer,
+                                                  beads],
+                          **{'simple_norm': True,
+                             'beadwise_batchnorm': True})
+
+
+def test_cfconv_simple_norm():
+    # Tests to make sure simple bead number normalization on the output
+    # of continuous filter convolution produces the expected numerical result
+
+    test_cfconv_features = torch.randn((frames, beads, n_filters))
+    # Calculate continuous convolution output with the created layer
+    cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
+                                         n_filters=n_filters, simple_norm=beads)
+    # Check to see if batchnorm is embedded properly in the cfconv
+    assert isinstance(cfconv.normlayer, int)
+
+    cfconv_layer_out = cfconv.forward(test_cfconv_features, test_rbf,
+                                      test_nbh, test_nbh_mask).detach()
+    # Calculate convolution manually
+    n_neighbors = beads - 1
+    test_nbh_np = test_nbh.numpy()
+    test_nbh_mask_np = test_nbh_mask.numpy()
+    test_feat_np = test_cfconv_features.numpy()
+
+    # Feature tensor needs to be transformed from
+    # (n_frames, n_beads, n_features) to
+    # (n_frames, n_beads, n_neighbors, n_features)
+    # This can be done by feeding the features of a respective bead into
+    # its position in the neighbor_list.
+    # Gather the features into the respective places in the neighbor list
+    neighbor_list = test_nbh_np.reshape(-1, beads * n_neighbors, 1)
+    neighbor_list = neighbor_list.repeat(n_filters, axis=2)
+    # Gather the features into the respective places in the neighbor list
+    neighbor_features = np.take_along_axis(test_feat_np, neighbor_list, axis=1)
+    # Reshape back to (n_frames, n_beads, n_neighbors, n_features) for
+    # element-wise multiplication with the filter
+    neighbor_features = neighbor_features.reshape(frames, beads,
+                                                  n_neighbors, -1)
+
+    # In order to compare the layer output with the manual calculation, we
+    # need to use the same filter generator (2 linear layers with and without
+    # activation function, respectively).
+    test_conv_filter = cfconv.filter_generator(test_rbf).detach().numpy()
+
+    # element-wise multiplication and pooling
+    conv_features = neighbor_features * test_conv_filter
+    # Remove features from non-existing neighbors
+    conv_features_masked = conv_features * test_nbh_mask_np[:, :, :, None]
+    cfconv_manual_out = np.sum(conv_features_masked, axis=2)
+
+    # Test if all the removed features are indeed 0
+    assert not np.all(
+        conv_features_masked[~test_nbh_mask_np.astype(np.bool)].astype(
+            np.bool))
+    # Test if the torch and numpy calculation are the same
+    normed_manual_out = torch.tensor(cfconv_manual_out) / beads
+    np.testing.assert_allclose(
+        cfconv_layer_out, normed_manual_out.detach().numpy())
 
 
 def test_cfconv_batchnorm():

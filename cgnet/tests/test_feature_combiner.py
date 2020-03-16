@@ -278,6 +278,7 @@ def test_cgschnet_simulation_shapes():
     # Next, we make aa CGnet with a random hidden architecture
     arch = _get_random_architecture(feature_size)
     model = CGnet(arch, ForceLoss(), feature=feature_combiner)
+    model.eval()
 
     sim_length = np.random.randint(10, 20)
     sim = Simulation(model, coords_torch, embedding_property, length=sim_length,

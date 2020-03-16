@@ -8,7 +8,8 @@ import warnings
 
 from .geometry import Geometry
 from .utils import RadialBasisFunction, ModulatedRBF, ShiftedSoftplus
-from .schnet_utils import InteractionBlock, _check_beadwise_batchnorm
+from .schnet_utils import InteractionBlock
+
 
 class GeometryFeature(nn.Module):
     """Featurization of coarse-grained beads into pairwise distances,
@@ -191,6 +192,8 @@ class SchnetFeature(nn.Module):
         filters that will be used.
     embedding_layer: torch.nn.Module
         Class that embeds a property into a feature vector.
+    n_beads: int
+        Number of coarse grain beads in the model.
     activation: nn.Module (default=ShiftedSoftplus())
         Activation function that will be used throughout the
         SchnetFeature - including within the atom-wise layers and
@@ -201,8 +204,6 @@ class SchnetFeature(nn.Module):
         Allows calls to Geometry instance for calculating distances for a
         standalone SchnetFeature instance (i.e. one that is not
         preceded by a GeometryFeature instance).
-    n_beads: int (default=None)
-        Number of coarse grain beads in the model.
     neighbor_cutoff: float (default=None)
         Cutoff distance in whether beads are considered neighbors or not.
     basis_function_type: str (default='uniform')
@@ -214,10 +215,15 @@ class SchnetFeature(nn.Module):
     n_gaussians: int (default=50)
         Number of gaussians for the gaussian expansion in the radial basis
         function.
-    beadwise_batchnorm: int (default=None)
-        Number of beads over which batch normalization will be applied after
-        application of the continuous filter convolution. If None, batch
-        normalization will not be used
+    simple_norm: bool (default=False)
+        If True, the output of the continuous filter convolution will be
+        be normalized by the number of beads in the system.
+    beadwise_batchnorm: bool (default=False)
+        If True, batch normalization will be applied after application of the
+        continuous filter convolution according to n_beads.
+    batchnorm_running_stats: bool (default=False)
+        If beadwise_batchnorm is True, this argument populates the
+        track_running_stats argument in torch.nn.BatchNorm1d
     variance: float (default=1.0)
         The variance (standard deviation squared) of the Gaussian functions.
     n_interaction_blocks: int (default=1)
@@ -275,14 +281,16 @@ class SchnetFeature(nn.Module):
     def __init__(self,
                  feature_size,
                  embedding_layer,
+                 n_beads,
                  activation=ShiftedSoftplus(),
                  calculate_geometry=None,
-                 n_beads=None,
                  basis_function_type='uniform',
                  neighbor_cutoff=None,
                  rbf_cutoff=5.0,
                  n_gaussians=50,
-                 beadwise_batchnorm=None,
+                 simple_norm=False,
+                 beadwise_batchnorm=False,
+                 batchnorm_running_stats=False,
                  variance=1.0,
                  n_interaction_blocks=1,
                  share_weights=False,
@@ -303,14 +311,28 @@ class SchnetFeature(nn.Module):
             raise RuntimeError(
                 "Basis function type must be 'uniform' or 'modulated'.")
 
-        if beadwise_batchnorm != None:
-            _check_beadwise_batchnorm(beadwise_batchnorm)
+        if beadwise_batchnorm and simple_norm:
+            raise RuntimeError('beadwise_batchnorm and simple_norm '
+                               'cannot be used simultaneously')
+        else:
+            if beadwise_batchnorm:
+                beadwise_batchnorm = n_beads
+            else:
+                beadwise_batchnorm = None
+
+            if simple_norm:
+                simple_norm = n_beads
+            else:
+                simple_norm = None
+
         if share_weights:
             # Lets the interaction blocks share the weights
             self.interaction_blocks = nn.ModuleList(
                 [InteractionBlock(feature_size, n_gaussians,
                                   feature_size, activation=activation,
-                                  beadwise_batchnorm=beadwise_batchnorm)]
+                                  simple_norm=simple_norm,
+                                  beadwise_batchnorm=beadwise_batchnorm,
+                                  batchnorm_running_stats=batchnorm_running_stats)]
                 * n_interaction_blocks
             )
         else:
@@ -318,7 +340,9 @@ class SchnetFeature(nn.Module):
             self.interaction_blocks = nn.ModuleList(
                 [InteractionBlock(feature_size, n_gaussians,
                                   feature_size, activation=activation,
-                                  beadwise_batchnorm=beadwise_batchnorm)
+                                  simple_norm=simple_norm,
+                                  beadwise_batchnorm=beadwise_batchnorm,
+                                  batchnorm_running_stats=batchnorm_running_stats)
                  for _ in range(n_interaction_blocks)]
             )
 
