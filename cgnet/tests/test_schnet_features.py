@@ -496,15 +496,14 @@ def test_simultaneous_beadwise_and_bead_number_norm():
 
 
 def test_cfconv_bead_number_norm():
-    # Tests the usage of batch normalization after application of the
-    # continuous filter convolution in
+    # Tests to make sure simple bead number normalization on the output
+    # of continuous filter convolution produces the expected numerical result
 
     test_cfconv_features = torch.randn((frames, beads, n_filters))
     # Calculate continuous convolution output with the created layer
     cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                          n_filters=n_filters, bead_number_norm=beads)
     # Check to see if batchnorm is embedded properly in the cfconv
-    print(cfconv.normlayer)
     assert isinstance(cfconv.normlayer, int)
 
     cfconv_layer_out = cfconv.forward(test_cfconv_features, test_rbf,
