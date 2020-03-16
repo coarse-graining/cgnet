@@ -119,13 +119,13 @@ class ContinuousFilterConvolution(nn.Module):
         Activation function for the filter generating network. Following
         Schütt et al, the default value is ShiftedSoftplus, but any
         differentiable activation function can be used (see Notes).
+    bead_number_norm: int (default=None)
+        Number of beads in the system, with which the output of the continuous
+        filter convolution will be normalized
     beadwise_batchnorm: int (default=None)
         Number of beads over which batch normalization will be applied after
         application of the continuous filter convolution. If None, batch
         normalization will not be used
-    bead_number_norm: int (default=None)
-        Number of beads in the system, with which the output of the continuous
-        filter convolution will be normalized
     batchnorm_running_stats: bool (default=False)
         If beadwise_batchnorm is not None, this argument populates the
         track_running_stats argument in torch.nn.BatchNorm1d
@@ -152,7 +152,7 @@ class ContinuousFilterConvolution(nn.Module):
     """
 
     def __init__(self, n_gaussians, n_filters, activation=ShiftedSoftplus(),
-                 beadwise_batchnorm=None, bead_number_norm=None,
+                 bead_number_norm=None, beadwise_batchnorm=None,
                  batchnorm_running_stats=False):
         super(ContinuousFilterConvolution, self).__init__()
         filter_layers = LinearLayer(n_gaussians, n_filters, bias=True,
@@ -272,16 +272,16 @@ class InteractionBlock(nn.Module):
         The same feature size will be used for the output linear layers of the
         interaction block.
     activation: nn.Module (default=ShiftedSoftplus())
-        Activation function for the atom-wise layers. Following Schütt et al, 
+        Activation function for the atom-wise layers. Following Schütt et al,
         the default value is ShiftedSoftplus, but any differentiable activation
         function can be used (see Notes).
+    bead_number_norm: int (default=None)
+        Number of beads in the system, with which the output of the continuous
+        filter convolution will be normalized
     beadwise_batchnorm: int (default=None)
         Number of beads over which batch normalization will be applied after
         application of the continuous filter convolution. If None, batch
         normalization will not be used
-    bead_number_norm: int (default=None)
-        Number of beads in the system, with which the output of the continuous
-        filter convolution will be normalized
     batchnorm_running_stats: bool (default=False)
         If beadwise_batchnorm is not None, this argument populates the
         track_running_stats argument in torch.nn.BatchNorm1d
@@ -308,8 +308,8 @@ class InteractionBlock(nn.Module):
     """
 
     def __init__(self, n_inputs, n_gaussians, n_filters,
-                 activation=ShiftedSoftplus(), beadwise_batchnorm=None,
-                 bead_number_norm=None, batchnorm_running_stats=False):
+                 activation=ShiftedSoftplus(), bead_number_norm=None,
+                 beadwise_batchnorm=None, batchnorm_running_stats=False):
         super(InteractionBlock, self).__init__()
 
         self.initial_dense = nn.Sequential(

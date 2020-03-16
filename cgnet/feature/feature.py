@@ -215,12 +215,12 @@ class SchnetFeature(nn.Module):
     n_gaussians: int (default=50)
         Number of gaussians for the gaussian expansion in the radial basis
         function.
-    beadwise_batchnorm: bool (default=False)
-        If True, batch normalization will be applied after application of the
-        continuous filter convolution according to n_beads.
     bead_number_norm: bool (default=False)
         If True, the output of the continuous filter convolution will be
         be normalized by the number of beads in the system.
+    beadwise_batchnorm: bool (default=False)
+        If True, batch normalization will be applied after application of the
+        continuous filter convolution according to n_beads.
     batchnorm_running_stats: bool (default=False)
         If beadwise_batchnorm is True, this argument populates the
         track_running_stats argument in torch.nn.BatchNorm1d
@@ -288,8 +288,8 @@ class SchnetFeature(nn.Module):
                  neighbor_cutoff=None,
                  rbf_cutoff=5.0,
                  n_gaussians=50,
-                 beadwise_batchnorm=False,
                  bead_number_norm=False,
+                 beadwise_batchnorm=False,
                  batchnorm_running_stats=False,
                  variance=1.0,
                  n_interaction_blocks=1,
