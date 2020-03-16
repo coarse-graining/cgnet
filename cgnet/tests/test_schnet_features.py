@@ -279,7 +279,6 @@ def test_schnet_activation_default():
     # is correctly placed in the SchnetFeature
 
     interaction_blocks = np.random.randint(1, high=5)
-    print(interaction_blocks)
     schnet_feature = SchnetFeature(feature_size=n_feats,
                                    embedding_layer=None,
                                    n_interaction_blocks=interaction_blocks,
