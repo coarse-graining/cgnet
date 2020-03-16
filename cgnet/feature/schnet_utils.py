@@ -7,20 +7,21 @@ import torch.nn as nn
 from cgnet.feature.utils import ShiftedSoftplus, LinearLayer
 
 
-def _check_bead_norm(bead_norm):
-    """Helper function for ensuring bead_norm is an
-    integer greater than or equal to one
+def _check_normalization_input(n_beads):
+    """Helper function for ensuring n_beads is an
+    integer greater than or equal to one. This helper function is used
+    by both ContinuousFilterConvolution and InteractionBlock to
+    ensure that the the instancing of either a simple bead number
+    normalizaiton or beadwise batch normalization after the continuous
+    convolution filter output is done with a proper integer that
+    represents the number of beads in the system.
 
     Parameters
     ----------
-    bead_norm: any type
-        the input value of bead_norm that will
-        be used to construct either an nn.BatchNorm1d instance
-        within a ContinuousFilterConvolution, or a simple bead numerb
-        normalization after element-wise filter convolution. In
-        order for the batch normalization to be properly instanced,
-        bead_norm must be an integer greater than one (not a bool).
-        If this condition is not met, a ValueError is raised.
+    n_beads: any type
+        the input value used to construct either an nn.BatchNorm1d instance
+        within a ContinuousFilterConvolution, or a simple bead number
+        normalization after element-wise filter convolution.
     """
 
     # Make sure bead_norm is an integer
@@ -28,7 +29,8 @@ def _check_bead_norm(bead_norm):
         raise ValueError(
             "bead_norm must be an integer.")
     else:
-        # Make sure bead norm is specifically not a bool
+        # Make sure bead norm is specifically not a bool (Python 3.7 types
+        # bools as integers)
         if isinstance(bead_norm, bool):
             raise ValueError(
                 "bead_norm must be specified by an integer, not a bool.")
@@ -166,11 +168,11 @@ class ContinuousFilterConvolution(nn.Module):
             raise RuntimeError('beadwise_batchnorm and bead_number_norm '
                                'cannot be used simultaneously')
         if beadwise_batchnorm != None:
-            _check_bead_norm(beadwise_batchnorm)
+            _check_normalization_input(beadwise_batchnorm)
             self.normlayer = nn.BatchNorm1d(beadwise_batchnorm,
                                             track_running_stats=batchnorm_running_stats)
         if bead_number_norm != None:
-            _check_bead_norm(bead_number_norm)
+            _check_normalization_input(bead_number_norm)
             self.normlayer = bead_number_norm
         if beadwise_batchnorm == None and bead_number_norm == None:
             self.normlayer = None
@@ -325,9 +327,9 @@ class InteractionBlock(nn.Module):
                                'cannot be used simultaneously')
         else:
             if beadwise_batchnorm != None:
-                _check_bead_norm(beadwise_batchnorm)
+                _check_normalization_input(beadwise_batchnorm)
             if bead_number_norm != None:
-                _check_bead_norm(bead_number_norm)
+                _check_normalization_input(bead_number_norm)
         self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                                   n_filters=n_filters,
                                                   activation=activation,
