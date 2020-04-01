@@ -349,10 +349,7 @@ class SchnetFeature(nn.Module):
         self.neighbor_cutoff = neighbor_cutoff
         self.calculate_geometry = calculate_geometry
         if self.calculate_geometry:
-            self._distance_pairs, _ = self.geometry.get_distance_indices(n_beads,
-                                                                         [], [])
-            self.redundant_distance_mapping = self.geometry.get_redundant_distance_mapping(
-                self._distance_pairs)
+            pass
         else:
             self._distance_pairs, _ = self.geometry.get_distance_indices(n_beads,
                                                                          [], [])
@@ -381,18 +378,34 @@ class SchnetFeature(nn.Module):
         # coordinates. Otherwise, it is assumed that in_features are
         # pairwise distances in redundant form
         if self.calculate_geometry:
-            distances = self.geometry.get_distances(self._distance_pairs,
+            n_beads = embedding_property.size()[1]
+            _distance_pairs, _ = self.geometry.get_distance_indices(n_beads,
+                                                                         [], [])
+            redundant_distance_mapping = self.geometry.get_redundant_distance_mapping(
+                _distance_pairs)
+            distances = self.geometry.get_distances(_distance_pairs,
                                                     in_features, norm=True)
-            distances = distances[:, self.redundant_distance_mapping]
+            distances = distances[:, redundant_distance_mapping]
         else:
             distances = in_features
 
         neighbors, neighbor_mask = self.geometry.get_neighbors(distances,
                                                                cutoff=self.neighbor_cutoff)
+        #print("Neighbors and masks:")
+        #print(neighbors)
+        #print(neighbor_mask)
         neighbors = neighbors.to(self.device)
         neighbor_mask = neighbor_mask.to(self.device)
+        tmp_distances = torch.zeros_like(distances)
+        batches, _, neighbor_beads = neighbors.size()
+        #Mask out dumming atoms introduced by variable length padding
+        atomwise_mask = (embedding_property[:,:,None].repeat(1,1,neighbor_beads)*embedding_property[None,:,1:].view(batches,1,neighbor_beads)).float()
+        tmp_distances[atomwise_mask != 0] = distances[atomwise_mask != 0]
+        distances = tmp_distances
+        #print("Masked distances:",distances,distances.size())
+
         features = self.embedding_layer(embedding_property)
-        rbf_expansion = self.rbf_layer(distances=distances)
+        rbf_expansion = self.rbf_layer(distances=distances, atomwise_mask=atomwise_mask)
 
         for interaction_block in self.interaction_blocks:
             interaction_features = interaction_block(features=features,

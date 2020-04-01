@@ -227,9 +227,21 @@ class CGnet(nn.Module):
                 )
             for prior in self.priors:
                 energy = energy + prior(geom_feature[:, prior.callback_indices])
-        # Sum up energies along bead axis for Schnet outputs
+        # Sum up energies along bead axis for Schnet outputs and mask out non-
+        # -existing beads
         if len(energy.size()) == 3 and isinstance(self.feature, SchnetFeature):
-            energy = torch.sum(energy, axis=-2)
+            # Make sure to mask those beads which are not physical!
+            bead_mask = (embedding_property > 0).float()
+            #print("bead_mask")
+            #print(bead_mask)
+            #print(bead_mask.size())
+            #print("energy")
+            #print(energy)
+            #print(energy.size())
+            masked_energy = energy * bead_mask[..., None]
+            #print("Masked energies:", masked_energy)
+            energy = torch.sum(masked_energy, axis=-2)
+            #print("total energy:", energy)
         # Perform autograd to learn potential of conservative force field
         force = torch.autograd.grad(-torch.sum(energy),
                                     coordinates,

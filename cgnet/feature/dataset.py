@@ -7,6 +7,53 @@ import torch
 import scipy.spatial
 
 from torch.utils.data import Dataset, DataLoader
+from torch.nn.utils.rnn import pad_sequence
+
+def multi_molecule_collate(inputs):
+    """ This function is used to construct padded batches for datasets
+    that consist of proteins of different beadn numbers. This must be
+    done because tensors passed through neural networks must all
+    be the same size. It must be assigned to the keyword
+    argument 'collate_fn' in a PyTorch DataLoader object when working
+    with variable size inputs to the network.
+
+    Parameters
+    ----------
+    inputs : list of dictionaries
+        This is the input list of unpadded data examples. Each example
+        is a dictionary with the following key/value pairs:
+
+            'coords' : np.array of shape (1, num_beads, 3)
+            'forces' : np.array of shape (1, num_beads, 3)
+            'embed'  : np.array of shape (num_beads)
+
+    Returns
+    -------
+    batch : tuple of torch.tensors
+        All the data in the batch, padded according to the largest system
+        in the batch. The orer of tensors in the tuple is teh following:
+
+            coords, forces, embedding_property = batch
+
+    Notes
+    -----
+    It is imoprtant to properly mask padded portions of tensors that
+    are passed to the model. If these padded portions are not masked,
+    then their artifical contribution carries through to the
+    calculation of forces from the energy and the evaluation of the
+    model loss. In particular, for MSE-style losses, there is a
+    backpropagation instability associated with square root operations
+    evaluated at 0.
+    """
+
+    embeddings = pad_sequence([torch.tensor(input['embeddings'])
+                               for input in inputs], batch_first=True)
+    coordinates =  pad_sequence([torch.tensor(input['coords'],
+                                 requires_grad=True)
+                                 for input in inputs], batch_first=True)
+    forces =  pad_sequence([torch.tensor(input['forces'])
+                            for input in inputs], batch_first=True)
+    return coordinates, forces, embeddings
 
 
 class MoleculeDataset(Dataset):
@@ -119,3 +166,30 @@ class MoleculeDataset(Dataset):
         if self.embeddings is not None:
             if len(self.embeddings.shape) != 2:
                 raise ValueError("Embeddings must have two dimensions")
+
+
+class MultiMoleculeDataset(Dataset):
+    def __init__(self, coordinates, forces, embeddings=None, selection=None,
+                 stride=1, device=torch.device('cpu')):
+        self.stride = stride
+        if not (len(coordinates) == len(forces) == len(embeddings)):
+            raise ValueError("Coordinates, forces, and embeddings must contain the same number of examples")
+        self.len = len(coordinates)
+
+        self._make_data_array(coordinates, forces, embeddings)
+
+
+    def __getitem__(self, index):
+        return self.data[index]
+
+    def __len__(self):
+        return self.len
+
+    def _make_data_array(self, coordinates, forces, embeddings, selection=None):
+        self.data = []
+        for idx in range(self.len):
+            self.data.append({
+                "coords" : coordinates[idx],
+                "forces" : forces[idx],
+                "embeddings" : embeddings[idx]
+            })

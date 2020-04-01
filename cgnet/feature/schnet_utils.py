@@ -232,9 +232,14 @@ class ContinuousFilterConvolution(nn.Module):
 
         # Remove features from non-existing neighbors outside the cutoff
         conv_features = conv_features * neighbor_mask[:, :, :, None]
+        #print("Masked conv_features:")
+        #print(conv_features)
         # Aggregate/pool the features from (n_frames, n_beads, n_neighs, n_feats)
         # to (n_frames, n_beads, n_features)
         aggregated_features = torch.sum(conv_features, dim=2)
+
+        # TODO This needs to be changed to normalize by neighbor number not
+        # bead number
 
         if self.normlayer is not None:
             if isinstance(self.normlayer, nn.BatchNorm1d):
