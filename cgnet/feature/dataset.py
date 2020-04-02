@@ -171,8 +171,11 @@ class MoleculeDataset(Dataset):
 
 class MultiMoleculeDataset(Dataset):
     """Dataset object for organizing data from molecules of differing sizes.
-    It is meant to be paired with multi_protein_collate function for use in
-    a PyTorch DataLoader object.
+    It is meant to be paired with multi_molecule_collate function for use in
+    a PyTorch DataLoader object. With this collating function, the inputs to
+    the model will be padded on an example-by-example basis so that batches
+    of tensors all have a single aggregated shape before being passed into
+    the model.
 
     Parameters
     ----------
