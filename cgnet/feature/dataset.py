@@ -11,7 +11,7 @@ from torch.nn.utils.rnn import pad_sequence
 
 def multi_molecule_collate(inputs):
     """ This function is used to construct padded batches for datasets
-    that consist of proteins of different beadn numbers. This must be
+    that consist of proteins of different bead numbers. This must be
     done because tensors passed through neural networks must all
     be the same size. It must be assigned to the keyword
     argument 'collate_fn' in a PyTorch DataLoader object when working
@@ -37,8 +37,9 @@ def multi_molecule_collate(inputs):
 
     Notes
     -----
-    It is imoprtant to properly mask padded portions of tensors that
-    are passed to the model. If these padded portions are not masked,
+    See docs in MultiMoleculeDataset. While this function pads the inputs
+    to the model, It is imoprtant to properly mask padded portions of tensors
+    that are passed to the model. If these padded portions are not masked,
     then their artifical contribution carries through to the
     calculation of forces from the energy and the evaluation of the
     model loss. In particular, for MSE-style losses, there is a
