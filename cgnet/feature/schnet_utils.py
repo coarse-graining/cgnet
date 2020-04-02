@@ -177,7 +177,7 @@ class ContinuousFilterConvolution(nn.Module):
         elif beadwise_batchnorm == None and simple_norm == None:
             self.normlayer = None
 
-    def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask):
+    def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask, bead_mask=None):
         """ Compute convolutional block
 
         Parameters
@@ -193,6 +193,10 @@ class ContinuousFilterConvolution(nn.Module):
         neighbor_mask: torch.Tensor
             Index mask to filter out non-existing neighbors that were
             introduced to due distance cutoffs or padding.
+            Size [n_frames, n_beads, n_neighbors]
+        bead_mask: torch.Tensor (default=None)
+            Mask used to filter out non-existing beads that may be
+            present in datasets with molecules of different sizes
             Size [n_frames, n_beads, n_neighbors]
 
         Returns
@@ -232,11 +236,16 @@ class ContinuousFilterConvolution(nn.Module):
 
         # Remove features from non-existing neighbors outside the cutoff
         conv_features = conv_features * neighbor_mask[:, :, :, None]
-        #print("Masked conv_features:")
-        #print(conv_features)
+        ##print("Masked conv_features:")
+        ##print(conv_features)
         # Aggregate/pool the features from (n_frames, n_beads, n_neighs, n_feats)
         # to (n_frames, n_beads, n_features)
         aggregated_features = torch.sum(conv_features, dim=2)
+
+        # Filter out contributions from non-existent beads introduced by padding
+        #print(aggregated_features.size())
+        #print(bead_mask.size())
+        aggregated_features = aggregated_features * bead_mask[:,:,None]
 
         # TODO This needs to be changed to normalize by neighbor number not
         # bead number
@@ -347,7 +356,7 @@ class InteractionBlock(nn.Module):
                                      activation=None)
         self.output_dense = nn.Sequential(*output_layers)
 
-    def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask):
+    def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask, bead_mask=None):
         """ Compute interaction block
 
         Parameters
@@ -363,7 +372,11 @@ class InteractionBlock(nn.Module):
             Size [n_frames, n_beads, n_neighbors]
         neighbor_mask: torch.Tensor
             Index mask to filter out non-existing neighbors that were
-            introduced to due distance cutoffs or padding.
+            introduced to due distance cutoffs.
+            Size [n_frames, n_beads, n_neighbors]
+        bead_mask: torch.Tensor (default=None)
+            Mask used to filter out non-existing beads that may be
+            present in datasets with molecules of different sizes
             Size [n_frames, n_beads, n_neighbors]
 
         Returns
@@ -377,6 +390,6 @@ class InteractionBlock(nn.Module):
         """
         init_feature_output = self.initial_dense(features)
         conv_output = self.cfconv(init_feature_output, rbf_expansion,
-                                  neighbor_list, neighbor_mask)
+                                  neighbor_list, neighbor_mask, bead_mask=bead_mask)
         output_features = self.output_dense(conv_output)
         return output_features

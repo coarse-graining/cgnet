@@ -373,7 +373,17 @@ class SchnetFeature(nn.Module):
             Atom-wise feature representation.
             Size [n_frames, n_beads, n_features]
 
+        Notes
+        -----
+        If a dataset with variable molecule sizes is being used, it is
+        important to mask the contributions from padded portions of
+        the input into the neural network. This is done using the batchwise
+        variables 'bead_mask' (shape [n_frames, n_beads]) and
+        'bead_distance_mask' (shape [n_frames, n_beads, n_neighbors]).
+        These masks are used to set contributions from non-physical beads
+        to zero through elementwise multiplication with layer outputs
         """
+
         # if geometry is specified, the distances are calculated from input
         # coordinates. Otherwise, it is assumed that in_features are
         # pairwise distances in redundant form
@@ -394,24 +404,36 @@ class SchnetFeature(nn.Module):
         #print("Neighbors and masks:")
         #print(neighbors)
         #print(neighbor_mask)
+
         neighbors = neighbors.to(self.device)
         neighbor_mask = neighbor_mask.to(self.device)
-        tmp_distances = torch.zeros_like(distances)
         batches, _, neighbor_beads = neighbors.size()
-        #Mask out dumming atoms introduced by variable length padding
-        atomwise_mask = (embedding_property[:,:,None].repeat(1,1,neighbor_beads)*embedding_property[None,:,1:].view(batches,1,neighbor_beads)).float()
-        tmp_distances[atomwise_mask != 0] = distances[atomwise_mask != 0]
-        distances = tmp_distances
+
+        # Here we make the beadwise mask from the embedding property information
+        # for use in masking out dumming atoms introduced by variable length padding
+        bead_mask = torch.clamp(embedding_property, min=0, max=1).float()
+
+        # A similar mask is made to mask the distances in redundant form
+        bead_distances_mask = (bead_mask[:,:,None].repeat(1,1,neighbor_beads)*bead_mask[None,:,1:].view(batches,1,neighbor_beads)).float()
+
+        # In order to prevent backpropagation instabilities associated with
+        # evaluating square root derivatives at 0, the masking must be done
+        # in the following way. This metho also avoid in-place operations
+        # that are not compatible with backward gradient flow
+        tmp_distances = torch.zeros_like(distances)
+        tmp_distances[bead_distances_mask != 0] = distances[bead_distances_mask != 0]
+        distances = tmp_distances * neighbor_mask
         #print("Masked distances:",distances,distances.size())
 
         features = self.embedding_layer(embedding_property)
-        rbf_expansion = self.rbf_layer(distances=distances, atomwise_mask=atomwise_mask)
+        rbf_expansion = self.rbf_layer(distances=distances, bead_mask=bead_distances_mask)
 
         for interaction_block in self.interaction_blocks:
             interaction_features = interaction_block(features=features,
                                                      rbf_expansion=rbf_expansion,
                                                      neighbor_list=neighbors,
-                                                     neighbor_mask=neighbor_mask)
+                                                     neighbor_mask=neighbor_mask,
+                                                     bead_mask=bead_mask)
             features = features + interaction_features
 
         return features

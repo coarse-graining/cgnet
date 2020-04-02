@@ -170,7 +170,18 @@ class CGnet(nn.Module):
             and prior energies.
         force  : torch.Tensor
             vector forces of size [n_frames, n_degrees_of_freedom].
+
+        Notes
+        -----
+        If a dataset with variable molecule sizes is being used, it is
+        important to mask the contributions from padded portions of
+        the input into the neural network. This is done using the batchwise
+        variable 'bead_mask' (shape [n_frames, n_beads]).
+        This mask is used to set energy contributions from non-physical beads
+        to zero through elementwise multiplication with the CGnet ouput for
+        models using SchnetFeatures
         """
+
         if self.feature:
             # The below code adheres to the following logic:
             # 1. The feature_output is always what is passed to the model architecture
@@ -230,8 +241,10 @@ class CGnet(nn.Module):
         # Sum up energies along bead axis for Schnet outputs and mask out non-
         # -existing beads
         if len(energy.size()) == 3 and isinstance(self.feature, SchnetFeature):
-            # Make sure to mask those beads which are not physical!
-            bead_mask = (embedding_property > 0).float()
+            # Make sure to mask those beads which are not physical.
+            # Their contribution to the predicted energy and forces
+            # should be zero
+            bead_mask = torch.clamp(embedding_property, min=0, max=1).float()
             #print("bead_mask")
             #print(bead_mask)
             #print(bead_mask.size())

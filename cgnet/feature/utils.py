@@ -94,7 +94,7 @@ class RadialBasisFunction(nn.Module):
                              cutoff, n_gaussians))
         self.variance = variance
 
-    def forward(self, distances, atomwise_mask=None):
+    def forward(self, distances, bead_mask=None):
         """Calculate Gaussian expansion
 
         Parameters
@@ -113,8 +113,8 @@ class RadialBasisFunction(nn.Module):
         gaussian_exp = torch.exp(-(0.5 / self.variance)
                                  * dist_centered_squared)
 
-        # Mask the output of the radial distribution with the atom mask
-        gaussian_exp = gaussian_exp * atomwise_mask[...,None]
+        # Mask the output of the radial distribution with the bead mask
+        gaussian_exp = gaussian_exp * bead_mask[...,None]
         return gaussian_exp
 
 

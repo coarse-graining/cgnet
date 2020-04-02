@@ -169,23 +169,63 @@ class MoleculeDataset(Dataset):
 
 
 class MultiMoleculeDataset(Dataset):
+    """Dataset object for organizing data from molecules of differing sizes.
+    It is meant to be paired with multi_protein_collate function for use in
+    a PyTorch DataLoader object.
+
+    Parameters
+    ----------
+    coordinates: list of numpy.arrays
+        List of individual examples, each corresponding to a numpy array of
+        of shape [n_beads, 3], containing the cartesian coordinates of a
+        single frame for that molecule
+    forces: list of numpy.arrays
+        List of individual examples, each corresponding to a numpy array of
+        of shape [n_beads, 3], containing the cartesian forces of a
+        single frame for that molecule
+    embeddings: list of numpy.arrays
+        List of individual examples, each corresponding to a numpy array of
+        of shape [n_beads], containing the bead embeddings of a
+        single frame for that molecule
+
+    Attributes
+    ----------
+    data: list of dictionaries
+        List of individual examples for molecules of different sizes. Each
+        example is a dictionary with the following key/value pairs:
+
+            'coords' : np.array of size [n_beads, 3]
+            'forces' : np.array of size [n_beads, 3]
+            'embed'  : np.array of size [n_beads]
+
+    Example
+    -------
+    my_dataset = MultiMoleculeDataset(coords, forces, embeddings)
+    my_loader = torch.utils.data.DataLoader(my_dataset, batch_size=512,
+                                            collate_fn = multi_protein_collate,
+                                            shuffle = True)
+
+    """
+
     def __init__(self, coordinates, forces, embeddings=None, selection=None,
                  stride=1, device=torch.device('cpu')):
-        self.stride = stride
         if not (len(coordinates) == len(forces) == len(embeddings)):
-            raise ValueError("Coordinates, forces, and embeddings must contain the same number of examples")
+            raise ValueError("Coordinates, forces, and embeddings must "
+                             " contain the same number of examples")
         self.len = len(coordinates)
-
         self._make_data_array(coordinates, forces, embeddings)
 
-
-    def __getitem__(self, index):
-        return self.data[index]
+    def __getitem__(self, indices):
+        """Returns the indices of examples. Meant to be paired with
+        the collating function multi_molecule_protein()
+        """
+        return self.data[indices]
 
     def __len__(self):
         return self.len
 
     def _make_data_array(self, coordinates, forces, embeddings, selection=None):
+        """Assemble the NumPy arrays into a list of individual dictionaries"""
         self.data = []
         for idx in range(self.len):
             self.data.append({
