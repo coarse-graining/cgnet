@@ -1,4 +1,4 @@
-# Author: Brooke Husic
+# Author: Brooke Husic, Nick Charron
 # Contributors: Jiang Wang
 
 
@@ -9,23 +9,24 @@ import scipy.spatial
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.utils.rnn import pad_sequence
 
-def multi_molecule_collate(examples, device=torch.device('cpu')):
-    """ This function is used to construct padded batches for datasets
-    that consist of proteins of different bead numbers. This must be
+def multi_molecule_collate(input_dictionaries, device=torch.device('cpu')):
+    """This function is used to construct padded batches for datasets
+    that consist of molecules of different bead numbers. This must be
     done because tensors passed through neural networks must all
-    be the same size. It must be passed to the 'collate_fn' keyword
-    arguement in a  PyTorch DataLoader object when working
-    with variable size inputs to the network (see example below).
+    be the same size. This method must be passed to the 'collate_fn'
+    keyword argument in a PyTorch DataLoader object when working
+    with variable size inputs to a network (see example below).
 
     Parameters
     ----------
-    examples : list of dictionaries
-        This is the input list of unpadded data examples. Each example
-        is a dictionary with the following key/value pairs:
+    input_dictionaries : list of dictionaries
+        This is the input list of *unpadded* input data. Each example in the
+        list is a dictionary with the following key/value pairs:
 
             'coords' : np.array of shape (1, num_beads, 3)
             'forces' : np.array of shape (1, num_beads, 3)
             'embed'  : np.array of shape (num_beads)
+    #TODO what if there are no embeddings
 
     Returns
     -------
@@ -49,17 +50,21 @@ def multi_molecule_collate(examples, device=torch.device('cpu')):
     Example
     -------
     my_loader = torch.utils.data.DataLoader(my_dataset, batch_size=512,
-                                            collate_fn = multi_molecule_collate,
-                                            shuffle = True)
+                                            collate_fn=multi_molecule_collate,
+                                            shuffle=True)
     """
 
-    embeddings = pad_sequence([torch.tensor(example['embeddings'], device=device)
-                               for example in examples], batch_first=True)
     coordinates =  pad_sequence([torch.tensor(example['coords'],
                                  requires_grad=True, device=device)
-                                 for example in examples], batch_first=True)
-    forces =  pad_sequence([torch.tensor(example['forces'], device=device)
-                            for example in examples], batch_first=True)
+                                 for example in input_dictionaries],
+                                 batch_first=True)
+    forces = pad_sequence([torch.tensor(example['forces'], device=device)
+                           for example in input_dictionaries],
+                           batch_first=True)
+    embeddings = pad_sequence([torch.tensor(example['embeddings'], device=device)
+                               for example in input_dictionaries],
+                               batch_first=True)
+    # TODO what if there are no embeddings
     return coordinates, forces, embeddings
 
 
