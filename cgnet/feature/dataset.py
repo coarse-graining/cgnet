@@ -68,84 +68,6 @@ def multi_molecule_collate(input_dictionaries, device=torch.device('cpu')):
     return coordinates, forces, embeddings
 
 
-def _check_size_consistency(coordinates, forces, embeddings=None, mode='MoleculeDataset'):
-    """Helper function for ensuring data has the correct shape when
-    adding examples to a MoleculeDataset or MultiMoleculeDataset;
-    this function is able to check the shape consistencies fixed
-    and variable sized molecules.
-
-    Parameters
-    ----------
-    coordinates: np.ndarray (MoleculeDataset) or list of np.ndarray (MultiMoleculeDataset)
-        If MoleculeDataset is used, a single NumPy array is accepted and
-        checked for the proper shape of [num_examples, num_beads, 3]. If
-        MultiMoleculeDataset is used, a list of NumPy arrays is accepted and
-        each example is checked to ensure the proper shape of [num_beads, 3] and
-        is cross checked against the forces and embeddings of the same example
-    forces: np.ndarray (MoleculeDataset) or list of np.ndarray (MultiMoleculeDataset)
-        If MoleculeDataset is used, a single NumPy array is accepted and
-        checked for the proper shape of [num_examples, num_beads, 3]. If
-        MultiMoleculeDataset is used, a list of NumPy arrays is accepted and
-        each example is checked to ensure the proper shape of [num_beads, 3] and
-        is cross checked against the coordinates and embeddings of the same example
-    embeddings: np.ndarray (MoleculeDataset) or list of np.ndarray (MultiMoleculeDataset)
-         If MoleculeDataset is used, a single NumPy array is accepted and
-        checked for the proper shape of [num_examples, num_beads]. If
-        MultiMoleculeDataset is used, a list of NumPy arrays is accepted and
-        each example is checked to ensure the proper shape of [num_beads] and
-        is cross checked against the forces and coordinates of the same example
-    mode : str (default='MoleculeDataset')
-        determines how to check the size consistencies of coordinates, forces,
-        and embeddings based on whether they are part of a MoleculeDataset
-        or a MultiMoleculeDataset. Can be 'MoleculeDataset' or
-        'MultiMoleculeDataset'.
-    """
-
-    # Handle MoleculeDataset type inputs
-    if mode is not 'MultiMoleculeDataset' and mode is not 'MoleculeDataset':
-        raise RuntimeError("mode specification must be 'MoleculeDataset' or "
-                           "MultiMoleculeDataset only")
-
-    if mode is 'MoleculeDataset':
-        if coordinates.shape != forces.shape:
-            raise ValueError("Coordinates and forces must have equal shapes")
-
-        if len(coordinates.shape) != 3:
-            raise ValueError("Coordinates and forces must have three dimensions")
-
-        if embeddings is not None:
-            if len(embeddings.shape) != 2:
-                raise ValueError("Embeddings must have two dimensions")
-
-            if coordinates.shape[0] != embeddings.shape[0]:
-                raise ValueError("Embeddings must have the same number of examples "
-                                 "as coordinates/forces")
-
-            if coordinates.shape[1] != embeddings.shape[1]:
-                raise ValueError("Embeddings must have the same number of beads "
-                                 "as the coordinates/forces")
-
-    # Handle MultiMoleculeDataset type inputs
-    if mode is 'MultiMoleculeDataset':
-        if not (len(coordinates) == len(forces) == len(embeddings)):
-            raise ValueError("Coordinates, forces, and embeddings must "
-                             " contain the same number of examples")
-
-        for idx, (coord, force, embed) in enumerate(zip(coordinates, forces, embeddings)):
-            if coord.shape != force.shape:
-                raise ValueError("Coordinates and forces must have equal shapes at example", idx)
-
-            if len(coord.shape) != 2:
-                raise ValueError("Coordinates and forces must have two dimensions at example", idx)
-
-            if len(embeddings.shape) != 1:
-                raise ValueError("Embeddings must have one dimension at example", idx)
-
-            if coordinates.shape[0] != embeddings.shape[0]:
-                raise ValueError("Embeddings must have the same number of beads "
-                                 "as the coordinates/forces at example", idx)
-
-
 class MoleculeDataset(Dataset):
     """Creates dataset for coordinates and forces.
 
@@ -241,13 +163,35 @@ class MoleculeDataset(Dataset):
         if self.embeddings is not None:
             self.embeddings = np.concatenate([self.embeddings, new_embeddings],
                                              axis=0)
-        _check_size_consistency(self.coordinates, self.forces,
-                                embeddings=self.embeddings, mode='MoleculeDataset')
+
+        self._check_inputs()
+
         self.len = len(self.coordinates)
 
+    def _check_inputs(self):
+        """When we create or add data, we need to make sure that everything
+        has the same number of frames.
+        """
+        if self.coordinates.shape != self.forces.shape:
+            raise ValueError("Coordinates and forces must have equal shapes")
+
+        if len(self.coordinates.shape) != 3:
+            raise ValueError("Coordinates and forces must have three dimensions")
+
+        if self.embeddings is not None:
+            if len(self.embeddings.shape) != 2:
+                raise ValueError("Embeddings must have two dimensions")
+
+            if coordinates.shape[0] != embeddings.shape[0]:
+                raise ValueError("Embeddings must have the same number of examples "
+                                 "as coordinates/forces")
+
+            if coordinates.shape[1] != embeddings.shape[1]:
+                raise ValueError("Embeddings must have the same number of beads "
+                                 "as the coordinates/forces")
 
 
-class MultiMoleculeDataset(MoleculeDataset):
+class MultiMoleculeDataset(Dataset):
     """Dataset object for organizing data from molecules of differing sizes.
     It is meant to be paired with multi_molecule_collate function for use in
     a PyTorch DataLoader object. With this collating function, the inputs to
@@ -269,6 +213,7 @@ class MultiMoleculeDataset(MoleculeDataset):
         List of individual examples, each corresponding to a numpy array of
         of shape [n_beads], containing the bead embeddings of a
         single frame for that molecule
+        # TODO what if there are no embeddings
 
     Attributes
     ----------
@@ -291,8 +236,7 @@ class MultiMoleculeDataset(MoleculeDataset):
 
     def __init__(self, coordinates, forces, embeddings=None, selection=None,
                  stride=1, device=torch.device('cpu')):
-        _check_size_consistency(coordinates, forces,
-                                embeddings=embeddings, mode='MultiMoleculeDataset')
+        self._check_inputs(coordinates, forces, embeddings=embeddings)
         self.stride = stride
         self.data = None
         self._make_data_array(coordinates, forces, embeddings=embeddings, selection=selection)
@@ -337,3 +281,25 @@ class MultiMoleculeDataset(MoleculeDataset):
                                 embeddings=embeddings, mode='MultiMoleculeDataset')
         self._make_array_data(self, coordinates, forces, embeddings=embeddings, selection=selection)
         self.len = len(self.data)
+
+    def _check_inputs(self, coordinates, forces, embeddings):
+        """Helper function for ensuring data has the correct shape when
+        adding examples to a MultiMoleculeDataset.
+        """
+        if not (len(coordinates) == len(forces) == len(embeddings)):
+            raise ValueError("Coordinates, forces, and embeddings must "
+                             " contain the same number of examples")
+
+        for idx, (coord, force, embed) in enumerate(zip(coordinates, forces, embeddings)):
+            if coord.shape != force.shape:
+                raise ValueError("Coordinates and forces must have equal shapes at example", idx)
+
+            if len(coord.shape) != 2:
+                raise ValueError("Coordinates and forces must have two dimensions at example", idx)
+
+            if len(embeddings.shape) != 1:
+                raise ValueError("Embeddings must have one dimension at example", idx)
+
+            if coordinates.shape[0] != embeddings.shape[0]:
+                raise ValueError("Embeddings must have the same number of beads "
+                                 "as the coordinates/forces at example", idx)
