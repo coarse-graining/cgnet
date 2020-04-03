@@ -1,4 +1,4 @@
-# Author: Brooke Husic
+# Author: Brooke Husic, Nick Charron
 # Contributors: Jiang Wang
 
 
@@ -9,23 +9,24 @@ import scipy.spatial
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.utils.rnn import pad_sequence
 
-def multi_molecule_collate(examples, device=torch.device('cpu')):
-    """ This function is used to construct padded batches for datasets
-    that consist of proteins of different bead numbers. This must be
+def multi_molecule_collate(input_dictionaries, device=torch.device('cpu')):
+    """This function is used to construct padded batches for datasets
+    that consist of molecules of different bead numbers. This must be
     done because tensors passed through neural networks must all
-    be the same size. It must be passed to the 'collate_fn' keyword
-    arguement in a  PyTorch DataLoader object when working
-    with variable size inputs to the network (see example below).
+    be the same size. This method must be passed to the 'collate_fn'
+    keyword argument in a PyTorch DataLoader object when working
+    with variable size inputs to a network (see example below).
 
     Parameters
     ----------
-    examples : list of dictionaries
-        This is the input list of unpadded data examples. Each example
-        is a dictionary with the following key/value pairs:
+    input_dictionaries : list of dictionaries
+        This is the input list of *unpadded* input data. Each example in the
+        list is a dictionary with the following key/value pairs:
 
             'coords' : np.array of shape (1, num_beads, 3)
             'forces' : np.array of shape (1, num_beads, 3)
             'embed'  : np.array of shape (num_beads)
+    #TODO what if there are no embeddings
 
     Returns
     -------
@@ -49,96 +50,22 @@ def multi_molecule_collate(examples, device=torch.device('cpu')):
     Example
     -------
     my_loader = torch.utils.data.DataLoader(my_dataset, batch_size=512,
-                                            collate_fn = multi_molecule_collate,
-                                            shuffle = True)
+                                            collate_fn=multi_molecule_collate,
+                                            shuffle=True)
     """
 
-    embeddings = pad_sequence([torch.tensor(example['embeddings'], device=device)
-                               for example in examples], batch_first=True)
     coordinates =  pad_sequence([torch.tensor(example['coords'],
                                  requires_grad=True, device=device)
-                                 for example in examples], batch_first=True)
-    forces =  pad_sequence([torch.tensor(example['forces'], device=device)
-                            for example in examples], batch_first=True)
+                                 for example in input_dictionaries],
+                                 batch_first=True)
+    forces = pad_sequence([torch.tensor(example['forces'], device=device)
+                           for example in input_dictionaries],
+                           batch_first=True)
+    embeddings = pad_sequence([torch.tensor(example['embeddings'], device=device)
+                               for example in input_dictionaries],
+                               batch_first=True)
+    # TODO what if there are no embeddings
     return coordinates, forces, embeddings
-
-
-def _check_size_consistency(coordinates, forces, embeddings=None, mode='MoleculeDataset'):
-    """Helper function for ensuring data has the correct shape when
-    adding examples to a MoleculeDataset or MultiMoleculeDataset;
-    this function is able to check the shape consistencies fixed
-    and variable sized molecules.
-
-    Parameters
-    ----------
-    coordinates: np.ndarray (MoleculeDataset) or list of np.ndarray (MultiMoleculeDataset)
-        If MoleculeDataset is used, a single NumPy array is accepted and
-        checked for the proper shape of [num_examples, num_beads, 3]. If
-        MultiMoleculeDataset is used, a list of NumPy arrays is accepted and
-        each example is checked to ensure the proper shape of [num_beads, 3] and
-        is cross checked against the forces and embeddings of the same example
-    forces: np.ndarray (MoleculeDataset) or list of np.ndarray (MultiMoleculeDataset)
-        If MoleculeDataset is used, a single NumPy array is accepted and
-        checked for the proper shape of [num_examples, num_beads, 3]. If
-        MultiMoleculeDataset is used, a list of NumPy arrays is accepted and
-        each example is checked to ensure the proper shape of [num_beads, 3] and
-        is cross checked against the coordinates and embeddings of the same example
-    embeddings: np.ndarray (MoleculeDataset) or list of np.ndarray (MultiMoleculeDataset)
-         If MoleculeDataset is used, a single NumPy array is accepted and
-        checked for the proper shape of [num_examples, num_beads]. If
-        MultiMoleculeDataset is used, a list of NumPy arrays is accepted and
-        each example is checked to ensure the proper shape of [num_beads] and
-        is cross checked against the forces and coordinates of the same example
-    mode : str (default='MoleculeDataset')
-        determines how to check the size consistencies of coordinates, forces,
-        and embeddings based on whether they are part of a MoleculeDataset
-        or a MultiMoleculeDataset. Can be 'MoleculeDataset' or
-        'MultiMoleculeDataset'.
-    """
-
-    # Handle MoleculeDataset type inputs
-    if mode is not 'MultiMoleculeDataset' and mode is not 'MoleculeDataset':
-        raise RuntimeError("mode specification must be 'MoleculeDataset' or "
-                           "MultiMoleculeDataset only")
-
-    if mode is 'MoleculeDataset':
-        if coordinates.shape != forces.shape:
-            raise ValueError("Coordinates and forces must have equal shapes")
-
-        if len(coordinates.shape) != 3:
-            raise ValueError("Coordinates and forces must have three dimensions")
-
-        if embeddings is not None:
-            if len(embeddings.shape) != 2:
-                raise ValueError("Embeddings must have two dimensions")
-
-            if coordinates.shape[0] != embeddings.shape[0]:
-                raise ValueError("Embeddings must have the same number of examples "
-                                 "as coordinates/forces")
-
-            if coordinates.shape[1] != embeddings.shape[1]:
-                raise ValueError("Embeddings must have the same number of beads "
-                                 "as the coordinates/forces")
-
-    # Handle MultiMoleculeDataset type inputs
-    if mode is 'MultiMoleculeDataset':
-        if not (len(coordinates) == len(forces) == len(embeddings)):
-            raise ValueError("Coordinates, forces, and embeddings must "
-                             " contain the same number of examples")
-
-        for idx, (coord, force, embed) in enumerate(zip(coordinates, forces, embeddings)):
-            if coord.shape != force.shape:
-                raise ValueError("Coordinates and forces must have equal shapes at example", idx)
-
-            if len(coord.shape) != 2:
-                raise ValueError("Coordinates and forces must have two dimensions at example", idx)
-
-            if len(embeddings.shape) != 1:
-                raise ValueError("Embeddings must have one dimension at example", idx)
-
-            if coordinates.shape[0] != embeddings.shape[0]:
-                raise ValueError("Embeddings must have the same number of beads "
-                                 "as the coordinates/forces at example", idx)
 
 
 class MoleculeDataset(Dataset):
@@ -177,8 +104,8 @@ class MoleculeDataset(Dataset):
         else:
             self.embeddings = None
 
-        _check_size_consistency(self.coordinates, self.forces,
-                                embeddings=self.embeddings, mode='MoleculeDataset')
+        self._check_inputs()
+
         self.len = len(self.coordinates)
         self.device = device
 
@@ -236,13 +163,35 @@ class MoleculeDataset(Dataset):
         if self.embeddings is not None:
             self.embeddings = np.concatenate([self.embeddings, new_embeddings],
                                              axis=0)
-        _check_size_consistency(self.coordinates, self.forces,
-                                embeddings=self.embeddings, mode='MoleculeDataset')
+
+        self._check_inputs()
+
         self.len = len(self.coordinates)
 
+    def _check_inputs(self):
+        """When we create or add data, we need to make sure that everything
+        has the same number of frames.
+        """
+        if self.coordinates.shape != self.forces.shape:
+            raise ValueError("Coordinates and forces must have equal shapes")
+
+        if len(self.coordinates.shape) != 3:
+            raise ValueError("Coordinates and forces must have three dimensions")
+
+        if self.embeddings is not None:
+            if len(self.embeddings.shape) != 2:
+                raise ValueError("Embeddings must have two dimensions")
+
+            if self.coordinates.shape[0] != self.embeddings.shape[0]:
+                raise ValueError("Embeddings must have the same number of examples "
+                                 "as coordinates/forces")
+
+            if self.coordinates.shape[1] != self.embeddings.shape[1]:
+                raise ValueError("Embeddings must have the same number of beads "
+                                 "as the coordinates/forces")
 
 
-class MultiMoleculeDataset(MoleculeDataset):
+class MultiMoleculeDataset(Dataset):
     """Dataset object for organizing data from molecules of differing sizes.
     It is meant to be paired with multi_molecule_collate function for use in
     a PyTorch DataLoader object. With this collating function, the inputs to
@@ -250,20 +199,24 @@ class MultiMoleculeDataset(MoleculeDataset):
     of tensors all have a single aggregated shape before being passed into
     the model.
 
+    Note that unlike MoleculeDataset, MultiMoleculeDataset takes a *list*
+    of numpy arrays.
+
     Parameters
     ----------
-    coordinates: list of numpy.arrays
-        List of individual examples, each corresponding to a numpy array of
-        of shape [n_beads, 3], containing the cartesian coordinates of a
-        single frame for that molecule
-    forces: list of numpy.arrays
-        List of individual examples, each corresponding to a numpy array of
-        of shape [n_beads, 3], containing the cartesian forces of a
-        single frame for that molecule
-    embeddings: list of numpy.arrays
-        List of individual examples, each corresponding to a numpy array of
-        of shape [n_beads], containing the bead embeddings of a
-        single frame for that molecule
+    coordinates_list: list of numpy.arrays
+        List of coordinate data. Each item i in the list must be a numpy
+        array of shape [n_beads_i, 3], containing the cartesian coordinates of
+        a single frame for molecule i
+    forces_list: list of numpy.arrays
+        List of force data. Each item i in the list must be a numpy
+        array of shape [n_beads_i, 3], containing the cartesian forces of a
+        single frame for molecule i
+    embeddings_list: list of numpy.arrays
+        List of embeddings. Each item i in the list must be a numpy array
+        of shape [n_beads_i], containing the bead embeddings of a
+        single frame for molecule_i
+        # TODO what if there are no embeddings
 
     Attributes
     ----------
@@ -271,26 +224,30 @@ class MultiMoleculeDataset(MoleculeDataset):
         List of individual examples for molecules of different sizes. Each
         example is a dictionary with the following key/value pairs:
 
-            'coords' : np.array of size [n_beads, 3]
-            'forces' : np.array of size [n_beads, 3]
-            'embed'  : np.array of size [n_beads]
+            'coords' : np.array of size [n_beads_i, 3]
+            'forces' : np.array of size [n_beads_i, 3]
+            'embed'  : np.array of size [n_beads_i]
 
     Example
     -------
-    my_dataset = MultiMoleculeDataset(coords, forces, embeddings)
-    my_loader = torch.utils.data.DataLoader(my_dataset, batch_size=512,
-                                            collate_fn = multi_molecule_collate,
-                                            shuffle = True)
+    my_multi_dataset = MultiMoleculeDataset(list_of_coords, list_of_forces,
+                                            list_of_embeddings)
+    my_loader = torch.utils.data.DataLoader(my_multi_dataset, batch_size=512,
+                                            collate_fn=multi_molecule_collate,
+                                            shuffle=True)
 
     """
 
-    def __init__(self, coordinates, forces, embeddings=None, selection=None,
-                 stride=1, device=torch.device('cpu')):
-        _check_size_consistency(coordinates, forces,
-                                embeddings=embeddings, mode='MultiMoleculeDataset')
+    def __init__(self, coordinates_list, forces_list, embeddings_list=None,
+                 selection=None, stride=1, device=torch.device('cpu')):
+        self._check_inputs(coordinates_list, forces_list,
+                           embeddings_list=embeddings_list)
         self.stride = stride
         self.data = None
-        self._make_data_array(coordinates, forces, embeddings=embeddings, selection=selection)
+
+        self._make_data_array(coordinates_list, forces_list,
+                              embeddings_list=embeddings_list,
+                              selection=selection)
         self.len = len(self.data)
 
     def __getitem__(self, indices):
@@ -302,33 +259,61 @@ class MultiMoleculeDataset(MoleculeDataset):
     def __len__(self):
         return self.len
 
-    def _make_data_array(self, coordinates, forces, embeddings=None, selection=None):
+    def _make_data_array(self, coordinates_list, forces_list,
+                         embeddings_list=None, selection=None):
         """Assemble the NumPy arrays into a list of individual dictionaries for
         use with the multi_molecule_collate function.
         """
         if self.data == None:
             self.data = []
         if selection is not None:
-            for coord, force, embed in zip(coordinates[selection][::self.stride],
-                                           forces[selection][::self.stride],
-                                           embeddings[selection][::self.stride]):
+            for coord, force, embed in zip(coordinates_list[selection][::self.stride],
+                                           forces_list[selection][::self.stride],
+                                           embeddings_list[selection][::self.stride]):
                 self.data.append({
                     "coords" : coord, "forces" : force, "embeddings" : embed})
         else:
-            for coord, force, embed in zip(coordinates[::self.stride],
-                                           forces[::self.stride],
-                                           embeddings[::self.stride]):
+            for coord, force, embed in zip(coordinates_list[::self.stride],
+                                           forces_list[::self.stride],
+                                           embeddings_list[::self.stride]):
                 self.data.append({
                     "coords" : coord, "forces" : force, "embeddings" : embed})
 
 
-    def add_data(self, coordinates, forces, embeddings=None, selection=None):
+    def add_data(self, coordinates_list, forces_list, embeddings_list=None,
+                 selection=None):
         """We add data to the dataset with a custom selection and the stride
         specified upon object instantiation, ensuring that the embeddings
         have a shape length of 1, and that everything has the same number
         of frames.
         """
-        _check_size_consistency(coordinates, forces,
-                                embeddings=embeddings, mode='MultiMoleculeDataset')
-        self._make_array_data(self, coordinates, forces, embeddings=embeddings, selection=selection)
+        self._check_inputs(coordinates_list, forces_list,
+                           embeddings_list=embeddings_list)
+        self._make_array_data(self, coordinates_list, forces_list,
+                              embeddings_list=embeddings_list, selection=selection)
         self.len = len(self.data)
+
+    def _check_inputs(self, coordinates_list, forces_list, embeddings_list):
+        """Helper function for ensuring data has the correct shape when
+        adding examples to a MultiMoleculeDataset.
+        """
+        # TODO what if there are no embeddings
+
+        if not (len(coordinates_list) == len(forces_list) == len(embeddings_list)):
+            raise ValueError("Coordinates, forces, and embeddings lists must "
+                             " contain the same number of examples")
+
+        for idx, (coord, force, embed) in enumerate(zip(coordinates_list, forces_list,
+                                                        embeddings_list)):
+            if coord.shape != force.shape:
+                raise ValueError("Coordinates and forces must have equal shapes at example", idx)
+
+            if len(coord.shape) != 2:
+                raise ValueError("Coordinates and forces must have two dimensions at example", idx)
+
+            if len(embed.shape) != 1:
+                raise ValueError("Embeddings must have one dimension at example", idx)
+
+            if coord.shape[0] != embed.shape[0]:
+                raise ValueError("Embeddings must have the same number of beads "
+                                 "as the coordinates/forces at example", idx)
