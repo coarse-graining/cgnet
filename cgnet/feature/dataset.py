@@ -13,9 +13,9 @@ def multi_molecule_collate(inputs):
     """ This function is used to construct padded batches for datasets
     that consist of proteins of different bead numbers. This must be
     done because tensors passed through neural networks must all
-    be the same size. It must be assigned to the keyword
-    argument 'collate_fn' in a PyTorch DataLoader object when working
-    with variable size inputs to the network.
+    be the same size. It must be passed to the 'collate_fn' keyword
+    arguement in a  PyTorch DataLoader object when working
+    with variable size inputs to the network (see example below).
 
     Parameters
     ----------
@@ -45,6 +45,12 @@ def multi_molecule_collate(inputs):
     model loss. In particular, for MSE-style losses, there is a
     backpropagation instability associated with square root operations
     evaluated at 0.
+
+    Example
+    -------
+    my_loader = torch.utils.data.DataLoader(my_dataset, batch_size=512,
+                                            collate_fn = multi_molecule_collate,
+                                            shuffle = True)
     """
 
     embeddings = pad_sequence([torch.tensor(input['embeddings'])
@@ -206,7 +212,7 @@ class MultiMoleculeDataset(Dataset):
     -------
     my_dataset = MultiMoleculeDataset(coords, forces, embeddings)
     my_loader = torch.utils.data.DataLoader(my_dataset, batch_size=512,
-                                            collate_fn = multi_protein_collate,
+                                            collate_fn = multi_molecule_collate,
                                             shuffle = True)
 
     """
@@ -220,8 +226,8 @@ class MultiMoleculeDataset(Dataset):
         self._make_data_array(coordinates, forces, embeddings)
 
     def __getitem__(self, indices):
-        """Returns the indices of examples. Meant to be paired with
-        the collating function multi_molecule_protein()
+        """Returns the indices of examples. It is meant to be paired with
+        the collating function multi_molecule_collate()
         """
         return self.data[indices]
 
@@ -229,7 +235,9 @@ class MultiMoleculeDataset(Dataset):
         return self.len
 
     def _make_data_array(self, coordinates, forces, embeddings, selection=None):
-        """Assemble the NumPy arrays into a list of individual dictionaries"""
+        """Assemble the NumPy arrays into a list of individual dictionaries for
+        use with the multi_molecule_collate function.
+        """
         self.data = []
         for idx in range(self.len):
             self.data.append({
