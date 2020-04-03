@@ -104,7 +104,7 @@ class MoleculeDataset(Dataset):
         else:
             self.embeddings = None
 
-        _check_size_consistency(self.coordinates, self.forces,
+        _check_inputs(self.coordinates, self.forces,
                                 embeddings=self.embeddings, mode='MoleculeDataset')
         self.len = len(self.coordinates)
         self.device = device
