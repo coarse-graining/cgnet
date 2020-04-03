@@ -204,15 +204,15 @@ class MultiMoleculeDataset(Dataset):
 
     Parameters
     ----------
-    coordinates: list of numpy.arrays
+    coordinates_list: list of numpy.arrays
         List of coordinate data. Each item i in the list must be a numpy
         array of shape [n_beads_i, 3], containing the cartesian coordinates of
         a single frame for molecule i
-    forces: list of numpy.arrays
+    forces_list: list of numpy.arrays
         List of force data. Each item i in the list must be a numpy
         array of shape [n_beads_i, 3], containing the cartesian forces of a
         single frame for molecule i
-    embeddings: list of numpy.arrays
+    embeddings_list: list of numpy.arrays
         List of embeddings. Each item i in the list must be a numpy array
         of shape [n_beads_i], containing the bead embeddings of a
         single frame for molecule_i
@@ -297,6 +297,8 @@ class MultiMoleculeDataset(Dataset):
         """Helper function for ensuring data has the correct shape when
         adding examples to a MultiMoleculeDataset.
         """
+        # TODO what if there are no embeddings
+
         if not (len(coordinates_list) == len(forces_list) == len(embeddings_list)):
             raise ValueError("Coordinates, forces, and embeddings lists must "
                              " contain the same number of examples")
