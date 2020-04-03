@@ -238,8 +238,8 @@ class CGnet(nn.Module):
                 )
             for prior in self.priors:
                 energy = energy + prior(geom_feature[:, prior.callback_indices])
-        # Sum up energies along bead axis for Schnet outputs and mask out non-
-        # -existing beads
+        # Sum up energies along bead axis for Schnet outputs and mask out
+        # nonexisting beads
         if len(energy.size()) == 3 and isinstance(self.feature, SchnetFeature):
             # Make sure to mask those beads which are not physical.
             # Their contribution to the predicted energy and forces
