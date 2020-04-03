@@ -410,15 +410,26 @@ class SchnetFeature(nn.Module):
         batches, _, neighbor_beads = neighbors.size()
 
         # Here we make the beadwise mask from the embedding property information
-        # for use in masking out dumming atoms introduced by variable length padding
+        # for use in masking out non-physical beads introduced by variable
+        # length padding. The embeddings of these non-physical beads are all
+        # 0s, as constructed by collating function if multi_molecule_collate
+        # is used. We can directly make a mask from this variable by creating
+        # a copy in which the values are clamped to be either 0 or 1.
+        # This mask plays many important roles, such as filtering out
+        # non-physical distances, energies, and other properties propgated
+        # through the network that might ultimately add non-physical contributions
+        # to the loss function used during training
         bead_mask = torch.clamp(embedding_property, min=0, max=1).float()
 
         # A similar mask is made to mask the distances in redundant form
+        # so that they do not contain distances evaluated using non-physical
+        # atoms introduced by padding.
+        # This mask has shape [n_frames, max_n_beads, max_n_neighbors]
         bead_distances_mask = (bead_mask[:,:,None].repeat(1,1,neighbor_beads)*bead_mask[None,:,1:].view(batches,1,neighbor_beads)).float()
 
         # In order to prevent backpropagation instabilities associated with
         # evaluating square root derivatives at 0, the masking must be done
-        # in the following way. This metho also avoid in-place operations
+        # in the following way. This method also avoids in-place operations
         # that are not compatible with backward gradient flow
         tmp_distances = torch.zeros_like(distances)
         tmp_distances[bead_distances_mask != 0] = distances[bead_distances_mask != 0]
