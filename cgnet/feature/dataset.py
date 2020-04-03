@@ -311,9 +311,9 @@ class MultiMoleculeDataset(Dataset):
             if len(coord.shape) != 2:
                 raise ValueError("Coordinates and forces must have two dimensions at example", idx)
 
-            if len(embeddings.shape) != 1:
+            if len(embed.shape) != 1:
                 raise ValueError("Embeddings must have one dimension at example", idx)
 
-            if coordinates.shape[0] != embeddings.shape[0]:
+            if coord.shape[0] != embed.shape[0]:
                 raise ValueError("Embeddings must have the same number of beads "
                                  "as the coordinates/forces at example", idx)
