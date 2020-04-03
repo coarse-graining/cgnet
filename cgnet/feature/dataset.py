@@ -182,11 +182,11 @@ class MoleculeDataset(Dataset):
             if len(self.embeddings.shape) != 2:
                 raise ValueError("Embeddings must have two dimensions")
 
-            if coordinates.shape[0] != embeddings.shape[0]:
+            if self.coordinates.shape[0] != self.embeddings.shape[0]:
                 raise ValueError("Embeddings must have the same number of examples "
                                  "as coordinates/forces")
 
-            if coordinates.shape[1] != embeddings.shape[1]:
+            if self.coordinates.shape[1] != self.embeddings.shape[1]:
                 raise ValueError("Embeddings must have the same number of beads "
                                  "as the coordinates/forces")
 
