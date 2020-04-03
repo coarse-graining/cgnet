@@ -104,8 +104,8 @@ class MoleculeDataset(Dataset):
         else:
             self.embeddings = None
 
-        _check_inputs(self.coordinates, self.forces,
-                                embeddings=self.embeddings, mode='MoleculeDataset')
+        self._check_inputs()
+
         self.len = len(self.coordinates)
         self.device = device
 
