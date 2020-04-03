@@ -94,13 +94,17 @@ class RadialBasisFunction(nn.Module):
                              cutoff, n_gaussians))
         self.variance = variance
 
-    def forward(self, distances, bead_mask=None):
+    def forward(self, distances, distance_mask=None):
         """Calculate Gaussian expansion
 
         Parameters
         ----------
         distances : torch.Tensor
             Interatomic distances of size [n_examples, n_beads, n_neighbors]
+        distance_mask : torch.Tensor
+            Mask of shape [n_examples, n_beads, n_neighbors] to filter out
+            contributions from non-physical beads introduced from padding
+            examples from molecules with varying sizes
 
         Returns
         -------
@@ -113,8 +117,8 @@ class RadialBasisFunction(nn.Module):
         gaussian_exp = torch.exp(-(0.5 / self.variance)
                                  * dist_centered_squared)
 
-        # Mask the output of the radial distribution with the bead mask
-        gaussian_exp = gaussian_exp * bead_mask[...,None]
+        # Mask the output of the radial distribution with the distance mask
+        gaussian_exp = gaussian_exp * distance_mask[:,:,:,None]
         return gaussian_exp
 
 

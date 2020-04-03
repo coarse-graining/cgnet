@@ -437,7 +437,8 @@ class SchnetFeature(nn.Module):
         #print("Masked distances:",distances,distances.size())
 
         features = self.embedding_layer(embedding_property)
-        rbf_expansion = self.rbf_layer(distances=distances, bead_mask=bead_distances_mask)
+        rbf_expansion = self.rbf_layer(distances=distances,
+                                       distance_mask=bead_distances_mask)
 
         for interaction_block in self.interaction_blocks:
             interaction_features = interaction_block(features=features,
