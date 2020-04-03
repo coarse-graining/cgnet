@@ -32,9 +32,23 @@ def multi_molecule_collate(input_dictionaries, device=torch.device('cpu')):
     -------
     batch : tuple of torch.tensors
         All the data in the batch, padded according to the largest system
-        in the batch. The orer of tensors in the tuple is teh following:
+        in the batch. The orer of tensors in the tuple is the following:
 
             coords, forces, embedding_property = batch
+
+        All examples are right-padded with zeros. For example, if the
+        maximum bead size in list of examples is 8, the embedding array
+        for an example from a molecule composed of 3 beads will be padded
+        from:
+
+            upadded_embedding = [1, 2, 5]
+
+        to:
+
+            padded_embedding = [1, 2, 5, 0, 0, 0, 0, 0]
+
+        An analogous right-aligned padding is done for forces and
+        coordinates.
 
     Notes
     -----
