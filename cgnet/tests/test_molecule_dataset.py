@@ -3,7 +3,8 @@
 import numpy as np
 import torch
 
-from cgnet.feature import MoleculeDataset, MultiMoleculeDataset
+from cgnet.feature import (MoleculeDataset, MultiMoleculeDataset,
+                           multi_molecule_collate)
 
 # We create an artificial dataset with a random number of 
 # frames, beads, and dimensions. Since we aren't actually
@@ -141,3 +142,55 @@ def test_embedding_shape():
 
     assert ds[:][2].shape == (frames, beads)
     np.testing.assert_array_equal(ds.embeddings, embeddings)
+
+
+def test_multi_molecule_collate():
+    # Tests the output of the collating function for variable input
+    # to make sure that the padding results in a single tensor and
+    # the padding for each example is a set of right-justified zeros
+    # for each example with a size lower than the maximum bead size 
+    # in the dataset
+
+   ds = MultiMoleculeDataset(variable_coords, variable_forces,
+                             variable_embeddings)
+
+   # get all data in list of dictionary format
+   data = ds[np.arange(frames)]
+
+   # get maximum bead number in the dataset
+   dataset_max_bead = max([coord.shape[0] for coord in variable_coords])
+
+   # make manually padded data tensors
+   padded_coord_list = []
+   padded_force_list = []
+   padded_embedding_list = []
+   for data_dict in data:
+      num_beads = data_dict['coords'].shape[0]
+      pads_needed = dataset_max_bead - num_beads
+      padded_coords = np.vstack((data_dict['coords'],
+                                 np.zeros((pads_needed, 3))))
+      padded_forces = np.vstack((data_dict['forces'],
+                                 np.zeros((pads_needed, 3))))
+      padded_embeddings = np.hstack((data_dict['embeddings'],
+                                     np.zeros(pads_needed)))
+      padded_coord_list.append(padded_coords)
+      padded_force_list.append(padded_forces)
+      padded_embedding_list.append(padded_embeddings)
+
+   # assemble the padded data into complete tensors of shape
+   # [frames, max_beads, 3] for coords/forces, and [frames, max_beads]
+   # for embeddings
+   manual_coords = torch.tensor(padded_coord_list, requires_grad=True)
+   manual_forces = torch.tensor(padded_force_list)
+   manual_embeddings = torch.tensor(padded_embedding_list)
+
+   # get tensors output from multi_molecule_collate()
+   coords, forces, embeddings = multi_molecule_collate(data)
+   print(coords.size())
+
+   # test manual padding against padding performed by collating
+   np.testing.assert_array_equal(coords.detach().numpy(),
+                                 manual_coords.detach().numpy())
+   np.testing.assert_array_equal(forces.numpy(), manual_forces.numpy())
+   np.testing.assert_array_equal(embeddings.numpy(),
+                                  manual_embeddings.numpy())
