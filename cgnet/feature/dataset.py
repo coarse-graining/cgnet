@@ -259,7 +259,7 @@ class MultiMoleculeDataset(Dataset):
         self.stride = stride
         self.data = None
 
-        self._make_data_array(coordinates_list, forces_list,
+        self._make_array_data(coordinates_list, forces_list,
                               embeddings_list=embeddings_list,
                               selection=selection)
         self.len = len(self.data)
@@ -268,12 +268,12 @@ class MultiMoleculeDataset(Dataset):
         """Returns the indices of examples. It is meant to be paired with
         the collating function multi_molecule_collate()
         """
-        return self.data[indices]
+        return [self.data[i] for i in indices]
 
     def __len__(self):
         return self.len
 
-    def _make_data_array(self, coordinates_list, forces_list,
+    def _make_array_data(self, coordinates_list, forces_list,
                          embeddings_list=None, selection=None):
         """Assemble the NumPy arrays into a list of individual dictionaries for
         use with the multi_molecule_collate function.
@@ -281,9 +281,12 @@ class MultiMoleculeDataset(Dataset):
         if self.data == None:
             self.data = []
         if selection is not None:
-            for coord, force, embed in zip(coordinates_list[selection][::self.stride],
-                                           forces_list[selection][::self.stride],
-                                           embeddings_list[selection][::self.stride]):
+            coordinates = [coordinates_list[i] for i in selection]
+            forces = [forces_list[i] for i in selection]
+            embeddings = [embeddings_list[i] for i in selection]
+            for coord, force, embed in zip(coordinates[::self.stride],
+                                           forces[::self.stride],
+                                           embeddings[::self.stride]):
                 self.data.append({
                     "coords" : coord, "forces" : force, "embeddings" : embed})
         else:
@@ -303,7 +306,7 @@ class MultiMoleculeDataset(Dataset):
         """
         self._check_inputs(coordinates_list, forces_list,
                            embeddings_list=embeddings_list)
-        self._make_array_data(self, coordinates_list, forces_list,
+        self._make_array_data(coordinates_list, forces_list,
                               embeddings_list=embeddings_list, selection=selection)
         self.len = len(self.data)
 
