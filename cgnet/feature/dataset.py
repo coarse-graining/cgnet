@@ -265,8 +265,8 @@ class MultiMoleculeDataset(Dataset):
         self.len = len(self.data)
 
     def __getitem__(self, indices):
-        """Returns the indices of examples. It is meant to be paired with
-        the collating function multi_molecule_collate()
+        """Returns the list of examples corresponding to the supplied indices. It
+        is meant to be paired with the collating function multi_molecule_collate()
         """
         return [self.data[i] for i in indices]
 
