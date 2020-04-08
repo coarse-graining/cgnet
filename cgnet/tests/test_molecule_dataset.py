@@ -23,7 +23,7 @@ forces = np.random.randn(frames, beads, dims) # e.g. forces
 # This data is used to test MultiMoleculeDataset methods
 # it consists of random data for n_frames number of molecules
 # with variying bead numbers per frame/example
-max_beads = 20 # largest molecule size of the varaible dataset entries
+max_beads = np.random.randint(18,23) # random largest molecule size of the variable dataset entries
 variable_beads = np.random.randint(3, max_beads, size=frames) # random protein sizes
 variable_coords = [np.random.randn(bead, 3) for bead in variable_beads] # random coords for each size
 variable_forces = [np.random.randn(bead, 3) for bead in variable_beads] # random forces for each size
