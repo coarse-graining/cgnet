@@ -45,7 +45,7 @@ def test_adding_data():
     np.testing.assert_array_equal(ds1.coordinates, ds2.coordinates)
     np.testing.assert_array_equal(ds1.forces, ds2.forces)
 
-def test_adding_variable_data():
+def test_adding_variable_selection():
     # Make sure data is added correctly to a MultiMoleculeDataset
 
     # Build a dataset with all the data
@@ -119,7 +119,7 @@ def test_indexing():
 
 
 def test_variable_indexing():
-    # Make sure MultiMoleculeDataset indexing works (no embeddings)
+    # Make sure MultiMoleculeDataset indexing works
 
     # Make a random slice with possible repeats
     selection = [np.random.randint(frames)
@@ -132,7 +132,7 @@ def test_variable_indexing():
                     for i in selection]
 
     data = ds[selection]
-    np.testing.assert_array_equal(manual_data, data),
+    np.testing.assert_array_equal(manual_data, data)
 
 def test_embedding_shape():
     # Test shape of multidimensional embeddings
