@@ -165,8 +165,7 @@ def test_multi_molecule_collate():
    padded_force_list = []
    padded_embedding_list = []
    for data_dict in data:
-      num_beads = data_dict['coords'].shape[0]
-      pads_needed = dataset_max_bead - num_beads
+      pads_needed = dataset_max_bead - data_dict['coords'].shape[0]
       padded_coords = np.vstack((data_dict['coords'],
                                  np.zeros((pads_needed, 3))))
       padded_forces = np.vstack((data_dict['forces'],
