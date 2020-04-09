@@ -9,7 +9,8 @@ from sklearn.metrics import mean_squared_error as mse
 from cgnet.network import (CGnet, ForceLoss, RepulsionLayer,
                            HarmonicLayer, ZscoreLayer, Simulation)
 from cgnet.feature import (GeometryStatistics, GeometryFeature,
-                           LinearLayer, FeatureCombiner)
+                           LinearLayer, FeatureCombiner, SchnetFeature,
+                           CGBeadEmbedding)
 
 # The following sets up data for linear regession comparison test
 x0 = torch.rand((50, 1), requires_grad=True)  # 50 1D input examples
@@ -348,6 +349,55 @@ def test_cgnet():
     # and the predicted forces are the same dimension as the input coordinates
     np.testing.assert_array_equal(energy.size(), (coords.size()[0], 1))
     np.testing.assert_array_equal(force.size(), coords.size())
+
+
+def test_bead_energy_masking():
+    # Tests to make sure that masked energies and forces are properly zeroed
+    # by the bead mask used with variable sized input
+
+    # We create a simple random embedding layer and some
+    # mock, padded embeddings that originally have varying length
+    num_feats = np.random.randint(10, 50)
+    n_embeddings = np.random.randint(beads, 2*beads)
+    embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
+                                      embedding_dim=num_feats)
+    variable_beads = np.random.randint(3, beads, size=frames) # random protein sizes
+    variable_embeddings = [np.random.randint(1,
+                           high=beads, size=bead) for bead in variable_beads]
+    padded_embedding_list = []
+    for embedding in variable_embeddings:
+        pads_needed = beads - embedding.shape[0]
+        padded_embeddings = np.hstack((embedding, np.zeros(pads_needed)))
+        padded_embedding_list.append(padded_embeddings)
+    embedding_property = torch.tensor(padded_embedding_list).long()
+
+    # we create a simple 2 layer random width terminal network
+    rand = np.random.randint(1, 10)
+    arch = (LinearLayer(num_feats, rand, bias=True, activation=nn.Tanh())
+            + LinearLayer(rand, 1, bias=True, activation=nn.Tanh()))
+
+    # Next we create a basic SchnetFeature 
+    feature = SchnetFeature(num_feats,
+                            embedding_layer=embedding_layer,
+                            n_interaction_blocks=np.random.randint(2, 5),
+                            calculate_geometry=True,
+                            n_beads=beads)
+
+    # Next, we instance a CGSchNet model using the above objects
+    # with force matching as a loss criterion. We forward the coords
+    # and the embedding property through as well
+    model = CGnet(arch, ForceLoss(), feature=feature)
+    energy, force = model.forward(coords, embedding_property=embedding_property)
+
+    # the force components for masked beads should all be zero if the padding
+    # due to variable length input is masked properly
+    # We check each frame of the above output individually:
+    for i in range(frames):
+        masked_forces = force[i][variable_beads[i]:]
+        zero_forces = np.zeros((beads - variable_beads[i],3))
+        print(masked_forces)
+        print(zero_forces)
+        np.testing.assert_array_equal(masked_forces.detach().numpy(), zero_forces)
 
 
 def test_cgnet_simulation():
