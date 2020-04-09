@@ -245,7 +245,8 @@ class ContinuousFilterConvolution(nn.Module):
         # Filter out contributions from non-existent beads introduced by padding
         #print(aggregated_features.size())
         #print(bead_mask.size())
-        aggregated_features = aggregated_features * bead_mask[:,:,None]
+        if bead_mask is not None:
+            aggregated_features = aggregated_features * bead_mask[:,:,None]
 
         # TODO This needs to be changed to normalize by neighbor number not
         # bead number

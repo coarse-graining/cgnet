@@ -389,11 +389,11 @@ class SchnetFeature(nn.Module):
         # pairwise distances in redundant form
         if self.calculate_geometry:
             n_beads = embedding_property.size()[1]
-            _distance_pairs, _ = self.geometry.get_distance_indices(n_beads,
+            self._distance_pairs, _ = self.geometry.get_distance_indices(n_beads,
                                                                          [], [])
             redundant_distance_mapping = self.geometry.get_redundant_distance_mapping(
-                _distance_pairs)
-            distances = self.geometry.get_distances(_distance_pairs,
+                self._distance_pairs)
+            distances = self.geometry.get_distances(self._distance_pairs,
                                                     in_features, norm=True)
             distances = distances[:, redundant_distance_mapping]
         else:

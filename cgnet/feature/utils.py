@@ -118,7 +118,8 @@ class RadialBasisFunction(nn.Module):
                                  * dist_centered_squared)
 
         # Mask the output of the radial distribution with the distance mask
-        gaussian_exp = gaussian_exp * distance_mask[:,:,:,None]
+        if distance_mask is not None:
+            gaussian_exp = gaussian_exp * distance_mask[:,:,:,None]
         return gaussian_exp
 
 
