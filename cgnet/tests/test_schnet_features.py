@@ -90,6 +90,59 @@ def test_continuous_convolution():
     np.testing.assert_allclose(cfconv_layer_out, cfconv_manual_out)
 
 
+def test_cfconv_bead_masking():
+    # tests to see if the output of ContinousFilterConvolution
+    # is properly masked if tha input has padding to account
+    # for variable molecule sizes
+
+    # First, we assmeble a tensor of mock padded embeddings
+    # to emulate the effect of using a padded dataset
+    variable_beads = np.random.randint(3, beads, size=frames) # random protein sizes
+    variable_embeddings = [np.random.randint(1,
+                           high=beads, size=bead) for bead in variable_beads]
+    padded_embedding_list = []
+    for embedding in variable_embeddings:
+        pads_needed = beads - embedding.shape[0]
+        padded_embeddings = np.hstack((embedding, np.zeros(pads_needed)))
+        padded_embedding_list.append(padded_embeddings)
+    embedding_property = torch.tensor(padded_embedding_list).long()
+    bead_mask = torch.clamp(embedding_property, min=0, max=1).float()
+
+    # We repeate the same procedure here as in test_continuous_convolution
+    # But in addition we apply the bead_mask to the forward operation
+    # and test to see if the artifical beads introduced by padding are 
+    # zeroed out properly
+    test_cfconv_features = torch.randn((frames, beads, n_filters))
+    # Calculate continuous convolution output with the created layer
+    cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
+                                         n_filters=n_filters)
+    cfconv_layer_out = cfconv.forward(test_cfconv_features, test_rbf,
+                                      test_nbh, test_nbh_mask,
+                                      bead_mask=bead_mask).detach()
+
+    # Calculate convolution manually
+    n_neighbors = beads - 1
+    test_nbh_np = test_nbh.numpy()
+    test_nbh_mask_np = test_nbh_mask.numpy()
+    test_feat_np = test_cfconv_features.numpy()
+    neighbor_list = test_nbh_np.reshape(-1, beads * n_neighbors, 1)
+    neighbor_list = neighbor_list.repeat(n_filters, axis=2)
+    neighbor_features = np.take_along_axis(test_feat_np, neighbor_list, axis=1)
+    neighbor_features = neighbor_features.reshape(frames, beads,
+                                                  n_neighbors, -1)
+    test_conv_filter = cfconv.filter_generator(test_rbf).detach().numpy()
+    conv_features = neighbor_features * test_conv_filter
+    conv_features_masked = conv_features * test_nbh_mask_np[:, :, :, None]
+    cfconv_manual_out = torch.tensor(np.sum(conv_features_masked, axis=2))
+
+    # Here we mask the contributions from padded portions of the input
+    cfconv_manual_out = cfconv_manual_out * bead_mask[:,:,None]
+
+    # Test if the torch and numpy calculation are the same, including
+    # after the filtering done by the bead_mask
+    np.testing.assert_allclose(cfconv_layer_out, cfconv_manual_out.numpy())
+
+
 def test_interaction_block():
     # Tests the correct output shape of an interaction block
     test_features = torch.randn((frames, beads, n_feats))
