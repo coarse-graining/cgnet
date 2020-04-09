@@ -7,13 +7,13 @@ import torch
 from cgnet.feature.utils import (RadialBasisFunction, ModulatedRBF,
                                  ShiftedSoftplus)
 from cgnet.feature.statistics import GeometryStatistics
-from cgnet.feature.feature import GeometryFeature
+from cgnet.feature.feature import GeometryFeature, Geometry
 
 
 # Define sizes for a pseudo-dataset
 frames = np.random.randint(10, 30)
 beads = np.random.randint(5, 10)
-
+g = Geometry(method='torch')
 
 def test_radial_basis_function():
     # Make sure radial basis functions are consistent with manual calculation
@@ -44,6 +44,36 @@ def test_radial_basis_function():
     # Shapes and values need to be the same
     np.testing.assert_equal(centers.shape, rbf.centers.shape)
     np.testing.assert_allclose(gauss_layer.numpy(), gauss_manual, rtol=1e-5)
+
+
+def test_radial_basis_function_distance_masking():
+    # Makes sure that if a distance mask is used, the corresponding
+    # expanded distances returned by RadialBasisFunction are zero
+
+    # Distances need to have shape (n_batch, n_beads, n_neighbors)
+    distances = torch.randn((frames, beads, beads - 1))
+    # Define random parameters for the RBF
+    variance = np.random.random() + 1
+    n_gaussians = np.random.randint(5, 10)
+    cutoff = np.random.uniform(1.0, 5.0)
+    neighbor_cutoff = np.abs(np.random.rand())
+    neighbors, neighbor_mask = g.get_neighbors(distances, cutoff=neighbor_cutoff)
+
+    # Calculate Gaussian expansion using the implemented layer
+    rbf = RadialBasisFunction(cutoff=cutoff, n_gaussians=n_gaussians,
+                              variance=variance)
+    gauss_layer = rbf.forward(distances, distance_mask=neighbor_mask)
+
+    # Lastly, we check to see that the application of the mask is correct
+    # against a manual calculation and masking
+    centers = np.linspace(0.0, cutoff, n_gaussians)
+    gamma = -0.5 / variance
+    distances = np.expand_dims(distances, axis=3)
+    magnitude_squared = (distances - centers)**2
+    gauss_manual = torch.tensor(np.exp(gamma * magnitude_squared)).float()
+    gauss_manual = gauss_manual * neighbor_mask[:,:,:,None]
+
+    np.testing.assert_array_equal(gauss_layer.numpy(), gauss_manual.numpy())
 
 
 def test_modulated_rbf():
