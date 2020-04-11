@@ -233,18 +233,22 @@ class ModulatedRBF(nn.Module):
                                           zeros)
         return modulation_envelope
 
-    def forward(self, distances):
+    def forward(self, distances, distance_mask=None):
         """Calculate modulated gaussian expansion
 
         Parameters
         ----------
         distances : torch.Tensor
             Interatomic distances of size [n_examples, n_beads, n_neighbors]
+        distance_mask : torch.Tensor
+            Mask of shape [n_examples, n_beads, n_neighbors] to filter out
+            contributions from non-physical beads introduced from padding
+            examples from molecules with varying sizes
 
         Returns
         -------
         expansions : torch.Tensor
-            Modulated gaussian expansions of size 
+            Modulated gaussian expansions of size
             [n_examples, n_beads, n_neighbors, n_gauss]
 
         Notes
@@ -266,7 +270,8 @@ class ModulatedRBF(nn.Module):
         expansions = torch.where(torch.abs(expansions) > self.tolerance,
                                  expansions,
                                  torch.zeros_like(expansions))
-
+        if distance_mask is not None:
+            expansions = expansions * distance_mask[:,:,:,None]
         return expansions
 
 

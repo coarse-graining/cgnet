@@ -70,10 +70,10 @@ def test_radial_basis_function_distance_masking():
     gamma = -0.5 / variance
     distances = np.expand_dims(distances, axis=3)
     magnitude_squared = (distances - centers)**2
-    gauss_manual = torch.tensor(np.exp(gamma * magnitude_squared)).float()
-    gauss_manual = gauss_manual * neighbor_mask[:,:,:,None]
+    gauss_manual = torch.tensor(np.exp(gamma * magnitude_squared))
+    gauss_manual = gauss_manual * neighbor_mask[:,:,:,None].double()
 
-    np.testing.assert_array_equal(gauss_layer.numpy(), gauss_manual.numpy())
+    np.testing.assert_array_almost_equal(gauss_layer.numpy(), gauss_manual.numpy())
 
 
 def test_modulated_rbf():
@@ -125,6 +125,58 @@ def test_modulated_rbf():
                                modulated_rbf.centers, rtol=1e-5)
     np.testing.assert_allclose(modulated_rbf_layer.numpy(),
                                modulated_rbf_manual, rtol=1e-5)
+
+
+def test_modulated_rbf_distance_masking():
+    # Makes sure that if a distance mask is used, the corresponding
+    # expanded distances returned by ModulatedRBF are zero
+
+    # Distances need to have shape (n_batch, n_beads, n_neighbors)
+    distances = torch.randn((frames, beads, beads - 1))
+    # Define random parameters for the RBF
+    n_gaussians = np.random.randint(5, 10)
+    cutoff = np.random.uniform(1.0, 5.0)
+    neighbor_cutoff = np.abs(np.random.rand())
+    neighbors, neighbor_mask = g.get_neighbors(distances, cutoff=neighbor_cutoff)
+
+    # Calculate Gaussian expansion using the implemented layer
+    modulated_rbf = ModulatedRBF(cutoff=cutoff,
+                                     n_gaussians=n_gaussians,
+                                     tolerance=1e-8)
+    modulated_rbf_layer = modulated_rbf.forward(torch.tensor(distances),
+                                                distance_mask=neighbor_mask)
+
+    # Manually calculate expansion with numpy
+    # First, we compute the centers and the scaling factors
+    centers = np.linspace(np.exp(-cutoff), 1, n_gaussians)
+    beta = np.power(((2/n_gaussians) * (1-np.exp(-cutoff))), -2)
+
+    # Next, we compute the gaussian portion
+    exp_distances = np.exp(-np.expand_dims(distances, axis=3))
+    magnitude_squared = np.power(exp_distances - centers, 2)
+    gauss_manual = np.exp(-beta * magnitude_squared)
+
+    # Next, we compute the polynomial modulation
+    zeros = np.zeros_like(distances)
+    modulation = np.where(distances < cutoff,
+                          1 - 6.0 * np.power((distances/cutoff), 5)
+                          + 15.0 * np.power((distances/cutoff), 4)
+                          - 10.0 * np.power((distances/cutoff), 3),
+                          zeros)
+    modulation = np.expand_dims(modulation, axis=3)
+
+    modulated_rbf_manual = modulation * gauss_manual
+
+    # Map tiny values to zero
+    modulated_rbf_manual = np.where(
+        np.abs(modulated_rbf_manual) > modulated_rbf.tolerance,
+        modulated_rbf_manual,
+        np.zeros_like(modulated_rbf_manual)
+    )
+    modulated_rbf_manual = torch.tensor(modulated_rbf_manual) * neighbor_mask[:,:,:,None].double()
+
+    np.testing.assert_array_almost_equal(modulated_rbf_layer.numpy(),
+                                         modulated_rbf_manual.numpy())
 
 
 def test_modulated_rbf_zero_cutoff():
