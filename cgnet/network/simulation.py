@@ -46,7 +46,60 @@ class _Simulation():
 
 
 class Simulation(_Simulation):
-    """TODO"""
+"""Simulate an artificial trajectory from a CGnet using overdamped Langevin
+    dynamics.
+    Parameters
+    ----------
+    model : cgnet.network.CGNet() instance
+        Trained model used to generate simulation data
+    initial_coordinates : np.ndarray or torch.Tensor
+        Coordinate data of dimension [n_simulations, n_atoms, n_dimensions].
+        Each entry in the first dimension represents the first frame of an
+        independent simulation.
+    embeddings : np.ndarray or None (default=None)
+        Embedding data of dimension [n_simulations, n_beads]. Each entry
+        in the first dimension corresponds to the embeddings for the
+        initial_coordinates data. If no embeddings, use None.
+    save_forces : bool (defalt=False)
+        Whether to save forces at the same saved interval as the simulation
+        coordinates
+    length : int (default=100)
+        The length of the simulation in simulation timesteps
+    save_interval : int (default=10)
+        The interval at which simulation timesteps should be saved. Must be
+        a factor of the simulation length
+    dt : float (default=5e-4)
+        The integration time step for Langevin dynamics. Units are determined
+        by the frame striding of the original training data simulation
+    diffusion : float (default=1.0)
+        The constant diffusion parameter for overdamped Langevin dynamics. By
+        default, the diffusion is set to unity and is absorbed into the dt
+        argument. However, users may specify separate diffusion and dt
+        parameters in the case that they have some estimate of the CG diffusion
+    beta : float (default=0.01)
+        The thermodynamic inverse temperature, 1/(k_B T), for Boltzman constant
+        k_B and temperature T. The units of k_B and T are fixed from the units
+        of training forces and settings of the training simulation data
+        respectively
+    verbose : bool (default=False)
+        Whether to print simulation progress information
+    random_seed : int or None (default=None)
+        Seed for random number generator; if seeded, results always will be
+        identical for the same random seed
+    device : torch.device (default=torch.device('cpu'))
+        Device upon which simulation compuation will be carried out
+    Notes
+    -----
+    A system evolves under Langevin dyanmics using the following, stochastic
+    differential equation:
+        dX_t = - grad( U( X_t ) ) * a * dt + sqrt( 2 * a * dt / beta ) * dW_t
+    for coordinates X_t at time t, potential energy U, diffusion a,
+    thermodynamic inverse temperature beta, time step dt, and stochastic Weiner
+    process W. The choice of Langevin dynamics is made because CG systems
+    possess no explicit solvent, and so Brownian-like collisions must be
+    modeled indirectly using a stochastic term.
+    Long simulation lengths may take a significant amount of time.
+    """
     def __init__(self, model, initial_coordinates, embeddings=None,
                  save_forces=False, save_potential=False, length=100,
                  save_interval=10, dt=5e-4, diffusion=1.0, beta=1.0,
