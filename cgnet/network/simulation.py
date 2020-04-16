@@ -15,6 +15,8 @@ class _Simulation():
 
     def _input_checks(self):
         """TODO"""
+
+        # warn if model is in train mode, but don't prevent
         if self.model.training:
             warnings.warn('model is in training mode, and certain PyTorch '
                           'layers, such as BatchNorm1d, behave differently '
@@ -22,16 +24,13 @@ class _Simulation():
                           'simulations. We recommend that you put the model '
                           'into inference mode by calling `model.eval`.')
 
+        # make sure save interval is a factor of total length
         if self.length % self.save_interval != 0:
             raise ValueError(
                 'The save_interval must be a factor of the simulation length'
             )
 
-        if len(self.initial_coordinates.shape) != 3:
-            raise ValueError(
-                'initial_coordinates shape must be [frames, beads, dimensions]'
-            )
-
+        # make sure embeddings are provided if necessary
         if self.embeddings is None:
             try:
                 if np.any([type(self.model.feature.layer_list[i]) == SchnetFeature
@@ -43,6 +42,7 @@ class _Simulation():
                     raise RuntimeError('Since you have a SchnetFeature, you must '
                                         'provide an embeddings array')
 
+        # if there are embeddings, make sure their shape is correct
         if self.embeddings is not None:
             if len(self.embeddings.shape) != 2:
                 raise ValueError('embeddings shape must be [frames, beads]')
@@ -51,11 +51,18 @@ class _Simulation():
                 raise ValueError('initial_coordinates and embeddings '
                                  'must have the same first two dimensions')
 
+        # make sure initial coordinates are in the proper format
+        if len(self.initial_coordinates.shape) != 3:
+            raise ValueError(
+                'initial_coordinates shape must be [frames, beads, dimensions]'
+            )
+
         if type(self.initial_coordinates) is not torch.Tensor:
-            self.initial_coordinates = torch.tensor(self.initial_coordinates,
-                                                    requires_grad=True)
-        elif self.initial_coordinates.requires_grad is False:
-            self.initial_coordinates.requires_grad = True
+            initial_coordinates = torch.tensor(self.initial_coordinates)
+
+        self._initial_x = self.initial_coordinates.clone().detach().requires_grad_(
+                                                True).to(self.device)
+
 
     def swap_axes(self, data, axis1, axis2):
         """Helper method to exchange the zeroth and first axes of tensors after
@@ -161,6 +168,8 @@ class Simulation(_Simulation):
         self.length = length
         self.save_interval = save_interval
 
+        self.device = device
+
         self._input_checks()
 
         self.dt = dt
@@ -173,8 +182,6 @@ class Simulation(_Simulation):
         else:
             self.rng = torch.Generator().manual_seed(random_seed)
         self.random_seed = random_seed
-
-        self.device = device
 
         self._simulated = False
 
@@ -225,13 +232,7 @@ class Simulation(_Simulation):
 
         self.simulated_potential = None
 
-        # Here if the input is numpy.ndarray, it must be converted to a
-        # torch.Tensor with requires_grad=True
-        if isinstance(self.initial_coordinates, torch.Tensor):
-            x_old = self.initial_coordinates.clone().detach().requires_grad_(True).to(self.device)
-        if isinstance(self.initial_coordinates, np.ndarray):
-            x_old = torch.tensor(self.initial_coordinates,
-                                 requires_grad=True).to(self.device)
+        x_old = self._initial_x
 
         dtau = self.diffusion * self.dt
         for t in range(self.length):
