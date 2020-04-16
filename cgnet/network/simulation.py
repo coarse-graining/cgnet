@@ -148,6 +148,7 @@ class Simulation():
                                                 True).to(self.device)
 
     def _set_up_simulation(self, overwrite):
+        """TODO"""
         if self._simulated and not overwrite:
             raise RuntimeError('Simulation results are already populated. '
                                'To rerun, set overwrite=True.')
@@ -169,6 +170,39 @@ class Simulation():
             self.simulated_forces = None
 
         self.simulated_potential = None
+
+
+    def _timestep(self, x_old, forces, dtau):
+        """TODO"""
+        noise = torch.randn(self.n_sims,
+                            self.n_beads,
+                            self.n_dims,
+                            generator=self.rng).to(self.device)
+        x_new = (x_old.detach() + forces*dtau +
+                 np.sqrt(2*dtau/self.beta)*noise)
+        return x_new
+
+    def _save_timepoint(self, x_new, forces, potential, t):
+        """TODO"""
+        self.simulated_traj[t//self.save_interval, :, :] = x_new
+        if self.save_forces:
+            self.simulated_forces[t//self.save_interval,
+                                  :, :] = forces
+        if self.save_potential:
+            # The potential will look different for different
+            # network structures, so determine its dimensionality
+            # on the fly
+            if self.simulated_potential is None:
+                assert potential.shape[0] == self.n_sims
+                potential_dims = ([self._save_size, self.n_sims] +
+                                  [potential.shape[j]
+                                   for j in range(1,
+                                                  len(potential.shape))])
+                self.simulated_potential = torch.zeros(
+                    (potential_dims))
+
+            self.simulated_potential[
+                t//self.save_interval] = potential
 
 
     def swap_axes(self, data, axis1, axis2):
@@ -197,36 +231,6 @@ class Simulation():
         swapped_data = data.permute(*axes)
         return swapped_data
 
-
-    def _timestep(self, x_old, forces, dtau):
-        noise = torch.randn(self.n_sims,
-                            self.n_beads,
-                            self.n_dims,
-                            generator=self.rng).to(self.device)
-        x_new = (x_old.detach() + forces*dtau +
-                 np.sqrt(2*dtau/self.beta)*noise)
-        return x_new
-
-    def _save_timepoint(self, x_new, forces, potential, t):
-        self.simulated_traj[t//self.save_interval, :, :] = x_new
-        if self.save_forces:
-            self.simulated_forces[t//self.save_interval,
-                                  :, :] = forces
-        if self.save_potential:
-            # The potential will look different for different
-            # network structures, so determine its dimensionality
-            # on the fly
-            if self.simulated_potential is None:
-                assert potential.shape[0] == self.n_sims
-                potential_dims = ([self._save_size, self.n_sims] +
-                                  [potential.shape[j]
-                                   for j in range(1,
-                                                  len(potential.shape))])
-                self.simulated_potential = torch.zeros(
-                    (potential_dims))
-
-            self.simulated_potential[
-                t//self.save_interval] = potential
 
     def simulate(self, overwrite=False):
         """Generates independent simulations.
@@ -258,17 +262,25 @@ class Simulation():
         x_old = self._initial_x
 
         dtau = self.diffusion * self.dt
+
+        # for each simulation step
         for t in range(self.length):
+            # produce potential and forces from model
             potential, forces = self.model(x_old, self.embeddings)
             potential = potential.detach()
             forces = forces.detach()
+
+            # step forward in time
             x_new = self._timestep(x_old, forces, dtau)
 
+            # save if relevant
             if t % self.save_interval == 0:
                 self._save_timepoint(x_new, forces, potential, t)
 
+            # prepare for next timestep
             x_old = x_new.clone().detach().requires_grad_(True).to(self.device)
 
+            # print info if desired
             if self.verbose:
                 if t % (self.length/10) == 0 and t > 0:
                     print('{}0% finished'.format(i))
@@ -276,6 +288,8 @@ class Simulation():
 
         if self.verbose:
             print('100% finished.')
+
+        # finalize data structures
         self.simulated_traj = self.swap_axes(
             self.simulated_traj, 0, 1).cpu().numpy()
 
@@ -289,4 +303,3 @@ class Simulation():
 
         self._simulated = True
         return self.simulated_traj
-
