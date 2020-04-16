@@ -13,6 +13,50 @@ class _Simulation():
     def __init__(self):
         pass
 
+    def _input_checks(self):
+        """TODO"""
+        if self.model.training:
+            warnings.warn('model is in training mode, and certain PyTorch '
+                          'layers, such as BatchNorm1d, behave differently '
+                          'in training mode in ways that can negatively bias '
+                          'simulations. We recommend that you put the model '
+                          'into inference mode by calling `model.eval`.')
+
+        if self.length % self.save_interval != 0:
+            raise ValueError(
+                'The save_interval must be a factor of the simulation length'
+            )
+
+        if len(self.initial_coordinates.shape) != 3:
+            raise ValueError(
+                'initial_coordinates shape must be [frames, beads, dimensions]'
+            )
+
+        if self.embeddings is None:
+            try:
+                if np.any([type(self.model.feature.layer_list[i]) == SchnetFeature
+                           for i in range(len(self.model.feature.layer_list))]):
+                    raise RuntimeError('Since you have a SchnetFeature, you must '
+                                        'provide an embeddings array')
+            except:
+                if type(self.model.feature) == SchnetFeature:
+                    raise RuntimeError('Since you have a SchnetFeature, you must '
+                                        'provide an embeddings array')
+
+        if self.embeddings is not None:
+            if len(self.embeddings.shape) != 2:
+                raise ValueError('embeddings shape must be [frames, beads]')
+
+            if self.initial_coordinates.shape[:2] != self.embeddings.shape:
+                raise ValueError('initial_coordinates and embeddings '
+                                 'must have the same first two dimensions')
+
+        if type(self.initial_coordinates) is not torch.Tensor:
+            self.initial_coordinates = torch.tensor(self.initial_coordinates,
+                                                    requires_grad=True)
+        elif self.initial_coordinates.requires_grad is False:
+            self.initial_coordinates.requires_grad = True
+
     def swap_axes(self, data, axis1, axis2):
         """Helper method to exchange the zeroth and first axes of tensors after
         simulations have finished
@@ -46,7 +90,7 @@ class _Simulation():
 
 
 class Simulation(_Simulation):
-"""Simulate an artificial trajectory from a CGnet using overdamped Langevin
+    """Simulate an artificial trajectory from a CGnet using overdamped Langevin
     dynamics.
     Parameters
     ----------
@@ -104,48 +148,7 @@ class Simulation(_Simulation):
                  save_forces=False, save_potential=False, length=100,
                  save_interval=10, dt=5e-4, diffusion=1.0, beta=1.0,
                  verbose=False, random_seed=None, device=torch.device('cpu')):
-        if length % save_interval != 0:
-            raise ValueError(
-                'The save_interval must be a factor of the simulation length'
-            )
-
-        if len(initial_coordinates.shape) != 3:
-            raise ValueError(
-                'initial_coordinates shape must be [frames, beads, dimensions]'
-            )
-
-        if embeddings is None:
-            try:
-                if np.any([type(model.feature.layer_list[i]) == SchnetFeature
-                           for i in range(len(model.feature.layer_list))]):
-                    raise RuntimeError('Since you have a SchnetFeature, you must \
-                                        provide an embeddings array')
-            except:
-                if type(model.feature) == SchnetFeature:
-                    raise RuntimeError('Since you have a SchnetFeature, you must \
-                                        provide an embeddings array')
-
-        if embeddings is not None:
-            if len(embeddings.shape) != 2:
-                raise ValueError('embeddings shape must be [frames, beads]')
-
-            if initial_coordinates.shape[:2] != embeddings.shape:
-                raise ValueError('initial_coordinates and embeddings '
-                                 'must have the same first two dimensions')
-
-        if type(initial_coordinates) is not torch.Tensor:
-            initial_coordinates = torch.tensor(initial_coordinates,
-                                               requires_grad=True)
-        elif initial_coordinates.requires_grad is False:
-            initial_coordinates.requires_grad = True
-
         self.model = model
-        if self.model.training:
-            warnings.warn('model is in training mode, and certain PyTorch '
-                          'layers, such as BatchNorm1d, behave differently '
-                          'in training mode in ways that can negatively bias '
-                          'simulations. We recommend that you put the model '
-                          'into inference mode by calling `model.eval`.')
 
         self.initial_coordinates = initial_coordinates
         self.embeddings = embeddings
@@ -157,6 +160,9 @@ class Simulation(_Simulation):
         self.save_potential = save_potential
         self.length = length
         self.save_interval = save_interval
+
+        self._input_checks()
+
         self.dt = dt
         self.diffusion = diffusion
         self.beta = beta
