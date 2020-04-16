@@ -219,6 +219,27 @@ class Simulation(_Simulation):
                  np.sqrt(2*dtau/self.beta)*noise)
         return x_new
 
+    def _save_timepoint(self, x_new, forces, potential, t):
+        self.simulated_traj[t//self.save_interval, :, :] = x_new
+        if self.save_forces:
+            self.simulated_forces[t//self.save_interval,
+                                  :, :] = forces
+        if self.save_potential:
+            # The potential will look different for different
+            # network structures, so determine its dimensionality
+            # on the fly
+            if self.simulated_potential is None:
+                assert potential.shape[0] == self.n_sims
+                potential_dims = ([self._save_size, self.n_sims] +
+                                  [potential.shape[j]
+                                   for j in range(1,
+                                                  len(potential.shape))])
+                self.simulated_potential = torch.zeros(
+                    (potential_dims))
+
+            self.simulated_potential[
+                t//self.save_interval] = potential
+
     def simulate(self, overwrite=False):
         """Generates independent simulations.
 
@@ -256,25 +277,8 @@ class Simulation(_Simulation):
             x_new = self._timestep(x_old, forces, dtau)
 
             if t % self.save_interval == 0:
-                self.simulated_traj[t//self.save_interval, :, :] = x_new
-                if self.save_forces:
-                    self.simulated_forces[t//self.save_interval,
-                                          :, :] = forces
-                if self.save_potential:
-                    # The potential will look different for different
-                    # network structures, so determine its dimensionality
-                    # on the fly
-                    if self.simulated_potential is None:
-                        assert potential.shape[0] == self.n_sims
-                        potential_dims = ([self._save_size, self.n_sims] +
-                                          [potential.shape[j]
-                                           for j in range(1,
-                                                          len(potential.shape))])
-                        self.simulated_potential = torch.zeros(
-                            (potential_dims))
+                self._save_timepoint(x_new, forces, potential, t)
 
-                    self.simulated_potential[
-                        t//self.save_interval] = potential
             x_old = x_new.clone().detach().requires_grad_(True).to(self.device)
 
             if self.verbose:
