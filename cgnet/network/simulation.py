@@ -1,4 +1,4 @@
-# Authors: Nick Charron, Brooke Husic, Jiang Wang
+# Authors: Brooke Husic, Nick Charron, Jiang Wang
 # Contributors: Dominik Lemm
 
 import torch
@@ -8,7 +8,7 @@ import warnings
 from cgnet.feature import SchnetFeature
 
 
-class Simulation():
+class _Simulation():
     """Simulate an artificial trajectory from a CGnet using overdamped Langevin
     dynamics.
 
@@ -167,6 +167,81 @@ class Simulation():
         swapped_data = data.permute(*axes)
         return swapped_data
 
+
+class Simulation(_Simulation):
+    """TODO"""
+    def __init__(self, model, initial_coordinates, embeddings=None,
+                 save_forces=False, save_potential=False, length=100,
+                 save_interval=10, dt=5e-4, diffusion=1.0, beta=1.0,
+                 verbose=False, random_seed=None, device=torch.device('cpu')):
+        if length % save_interval != 0:
+            raise ValueError(
+                'The save_interval must be a factor of the simulation length'
+            )
+
+        if len(initial_coordinates.shape) != 3:
+            raise ValueError(
+                'initial_coordinates shape must be [frames, beads, dimensions]'
+            )
+
+        if embeddings is None:
+            try:
+                if np.any([type(model.feature.layer_list[i]) == SchnetFeature
+                           for i in range(len(model.feature.layer_list))]):
+                    raise RuntimeError('Since you have a SchnetFeature, you must \
+                                        provide an embeddings array')
+            except:
+                if type(model.feature) == SchnetFeature:
+                    raise RuntimeError('Since you have a SchnetFeature, you must \
+                                        provide an embeddings array')
+
+        if embeddings is not None:
+            if len(embeddings.shape) != 2:
+                raise ValueError('embeddings shape must be [frames, beads]')
+
+            if initial_coordinates.shape[:2] != embeddings.shape:
+                raise ValueError('initial_coordinates and embeddings '
+                                 'must have the same first two dimensions')
+
+        if type(initial_coordinates) is not torch.Tensor:
+            initial_coordinates = torch.tensor(initial_coordinates,
+                                               requires_grad=True)
+        elif initial_coordinates.requires_grad is False:
+            initial_coordinates.requires_grad = True
+
+        self.model = model
+        if self.model.training:
+            warnings.warn('model is in training mode, and certain PyTorch '
+                          'layers, such as BatchNorm1d, behave differently '
+                          'in training mode in ways that can negatively bias '
+                          'simulations. We recommend that you put the model '
+                          'into inference mode by calling `model.eval`.')
+
+        self.initial_coordinates = initial_coordinates
+        self.embeddings = embeddings
+        self.n_sims = self.initial_coordinates.shape[0]
+        self.n_beads = self.initial_coordinates.shape[1]
+        self.n_dims = self.initial_coordinates.shape[2]
+
+        self.save_forces = save_forces
+        self.save_potential = save_potential
+        self.length = length
+        self.save_interval = save_interval
+        self.dt = dt
+        self.diffusion = diffusion
+        self.beta = beta
+        self.verbose = verbose
+
+        if random_seed is None:
+            self.rng = torch.default_generator
+        else:
+            self.rng = torch.Generator().manual_seed(random_seed)
+        self.random_seed = random_seed
+
+        self.device = device
+
+        self._simulated = False
+
     def simulate(self, overwrite=False):
         """Generates independent simulations.
 
@@ -276,3 +351,4 @@ class Simulation():
 
         self._simulated = True
         return self.simulated_traj
+
