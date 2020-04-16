@@ -11,7 +11,9 @@ from cgnet.feature import SchnetFeature
 class _Simulation():
     """TODO"""
     def __init__(self):
-        pass
+        raise NotImplementedError(
+            "init method must be implemented on a class-by-class basis"
+            )
 
     def _input_checks(self):
         """TODO"""
@@ -62,6 +64,29 @@ class _Simulation():
 
         self._initial_x = self.initial_coordinates.clone().detach().requires_grad_(
                                                 True).to(self.device)
+
+    def _set_up_simulation(self, overwrite):
+        if self._simulated and not overwrite:
+            raise RuntimeError('Simulation results are already populated. '
+                               'To rerun, set overwrite=True.')
+
+        if self.verbose:
+            i = 1
+            print(
+                "Generating {} simulations of length {} at {}-step intervals".format(
+                    self.n_sims, self.length, self.save_interval)
+            )
+        self._save_size = int(self.length/self.save_interval)
+
+        self.simulated_traj = torch.zeros((self._save_size, self.n_sims, self.n_beads,
+                                           self.n_dims))
+        if self.save_forces:
+            self.simulated_forces = torch.zeros((self._save_size, self.n_sims,
+                                                 self.n_beads, self.n_dims))
+        else:
+            self.simulated_forces = None
+
+        self.simulated_potential = None
 
 
     def swap_axes(self, data, axis1, axis2):
@@ -185,6 +210,15 @@ class Simulation(_Simulation):
 
         self._simulated = False
 
+    def _timestep(self, x_old, forces, dtau):
+        noise = torch.randn(self.n_sims,
+                            self.n_beads,
+                            self.n_dims,
+                            generator=self.rng).to(self.device)
+        x_new = (x_old.detach() + forces*dtau +
+                 np.sqrt(2*dtau/self.beta)*noise)
+        return x_new
+
     def simulate(self, overwrite=False):
         """Generates independent simulations.
 
@@ -210,27 +244,7 @@ class Simulation(_Simulation):
             for each frame in simulation
 
         """
-        if self._simulated and not overwrite:
-            raise RuntimeError('Simulation results are already populated. '
-                               'To rerun, set overwrite=True.')
-
-        if self.verbose:
-            i = 1
-            print(
-                "Generating {} simulations of length {} at {}-step intervals".format(
-                    self.n_sims, self.length, self.save_interval)
-            )
-        save_size = int(self.length/self.save_interval)
-
-        self.simulated_traj = torch.zeros((save_size, self.n_sims, self.n_beads,
-                                           self.n_dims))
-        if self.save_forces:
-            self.simulated_forces = torch.zeros((save_size, self.n_sims,
-                                                 self.n_beads, self.n_dims))
-        else:
-            self.simulated_forces = None
-
-        self.simulated_potential = None
+        self._set_up_simulation(overwrite)
 
         x_old = self._initial_x
 
@@ -239,12 +253,7 @@ class Simulation(_Simulation):
             potential, forces = self.model(x_old, self.embeddings)
             potential = potential.detach()
             forces = forces.detach()
-            noise = torch.randn(self.n_sims,
-                                self.n_beads,
-                                self.n_dims,
-                                generator=self.rng).to(self.device)
-            x_new = (x_old.detach() + forces*dtau +
-                     np.sqrt(2*dtau/self.beta)*noise)
+            x_new = self._timestep(x_old, forces, dtau)
 
             if t % self.save_interval == 0:
                 self.simulated_traj[t//self.save_interval, :, :] = x_new
@@ -257,7 +266,7 @@ class Simulation(_Simulation):
                     # on the fly
                     if self.simulated_potential is None:
                         assert potential.shape[0] == self.n_sims
-                        potential_dims = ([save_size, self.n_sims] +
+                        potential_dims = ([self._save_size, self.n_sims] +
                                           [potential.shape[j]
                                            for j in range(1,
                                                           len(potential.shape))])
