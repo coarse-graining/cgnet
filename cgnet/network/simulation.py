@@ -153,12 +153,6 @@ class Simulation():
             raise RuntimeError('Simulation results are already populated. '
                                'To rerun, set overwrite=True.')
 
-        if self.verbose:
-            i = 1
-            print(
-                "Generating {} simulations of length {} at {}-step intervals".format(
-                    self.n_sims, self.length, self.save_interval)
-            )
         self._save_size = int(self.length/self.save_interval)
 
         self.simulated_traj = torch.zeros((self._save_size, self.n_sims, self.n_beads,
@@ -258,6 +252,13 @@ class Simulation():
 
         """
         self._set_up_simulation(overwrite)
+
+        if self.verbose:
+            i = 1
+            print(
+                "Generating {} simulations of length {} at {}-step intervals".format(
+                    self.n_sims, self.length, self.save_interval)
+            )
 
         x_old = self._initial_x
 
