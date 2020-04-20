@@ -1,5 +1,5 @@
 # Authors: Brooke Husic, Nick Charron, Jiang Wang
-# Contributors: Dominik Lemm
+# Contributors: Dominik Lemm, Andreas Kraemer
 
 import torch
 import numpy as np
@@ -88,14 +88,14 @@ class Simulation():
         self.length = length
         self.save_interval = save_interval
 
-        self.device = device
-
-        self._input_checks()
-
         self.dt = dt
         self.diffusion = diffusion
         self.beta = beta
         self.verbose = verbose
+
+        self.device = device
+
+        self._input_checks()
 
         if random_seed is None:
             self.rng = torch.default_generator
@@ -160,6 +160,16 @@ class Simulation():
         # set up vscale and noisescale
 
         if self.friction is not None:
+            if self.masses is None:
+                raise RuntimeError(
+                    'if friction is not None, masses must be given'
+                    )
+            if len(self.masses) != self.initial_coordinates.shape[1]:
+                raise ValueError(
+                    'mass list length must be number of CG beads'
+                    )
+            self.masses = torch.tensor(masses)
+
             self.vscale = np.exp(-self.dt * self.friction)
             self.noisescale = np.sqrt(1 - self.vscale * self.vscale)
 
