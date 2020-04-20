@@ -23,6 +23,10 @@ class Simulation():
         Embedding data of dimension [n_simulations, n_beads]. Each entry
         in the first dimension corresponds to the embeddings for the
         initial_coordinates data. If no embeddings, use None.
+    friction : float (default=None)
+        TODO / None means infinite here
+    masses : TODO
+        TODO
     save_forces : bool (defalt=False)
         Whether to save forces at the same saved interval as the simulation
         coordinates
@@ -64,6 +68,7 @@ class Simulation():
     Long simulation lengths may take a significant amount of time.
     """
     def __init__(self, model, initial_coordinates, embeddings=None,
+                 friction=None, masses=None, 
                  save_forces=False, save_potential=False, length=100,
                  save_interval=10, dt=5e-4, diffusion=1.0, beta=1.0,
                  verbose=False, random_seed=None, device=torch.device('cpu')):
@@ -71,6 +76,9 @@ class Simulation():
 
         self.initial_coordinates = initial_coordinates
         self.embeddings = embeddings
+        self.friction = friction
+        self.masses = masses
+
         self.n_sims = self.initial_coordinates.shape[0]
         self.n_beads = self.initial_coordinates.shape[1]
         self.n_dims = self.initial_coordinates.shape[2]
@@ -147,6 +155,16 @@ class Simulation():
         self._initial_x = self.initial_coordinates.clone().detach().requires_grad_(
                                                 True).to(self.device)
 
+        # TODO:
+        # - check/set up masses 
+        # set up vscale and noisescale
+
+        if self.friction is not None:
+            self.vscale = np.exp(-self.dt * self.friction)
+            self.noisescale = np.sqrt(1 - self.vscale * self.vscale)
+
+            self.kinetic_energies = []
+
     def _set_up_simulation(self, overwrite):
         """TODO"""
         if self._simulated and not overwrite:
@@ -166,17 +184,43 @@ class Simulation():
         self.simulated_potential = None
 
 
-    def _timestep(self, x_old, forces, dtau):
+    def _timestep(self, x_old, v_old, forces, dtau):
         """TODO"""
-        noise = torch.randn(self.n_sims,
-                            self.n_beads,
-                            self.n_dims,
+        if self.friction is None:
+            assert v_old is None
+            return self._overdamped_timestep(x_old, v_old, forces, dtau)
+        else:
+            return self._langevin_timestep(x_old, v_old, forces, dtau)
+
+    def _langevin_timestep(self, x_old, v_old, forces, dtau):
+        """TODO"""
+
+        # B (velocity update); use whole timestep
+        v_new = v_old + self.dt * forces / self.masses[..., None]
+
+        # A (position update)
+        x_new = x_old + v_new * self.dt / 2.
+
+        # O (noise)
+        noise = torch.randn(*x_new.shape,
+                            generator=self.rng).to(self.device)
+        v_new *= self.vscale
+        v_new += self.noisescale * noise
+
+        # A & B
+        x_new += v_new * self.dt / 2.
+
+        return x_new, v_new
+
+    def _overdamped_timestep(self, x_old, v_old, forces, dtau):
+        """TODO"""
+        noise = torch.randn(*x_old.shape,
                             generator=self.rng).to(self.device)
         x_new = (x_old.detach() + forces*dtau +
                  np.sqrt(2*dtau/self.beta)*noise)
-        return x_new
+        return x_new, None
 
-    def _save_timepoint(self, x_new, forces, potential, t):
+    def _save_timepoint(self, x_new, v_new, forces, potential, t):
         """TODO"""
         self.simulated_traj[t//self.save_interval, :, :] = x_new
         if self.save_forces:
@@ -197,6 +241,14 @@ class Simulation():
 
             self.simulated_potential[
                 t//self.save_interval] = potential
+
+        if v_new is not None:
+            # this isn't gonna work, needs to be an array to keep
+            # calculation separate for parallel sims
+            # kinetic_energies.append(0.5*torch.sum(masses[..., None]*v_new**2))
+            # kinetic_energy = 
+            kes = 0.5 * torch.sum(torch.sum(masses[..., None]*v2, axis=2), axis=1)
+            # self.kinetic_energies ...
 
 
     def swap_axes(self, data, axis1, axis2):
@@ -265,6 +317,13 @@ class Simulation():
         dtau = self.diffusion * self.dt
 
         # for each simulation step
+        if self.friction is None:
+            v_old = None
+        else:
+            v_old = torch.tensor(np.zeros(x_old.shape))
+            # TODO: change to torch and use generator
+            #v_old += np.random.randn(*x_old.shape)) 
+
         for t in range(self.length):
             # produce potential and forces from model
             potential, forces = self.model(x_old, self.embeddings)
@@ -272,11 +331,11 @@ class Simulation():
             forces = forces.detach()
 
             # step forward in time
-            x_new = self._timestep(x_old, forces, dtau)
+            x_new, v_new = self._timestep(x_old, v_old, forces, dtau)
 
             # save if relevant
             if t % self.save_interval == 0:
-                self._save_timepoint(x_new, forces, potential, t)
+                self._save_timepoint(x_new, v_new, forces, potential, t)
 
             # prepare for next timestep
             x_old = x_new.clone().detach().requires_grad_(True).to(self.device)
