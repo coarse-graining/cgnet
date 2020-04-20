@@ -168,7 +168,7 @@ class Simulation():
                 raise ValueError(
                     'mass list length must be number of CG beads'
                     )
-            self.masses = torch.tensor(masses)
+            self.masses = torch.tensor(masses, dtype=torch.float32)
 
             self.vscale = np.exp(-self.dt * self.friction)
             self.noisescale = np.sqrt(1 - self.vscale * self.vscale)
@@ -194,15 +194,15 @@ class Simulation():
         self.simulated_potential = None
 
 
-    def _timestep(self, x_old, v_old, forces, dtau):
+    def _timestep(self, x_old, v_old, forces):
         """TODO"""
         if self.friction is None:
             assert v_old is None
-            return self._overdamped_timestep(x_old, v_old, forces, dtau)
+            return self._overdamped_timestep(x_old, v_old, forces)
         else:
-            return self._langevin_timestep(x_old, v_old, forces, dtau)
+            return self._langevin_timestep(x_old, v_old, forces)
 
-    def _langevin_timestep(self, x_old, v_old, forces, dtau):
+    def _langevin_timestep(self, x_old, v_old, forces):
         """TODO"""
 
         # B (velocity update); use whole timestep
@@ -212,22 +212,23 @@ class Simulation():
         x_new = x_old + v_new * self.dt / 2.
 
         # O (noise)
-        noise = torch.randn(*x_new.shape,
-                            generator=self.rng).to(self.device)
-        v_new *= self.vscale
-        v_new += self.noisescale * noise
+        noise = np.sqrt(1. / self.beta / self.masses[...,None])
+        noise = noise * torch.randn(*x_new.shape,
+                                    generator=self.rng).to(self.device)
+        v_new = v_new * self.vscale
+        v_new = v_new + self.noisescale * noise
 
         # A & B
-        x_new += v_new * self.dt / 2.
+        x_new = x_new + v_new * self.dt / 2.
 
         return x_new, v_new
 
-    def _overdamped_timestep(self, x_old, v_old, forces, dtau):
+    def _overdamped_timestep(self, x_old, v_old, forces):
         """TODO"""
         noise = torch.randn(*x_old.shape,
                             generator=self.rng).to(self.device)
-        x_new = (x_old.detach() + forces*dtau +
-                 np.sqrt(2*dtau/self.beta)*noise)
+        x_new = (x_old.detach() + forces*self._dtau +
+                 np.sqrt(2*self._dtau/self.beta)*noise)
         return x_new, None
 
     def _save_timepoint(self, x_new, v_new, forces, potential, t):
@@ -252,12 +253,12 @@ class Simulation():
             self.simulated_potential[
                 t//self.save_interval] = potential
 
-        if v_new is not None:
+        # if v_new is not None:
             # this isn't gonna work, needs to be an array to keep
             # calculation separate for parallel sims
             # kinetic_energies.append(0.5*torch.sum(masses[..., None]*v_new**2))
             # kinetic_energy = 
-            kes = 0.5 * torch.sum(torch.sum(masses[..., None]*v2, axis=2), axis=1)
+            # kes = 0.5 * torch.sum(torch.sum(masses[..., None]*v2, axis=2), axis=1)
             # self.kinetic_energies ...
 
 
@@ -324,13 +325,13 @@ class Simulation():
 
         x_old = self._initial_x
 
-        dtau = self.diffusion * self.dt
+        self._dtau = self.diffusion * self.dt
 
         # for each simulation step
         if self.friction is None:
             v_old = None
         else:
-            v_old = torch.tensor(np.zeros(x_old.shape))
+            v_old = torch.tensor(np.zeros(x_old.shape), dtype=torch.float32)
             # TODO: change to torch and use generator
             #v_old += np.random.randn(*x_old.shape)) 
 
@@ -341,7 +342,7 @@ class Simulation():
             forces = forces.detach()
 
             # step forward in time
-            x_new, v_new = self._timestep(x_old, v_old, forces, dtau)
+            x_new, v_new = self._timestep(x_old, v_old, forces)
 
             # save if relevant
             if t % self.save_interval == 0:
@@ -361,15 +362,15 @@ class Simulation():
 
         # finalize data structures
         self.simulated_traj = self.swap_axes(
-            self.simulated_traj, 0, 1).cpu().numpy()
+            self.simulated_traj, 0, 1).cpu().detach().numpy()
 
         if self.save_forces:
             self.simulated_forces = self.swap_axes(self.simulated_forces,
-                                                   0, 1).cpu().numpy()
+                                                   0, 1).cpu().detach().numpy()
 
         if self.save_potential:
             self.simulated_potential = self.swap_axes(self.simulated_potential,
-                                                      0, 1).cpu().numpy()
+                                                      0, 1).cpu().detach().numpy()
 
         self._simulated = True
         return self.simulated_traj
