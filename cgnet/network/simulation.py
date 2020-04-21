@@ -254,8 +254,7 @@ class Simulation():
                                   [potential.shape[j]
                                    for j in range(1,
                                                   len(potential.shape))])
-                self.simulated_potential = torch.zeros(
-                    (potential_dims))
+                self.simulated_potential = torch.zeros((potential_dims))
 
             self.simulated_potential[t//self.save_interval] = potential
 
@@ -373,6 +372,10 @@ class Simulation():
 
         if self.save_potential:
             self.simulated_potential = self.swap_axes(self.simulated_potential,
+                                                      0, 1).cpu().detach().numpy()
+
+        if self.friction is not None:
+            self.kinetic_energies = self.swap_axes(self.kinetic_energies,
                                                       0, 1).cpu().detach().numpy()
 
         self._simulated = True
