@@ -191,7 +191,17 @@ class Simulation():
         else:
             self.simulated_forces = None
 
-        self.simulated_potential = None
+        if self.save_potential:
+            # The potential will look different for different network structures
+            potential_dims = ([self._save_size, self.n_sims] +
+                              [potential.shape[j]
+                               for j in range(1, len(potential.shape))])
+            self.simulated_potential = torch.zeros((potential_dims))
+        else:
+            self.simulated_potential = None
+
+        if self.friction is not None:
+            self.kinetic_energies = torch.zeros((self._save_size, self.n_sims))
 
 
     def _timestep(self, x_old, v_old, forces):
@@ -233,33 +243,18 @@ class Simulation():
 
     def _save_timepoint(self, x_new, v_new, forces, potential, t):
         """TODO"""
-        self.simulated_traj[t//self.save_interval, :, :] = x_new
+        save_ind = t // self.save_interval
+
+        self.simulated_traj[save_ind, :, :] = x_new
         if self.save_forces:
-            self.simulated_forces[t//self.save_interval,
-                                  :, :] = forces
+            self.simulated_forces[save_ind, :, :] = forces
         if self.save_potential:
-            # The potential will look different for different
-            # network structures, so determine its dimensionality
-            # on the fly
-            if self.simulated_potential is None:
-                assert potential.shape[0] == self.n_sims
-                potential_dims = ([self._save_size, self.n_sims] +
-                                  [potential.shape[j]
-                                   for j in range(1,
-                                                  len(potential.shape))])
-                self.simulated_potential = torch.zeros(
-                    (potential_dims))
+            self.simulated_potential[save_ind] = potential
 
-            self.simulated_potential[
-                t//self.save_interval] = potential
-
-        # if v_new is not None:
-            # this isn't gonna work, needs to be an array to keep
-            # calculation separate for parallel sims
-            # kinetic_energies.append(0.5*torch.sum(masses[..., None]*v_new**2))
-            # kinetic_energy = 
-            # kes = 0.5 * torch.sum(torch.sum(masses[..., None]*v2, axis=2), axis=1)
-            # self.kinetic_energies ...
+        if v_new is not None:
+            kes = 0.5 * torch.sum(torch.sum(self.masses[..., None]*v_new**2,
+                                  axis=2), axis=1)
+            self.kinetic_energies[save_ind, :] = kes
 
 
     def swap_axes(self, data, axis1, axis2):
