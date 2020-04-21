@@ -26,7 +26,9 @@ def multi_molecule_collate(input_dictionaries, device=torch.device('cpu')):
             'coords' : np.array of shape (1, num_beads, 3)
             'forces' : np.array of shape (1, num_beads, 3)
             'embed'  : np.array of shape (num_beads)
-    #TODO what if there are no embeddings
+
+        Embeddings must be specified for this function to work correctly.
+        A KeyError will be raised if they are not.
 
     Returns
     -------
