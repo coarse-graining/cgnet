@@ -191,14 +191,7 @@ class Simulation():
         else:
             self.simulated_forces = None
 
-        if self.save_potential:
-            # The potential will look different for different network structures
-            potential_dims = ([self._save_size, self.n_sims] +
-                              [potential.shape[j]
-                               for j in range(1, len(potential.shape))])
-            self.simulated_potential = torch.zeros((potential_dims))
-        else:
-            self.simulated_potential = None
+        self.simulated_potential = None
 
         if self.friction is not None:
             self.kinetic_energies = torch.zeros((self._save_size, self.n_sims))
@@ -248,8 +241,21 @@ class Simulation():
         self.simulated_traj[save_ind, :, :] = x_new
         if self.save_forces:
             self.simulated_forces[save_ind, :, :] = forces
+
         if self.save_potential:
-            self.simulated_potential[save_ind] = potential
+            # The potential will look different for different network
+            # structures, so determine its dimensionality at the first
+            # timepoint (as opposed to in _set_up_simulation)
+            if self.simulated_potential is None:
+                assert potential.shape[0] == self.n_sims
+                potential_dims = ([self._save_size, self.n_sims] +
+                                  [potential.shape[j]
+                                   for j in range(1,
+                                                  len(potential.shape))])
+                self.simulated_potential = torch.zeros(
+                    (potential_dims))
+
+            self.simulated_potential[t//self.save_interval] = potential
 
         if v_new is not None:
             kes = 0.5 * torch.sum(torch.sum(self.masses[..., None]*v_new**2,
