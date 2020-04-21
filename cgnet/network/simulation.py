@@ -191,6 +191,8 @@ class Simulation():
         else:
             self.simulated_forces = None
 
+        # the if saved, the simulated potential shape is identified in the first
+        # simulation time point in self._save_timepoint
         self.simulated_potential = None
 
         if self.friction is not None:
@@ -245,7 +247,7 @@ class Simulation():
         if self.save_potential:
             # The potential will look different for different network
             # structures, so determine its dimensionality at the first
-            # timepoint (as opposed to in _set_up_simulation)
+            # timepoint (as opposed to in self._set_up_simulation)
             if self.simulated_potential is None:
                 assert potential.shape[0] == self.n_sims
                 potential_dims = ([self._save_size, self.n_sims] +
