@@ -231,8 +231,8 @@ class MultiMoleculeDataset(Dataset):
     embeddings_list: list of numpy.arrays
         List of embeddings. Each item i in the list must be a numpy array
         of shape [n_beads_i], containing the bead embeddings of a
-        single frame for molecule_i
-        # TODO what if there are no embeddings
+        single frame for molecule i. The embedding_list CANNOT be None - it
+        must be supplied to the MultiMoleculeDataset.
 
     Attributes
     ----------
@@ -254,7 +254,7 @@ class MultiMoleculeDataset(Dataset):
 
     """
 
-    def __init__(self, coordinates_list, forces_list, embeddings_list=None,
+    def __init__(self, coordinates_list, forces_list, embeddings_list,
                  selection=None, stride=1, device=torch.device('cpu')):
         self._check_inputs(coordinates_list, forces_list,
                            embeddings_list=embeddings_list)
@@ -276,10 +276,11 @@ class MultiMoleculeDataset(Dataset):
         return self.len
 
     def _make_array_data(self, coordinates_list, forces_list,
-                         embeddings_list=None, selection=None):
+                         embeddings_list, selection=None):
         """Assemble the NumPy arrays into a list of individual dictionaries for
         use with the multi_molecule_collate function.
         """
+
         if self.data == None:
             self.data = []
         if selection is not None:
@@ -299,7 +300,7 @@ class MultiMoleculeDataset(Dataset):
                     "coords" : coord, "forces" : force, "embeddings" : embed})
 
 
-    def add_data(self, coordinates_list, forces_list, embeddings_list=None,
+    def add_data(self, coordinates_list, forces_list, embeddings_list,
                  selection=None):
         """We add data to the dataset with a custom selection and the stride
         specified upon object instantiation, ensuring that the embeddings
@@ -316,7 +317,10 @@ class MultiMoleculeDataset(Dataset):
         """Helper function for ensuring data has the correct shape when
         adding examples to a MultiMoleculeDataset.
         """
-        # TODO what if there are no embeddings
+
+        if embeddings_list is None:
+            raise ValueError("Embeddings must be supplied, as MultiMoleculeDataset"
+                             " is intended to be used only with SchNet utilities.")
 
         if not (len(coordinates_list) == len(forces_list) == len(embeddings_list)):
             raise ValueError("Coordinates, forces, and embeddings lists must "
