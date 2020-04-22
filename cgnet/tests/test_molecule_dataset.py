@@ -68,7 +68,7 @@ def test_adding_variable_selection():
 def test_stride():
     # Make sure MoleculeDataset stride returns correct results
 
-    stride = np.random.randint(1, 4)
+    stride = np.random.randint(2, 5)
     ds = MoleculeDataset(coords, forces, stride=stride)
 
     strided_coords = coords[::stride]
