@@ -270,7 +270,10 @@ class MultiMoleculeDataset(Dataset):
         """Returns the list of examples corresponding to the supplied indices. It
         is meant to be paired with the collating function multi_molecule_collate()
         """
-        return [self.data[i] for i in indices]
+        if isinstance(indices, int):
+            return self.data[indices]
+        else:
+            return [self.data[i] for i in indices]
 
     def __len__(self):
         return self.len
