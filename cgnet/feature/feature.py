@@ -218,6 +218,9 @@ class SchnetFeature(nn.Module):
     simple_norm: bool (default=False)
         If True, the output of the continuous filter convolution will be
         be normalized by the number of beads in the system.
+    neighbor_norm: bool (default=False)
+        If True, the output of the continuous filter convolution will be
+        normalized by the the number of neighbors for each example.
     beadwise_batchnorm: bool (default=False)
         If True, batch normalization will be applied after application of the
         continuous filter convolution according to n_beads.
@@ -289,6 +292,7 @@ class SchnetFeature(nn.Module):
                  rbf_cutoff=5.0,
                  n_gaussians=50,
                  simple_norm=False,
+                 neighbor_norm=False,
                  beadwise_batchnorm=False,
                  batchnorm_running_stats=False,
                  variance=1.0,
@@ -311,19 +315,17 @@ class SchnetFeature(nn.Module):
             raise RuntimeError(
                 "Basis function type must be 'uniform' or 'modulated'.")
 
-        if beadwise_batchnorm and simple_norm:
-            raise RuntimeError('beadwise_batchnorm and simple_norm '
-                               'cannot be used simultaneously')
-        else:
-            if beadwise_batchnorm:
-                beadwise_batchnorm = n_beads
-            else:
-                beadwise_batchnorm = None
+        self._check_norm_options(simple_norm, beadwise_batchnorm, neighbor_norm)
 
-            if simple_norm:
-                simple_norm = n_beads
-            else:
-                simple_norm = None
+        if beadwise_batchnorm:
+            beadwise_batchnorm = n_beads
+        else:
+            beadwise_batchnorm = None
+
+        if simple_norm:
+            simple_norm = n_beads
+        else:
+            simple_norm = None
 
         if share_weights:
             # Lets the interaction blocks share the weights
@@ -331,16 +333,19 @@ class SchnetFeature(nn.Module):
                 [InteractionBlock(feature_size, n_gaussians,
                                   feature_size, activation=activation,
                                   simple_norm=simple_norm,
+                                  neighbor_norm=neighbor_norm,
                                   beadwise_batchnorm=beadwise_batchnorm,
                                   batchnorm_running_stats=batchnorm_running_stats)]
                 * n_interaction_blocks
             )
+
         else:
             # Every interaction block has their own weights
             self.interaction_blocks = nn.ModuleList(
                 [InteractionBlock(feature_size, n_gaussians,
                                   feature_size, activation=activation,
                                   simple_norm=simple_norm,
+                                  neighbor_norm=neighbor_norm,
                                   beadwise_batchnorm=beadwise_batchnorm,
                                   batchnorm_running_stats=batchnorm_running_stats)
                  for _ in range(n_interaction_blocks)]
@@ -354,6 +359,14 @@ class SchnetFeature(nn.Module):
             self._distance_pairs, _ = self.geometry.get_distance_indices(n_beads,
                                                                          [], [])
             self.redundant_distance_mapping = None
+
+    def _check_norm_options(self, simple_norm, beadwise_batchnorm, neighbor_norm):
+        """Helper method to make sure that only one normalization scheme is chosen"""
+        options = [simple_norm, beadwise_batchnorm, neighbor_norm]
+        if len([option for option in options if option]) > 1:
+           raise RuntimeError('More than one normalization option has been '
+                              'specified - you may only utlize one normalization '
+                              'scheme.')
 
     def forward(self, in_features, embedding_property):
         """Forward method through single Schnet block

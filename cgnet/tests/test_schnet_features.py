@@ -90,6 +90,7 @@ def test_continuous_convolution():
     np.testing.assert_allclose(cfconv_layer_out, cfconv_manual_out)
 
 
+
 def test_cfconv_bead_masking():
     # tests to see if the output of ContinousFilterConvolution
     # is properly masked if tha input has padding to account
@@ -511,7 +512,43 @@ def test_simple_norm_logic_ints():
                                                 n_filters],
                           **{'simple_norm': simple_norm})
 
-def test_simultaneous_beadwise_and_simple_norm():
+def _get_min_random_bools(max_bools, min_needed, mode=True):
+    """Helper function that returns at least min_needed
+    bools of value 'mode' froma set of 'max_bools' random
+    bools. Used to test SchnetFeature RuntimeError in
+    test_simultaneous_norm_options
+
+    Parameters
+    ----------
+    max_bools: int
+        Total number of random bools returned
+    min_needed: int
+        Of the total number of bools returned, this
+        specifies how many need to be True/False
+        dependning on the mode=True/False
+    mode: bool (default=True)
+        Specifies what type of bools you need a minimum
+        of form the entire set of returned bools
+
+    Returns
+    -------
+    bool_list:
+        list of random bools of size 'max_bools', in which
+        at least 'min_needed' bools are True/False as specified
+        by mode=True/False
+    """
+
+    bool_list = np.random.choice([True,False], size=max_bools)
+    if mode is True:
+        while(len([bool_ for bool_ in bool_list if bool_]) < min_needed):
+            bool_list = np.random.choice([True,False], size=max_bools)
+    if mode is False:
+        while(len([bool_ for bool_ in bool_list if not bool_]) < min_needed):
+            bool_list = np.random.choice([True,False], size=max_bools)
+    return bool_list
+
+
+def test_simultaneous_norm_options():
     # Tests to make sure a RuntimeError is raised if both beadwise_batchnorm
     # and simple_norm are specified
     embedding_property = torch.randint(low=1, high=n_embeddings,
@@ -523,28 +560,34 @@ def test_simultaneous_beadwise_and_simple_norm():
 
     feature_size = np.random.randint(4, 8)
     # We test a random case where simple_norm is an integer less
-    # than one - this should raise a ValueError
+    # than one - this should raise a RuntimeError
     classes = [SchnetFeature, InteractionBlock, ContinuousFilterConvolution]
     beadwise_batchnorm = np.random.randint(-100, high=100)
     simple_norm = np.random.randint(-100, high=100)
+    neighbor_norm = np.random.choice([True, False])
     for _class in classes:
         if _class == ContinuousFilterConvolution:
             assert_raises(RuntimeError, _class, *[n_gaussians,
                                                 n_filters],
                           **{'simple_norm': simple_norm,
+                             'neighbor_norm': neighbor_norm,
                              'beadwise_batchnorm': beadwise_batchnorm})
         if _class == InteractionBlock:
             assert_raises(RuntimeError, _class, *[n_feats,
                                                 n_gaussians,
                                                 n_filters],
                           **{'simple_norm': simple_norm,
+                             'neighbor_norm': neighbor_norm,
                              'beadwise_batchnorm': beadwise_batchnorm})
         if _class == SchnetFeature:
+            # Here, we grab three random bools where at least two are true
+            random_bools = _get_min_random_bools(3, 2, mode=True)
             assert_raises(RuntimeError, _class, *[feature_size,
                                                   embedding_layer,
                                                   beads],
-                          **{'simple_norm': True,
-                             'beadwise_batchnorm': True})
+                          **{'simple_norm': random_bools[0],
+                             'neighbor_norm': random_bools[1],
+                             'beadwise_batchnorm': random_bools[2]})
 
 
 def test_cfconv_simple_norm():
@@ -600,6 +643,54 @@ def test_cfconv_simple_norm():
     normed_manual_out = torch.tensor(cfconv_manual_out) / beads
     np.testing.assert_allclose(
         cfconv_layer_out, normed_manual_out.detach().numpy())
+
+
+def test_cfconv_neighbor_norm():
+    # Tests manual calculation of neighbor-normalized cfconv output with 
+    # the output of cfconv instanced with neighbor_norm=True.
+    # This is the same test as above, but the output is normalized
+    # by the number of neighbors
+
+    test_cfconv_features = torch.randn((frames, beads, n_filters))
+    # Calculate continuous convolution output with the created layer
+    # Specifying neighbor_norm=True
+    cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
+                                         neighbor_norm=True,
+                                         n_filters=n_filters)
+    cfconv_layer_out = cfconv.forward(test_cfconv_features, test_rbf,
+                                      test_nbh, test_nbh_mask).detach()
+    # Calculate convolution manually
+    n_neighbors = beads - 1
+    test_nbh_np = test_nbh.numpy()
+    test_nbh_mask_np = test_nbh_mask.numpy()
+    test_feat_np = test_cfconv_features.numpy()
+
+    neighbor_list = test_nbh_np.reshape(-1, beads * n_neighbors, 1)
+    neighbor_list = neighbor_list.repeat(n_filters, axis=2)
+    neighbor_features = np.take_along_axis(test_feat_np, neighbor_list, axis=1)
+    neighbor_features = neighbor_features.reshape(frames, beads,
+                                                  n_neighbors, -1)
+
+    # In order to compare the layer output with the manual calculation, we
+    # need to use the same filter generator (2 linear layers with and without
+    # activation function, respectively).
+    test_conv_filter = cfconv.filter_generator(test_rbf).detach().numpy()
+
+    # element-wise multiplication and pooling
+    conv_features = neighbor_features * test_conv_filter
+    # Remove features from non-existing neighbors
+    conv_features_masked = conv_features * test_nbh_mask_np[:, :, :, None]
+    cfconv_manual_out = np.sum(conv_features_masked, axis=2)
+
+    # normalize by number of neighbors:
+    cfconv_manual_out = cfconv_manual_out / n_neighbors
+
+    # Test if all the removed features are indeed 0
+    assert not np.all(
+        conv_features_masked[~test_nbh_mask_np.astype(np.bool)].astype(
+            np.bool))
+    # Test if the torch and numpy calculation are the same
+    np.testing.assert_allclose(cfconv_layer_out, cfconv_manual_out)
 
 
 def test_cfconv_batchnorm():

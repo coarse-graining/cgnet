@@ -124,6 +124,11 @@ class ContinuousFilterConvolution(nn.Module):
     simple_norm: int (default=None)
         Number of beads in the system, with which the output of the continuous
         filter convolution will be normalized
+    neighbor_norm: bool (default=False)
+        If using a simple norm, normalize by the number of neighbors as
+        determined by the shape of the neighbor mask. If simple_norm is
+        specified, the number of simple_norm beads will be overridden and
+        replaced with the number of neighbors
     beadwise_batchnorm: int (default=None)
         Number of beads over which batch normalization will be applied after
         application of the continuous filter convolution. If None, batch
@@ -154,7 +159,7 @@ class ContinuousFilterConvolution(nn.Module):
     """
 
     def __init__(self, n_gaussians, n_filters, activation=ShiftedSoftplus(),
-                 simple_norm=None, beadwise_batchnorm=None,
+                 simple_norm=None, neighbor_norm=False, beadwise_batchnorm=None,
                  batchnorm_running_stats=False):
         super(ContinuousFilterConvolution, self).__init__()
         filter_layers = LinearLayer(n_gaussians, n_filters, bias=True,
@@ -176,6 +181,7 @@ class ContinuousFilterConvolution(nn.Module):
             self.normlayer = simple_norm
         elif beadwise_batchnorm == None and simple_norm == None:
             self.normlayer = None
+        self.neighbor_norm = neighbor_norm
 
     def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask, bead_mask=None):
         """ Compute convolutional block
@@ -229,7 +235,6 @@ class ContinuousFilterConvolution(nn.Module):
         # element-wise multiplication with the filter
         neighbor_features = neighbor_features.reshape(n_batch, n_beads,
                                                       n_neighbors, -1)
-
         # Element-wise multiplication of the features with
         # the convolutional filter
         conv_features = neighbor_features * conv_filter
@@ -246,16 +251,15 @@ class ContinuousFilterConvolution(nn.Module):
         #print(aggregated_features.size())
         #print(bead_mask.size())
         if bead_mask is not None:
-            aggregated_features = aggregated_features * bead_mask[:,:,None]
-
-        # TODO This needs to be changed to normalize by neighbor number not
-        # bead number
+            aggregated_features = aggregated_features * bead_mask[:, :, None]
 
         if self.normlayer is not None:
             if isinstance(self.normlayer, nn.BatchNorm1d):
                 return self.normlayer(aggregated_features)
             elif isinstance(self.normlayer, int):
                 return aggregated_features / self.normlayer
+        elif self.neighbor_norm is True:
+            return aggregated_features / n_neighbors
         else:
             return aggregated_features
 
@@ -295,6 +299,9 @@ class InteractionBlock(nn.Module):
     simple_norm: int (default=None)
         Number of beads in the system, with which the output of the continuous
         filter convolution will be normalized
+    neighbor_norm: bool (default=False)
+        If True, the output of the continuous filter convolution will be
+        normalized by the number of neighbors for each example.
     beadwise_batchnorm: int (default=None)
         Number of beads over which batch normalization will be applied after
         application of the continuous filter convolution. If None, batch
@@ -326,7 +333,8 @@ class InteractionBlock(nn.Module):
 
     def __init__(self, n_inputs, n_gaussians, n_filters,
                  activation=ShiftedSoftplus(), simple_norm=None,
-                 beadwise_batchnorm=None, batchnorm_running_stats=False):
+                 neighbor_norm=False, beadwise_batchnorm=None,
+                 batchnorm_running_stats=False):
         super(InteractionBlock, self).__init__()
 
         self.initial_dense = nn.Sequential(
@@ -337,18 +345,18 @@ class InteractionBlock(nn.Module):
         # WARNING : This will be removed in the future!
         self.inital_dense = self.initial_dense
 
-        if beadwise_batchnorm and simple_norm:
-            raise RuntimeError('beadwise_batchnorm and simple_norm '
-                               'cannot be used simultaneously')
-        else:
-            if beadwise_batchnorm != None:
-                _check_normalization_input(beadwise_batchnorm)
-            if simple_norm != None:
-                _check_normalization_input(simple_norm)
+        self._check_norm_options(simple_norm, beadwise_batchnorm, neighbor_norm)
+
+        if beadwise_batchnorm != None:
+            _check_normalization_input(beadwise_batchnorm)
+        if simple_norm != None:
+            _check_normalization_input(simple_norm)
+
         self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                                   n_filters=n_filters,
                                                   activation=activation,
                                                   simple_norm=simple_norm,
+                                                  neighbor_norm=neighbor_norm,
                                                   beadwise_batchnorm=beadwise_batchnorm,
                                                   batchnorm_running_stats=batchnorm_running_stats)
         output_layers = LinearLayer(n_filters, n_filters, bias=True,
@@ -356,6 +364,14 @@ class InteractionBlock(nn.Module):
         output_layers += LinearLayer(n_filters, n_filters, bias=True,
                                      activation=None)
         self.output_dense = nn.Sequential(*output_layers)
+
+    def _check_norm_options(self, simple_norm, beadwise_batchnorm, neighbor_norm):
+        """Helper method to make sure that only one normalization scheme is chosen"""
+        options = [simple_norm, beadwise_batchnorm, neighbor_norm]
+        if len([option for option in options if option]) > 1:
+           raise RuntimeError('More than one normalization option has been '
+                              'specified - you may only utlize one normalization '
+                              'scheme.')
 
     def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask, bead_mask=None):
         """ Compute interaction block
