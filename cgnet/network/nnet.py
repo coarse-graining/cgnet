@@ -251,7 +251,7 @@ class CGnet(nn.Module):
             #print("energy")
             #print(energy)
             #print(energy.size())
-            masked_energy = energy * bead_mask[..., None]
+            masked_energy = energy * bead_mask[:, :, None]
             #print("Masked energies:", masked_energy)
             energy = torch.sum(masked_energy, axis=-2)
             #print("total energy:", energy)
