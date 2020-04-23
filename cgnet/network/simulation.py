@@ -90,7 +90,6 @@ class Simulation():
 
         self.dt = dt
         self.diffusion = diffusion
-        self._dtau = self.diffusion * self.dt
 
         self.beta = beta
         self.verbose = verbose
@@ -172,10 +171,13 @@ class Simulation():
                     )
             self.masses = torch.tensor(self.masses, dtype=torch.float32)
 
-            self.vscale = np.exp(-self._dtau * self.friction)
+            self.vscale = np.exp(-self.dt * self.friction)
             self.noisescale = np.sqrt(1 - self.vscale * self.vscale)
 
             self.kinetic_energies = []
+
+        else: # Brownian dynamics
+            self._dtau = self.diffusion * self.dt
 
     def _set_up_simulation(self, overwrite):
         """TODO"""
@@ -213,10 +215,10 @@ class Simulation():
         """TODO"""
 
         # B (velocity update); use whole timestep
-        v_new = v_old + self._dtau * forces / self.masses[..., None]
+        v_new = v_old + self.dt * forces / self.masses[..., None]
 
         # A (position update)
-        x_new = x_old + v_new * self._dtau / 2.
+        x_new = x_old + v_new * self.dt / 2.
 
         # O (noise)
         noise = np.sqrt(1. / self.beta / self.masses[...,None])
@@ -226,7 +228,7 @@ class Simulation():
         v_new = v_new + self.noisescale * noise
 
         # A & B
-        x_new = x_new + v_new * self._dtau / 2.
+        x_new = x_new + v_new * self.dt / 2.
 
         return x_new, v_new
 
