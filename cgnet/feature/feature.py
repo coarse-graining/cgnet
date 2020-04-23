@@ -180,7 +180,7 @@ class GeometryFeature(nn.Module):
         return out
 
 
-class SchnetFeature(torch.nn.Module):
+class SchnetFeature(nn.Module):
     """Wrapper class for radial basis function layer, continuous filter convolution,
     and interaction block connecting feature inputs and outputs residuallly.
 

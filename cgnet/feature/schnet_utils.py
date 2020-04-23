@@ -6,7 +6,7 @@ import torch.nn as nn
 from cgnet.feature.utils import ShiftedSoftplus, LinearLayer
 
 
-class SimpleNormLayer(torch.nn.Module):
+class SimpleNormLayer(nn.Module):
     """Simple normalization layer that divides the output of a
     preceding layer by a specified number
 
@@ -36,7 +36,7 @@ class SimpleNormLayer(torch.nn.Module):
         return input_features / self.normalization_strength
 
 
-class NeighborNormLayer(torch.nn.Module):
+class NeighborNormLayer(nn.Module):
     """Normalization layer that divides the output of a
     preceding layer by the number of neighbor features.
     Unlike the SimpleNormLayer, this layer allows for
@@ -65,7 +65,7 @@ class NeighborNormLayer(torch.nn.Module):
         return input_features / n_neighbors
 
 
-class CGBeadEmbedding(torch.nn.Module):
+class CGBeadEmbedding(nn.Module):
     """Simple embedding class for coarse-grain beads.
     Serves as a lookup table that returns a fixed size embedding.
 
@@ -106,7 +106,7 @@ class CGBeadEmbedding(torch.nn.Module):
         return self.embedding(embedding_property)
 
 
-class ContinuousFilterConvolution(torch.nn.Module):
+class ContinuousFilterConvolution(nn.Module):
     r"""
     Continuous-filter convolution block as described by Schütt et al. (2018).
 
@@ -264,7 +264,7 @@ class ContinuousFilterConvolution(torch.nn.Module):
             return aggregated_features
 
 
-class InteractionBlock(torch.nn.Module):
+class InteractionBlock(nn.Module):
     """
     SchNet interaction block as described by Schütt et al. (2018).
 
