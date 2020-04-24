@@ -9,7 +9,42 @@ from cgnet.feature import SchnetFeature
 
 
 class Simulation():
-    """Simulate an artificial trajectory from a CGnet using Langevin dynamics.
+    """Simulate an artificial trajectory from a CGnet.
+
+    If friction and masses are provided, Langevin dynamics are used (see also
+    Notes). The scheme chosen is BAOA(F)B, where
+        B = deterministic velocity update
+        A = deterministic position update
+        O = stochastic velocity update
+        F = force calculation (i.e., from the cgnet)
+
+    Where we have chosen the following implementation so as to only calculate
+    forces once per timestep:
+        F = - grad( U(X_t) )
+        [BB] V_(t+1) = V_t + dt * F/m
+        [A] X_(t+1/2) = X_t + V * dt/2
+        [O] V_(t+1) = V_(t+1) * vscale + dW_t * noisescale
+        [A] X_(t+1) = X_(t+1/2) + V * dt/2
+
+    Where:
+        vscale = exp(-friction * dt)
+        noisecale = sqrt(1 - vscale * vscale)
+
+    The diffusion constant D can be back-calculated using the Einstein relation
+        D = 1 / (beta * friction)
+
+    If friction is None, this indicates Langevin dynamics with *infinite*
+    friction, and the system evolves according to overdamped Langevin
+    dynamics (i.e., Brownian dynamics) according to the following stochastic
+    differential equation:
+
+        dX_t = - grad( U( X_t ) ) * D * dt + sqrt( 2 * D * dt / beta ) * dW_t
+
+    for coordinates X_t at time t, potential energy U, diffusion D,
+    thermodynamic inverse temperature beta, time step dt, and stochastic Weiner
+    process W. The choice of Langevin dynamics is made because CG systems
+    possess no explicit solvent, and so Brownian-like collisions must be
+    modeled indirectly using a stochastic term.
 
     Parameters
     ----------
@@ -32,19 +67,25 @@ class Simulation():
         of training forces and settings of the training simulation data
         respectively
     friction : float (default=None)
-        TODO / None means infinite here
-    masses : TODO
-        TODO
+        If None, overdamped Langevin dynamics are used. If a float is given,
+        Langevin dynamics are utilized with this friction value (sometimes
+        referred to as gama)
+    masses : list of floats (default=None)
+        Only relevant if friction is not None and (therefore) Langevin dynamics
+        are used. In that case, masses must be a list of floats with length
+        equal to the number of beads in the coarse-grained system.
     diffusion : float (default=1.0)
-        The constant diffusion parameter for overdamped Langevin dynamics. By
-        default, the diffusion is set to unity and is absorbed into the dt
-        argument. However, users may specify separate diffusion and dt
-        parameters in the case that they have some estimate of the CG diffusion
+        The constant diffusion parameter for overdamped Langevin dynamics
+        *only*. By default, the diffusion is set to unity and is absorbed into
+        the dt argument. However, users may specify separate diffusion and dt
+        parameters in the case that they have some estimate of the CG
+        diffusion
     save_forces : bool (defalt=False)
         Whether to save forces at the same saved interval as the simulation
         coordinates
     save_potential : bool (default=False)
-        TODO
+        Whether to save potential at the same saved interval as the simulation
+        coordinates
     length : int (default=100)
         The length of the simulation in simulation timesteps
     save_interval : int (default=10)
@@ -60,17 +101,10 @@ class Simulation():
 
     Notes
     -----
-    A system evolves under Langevin dyanmics using the following, stochastic
-    differential equation:
-
-        dX_t = - grad( U( X_t ) ) * a * dt + sqrt( 2 * a * dt / beta ) * dW_t
-
-    for coordinates X_t at time t, potential energy U, diffusion a,
-    thermodynamic inverse temperature beta, time step dt, and stochastic Weiner
-    process W. The choice of Langevin dynamics is made because CG systems
-    possess no explicit solvent, and so Brownian-like collisions must be
-    modeled indirectly using a stochastic term.
     Long simulation lengths may take a significant amount of time.
+
+    Langevin dynamics code based on:
+    https://github.com/choderalab/openmmtools/blob/master/openmmtools/integrators.py
     """
     def __init__(self, model, initial_coordinates, embeddings=None, dt=5e-4, 
                  beta=1.0, friction=None, masses=None, diffusion=1.0,
@@ -161,10 +195,6 @@ class Simulation():
         self._initial_x = self.initial_coordinates.clone().detach().requires_grad_(
                                                 True).to(self.device)
 
-        # TODO:
-        # - check/set up masses 
-        # set up vscale and noisescale
-
         if self.friction is not None:
             if self.masses is None:
                 raise RuntimeError(
@@ -180,6 +210,13 @@ class Simulation():
             self.noisescale = np.sqrt(1 - self.vscale * self.vscale)
 
             self.kinetic_energies = []
+
+        if self.diffusion != 1:
+            warnings.warn(
+                "Diffusion other than 1. was provided, but since friction "
+                "and masses were given, Langevin dynamics will be used "
+                "which do not incorporate this diffusion parameter"
+                )
 
         else: # Brownian dynamics
             self._dtau = self.diffusion * self.dt
