@@ -112,7 +112,8 @@ class Simulation():
     Langevin dynamics code based on:
     https://github.com/choderalab/openmmtools/blob/master/openmmtools/integrators.py
     """
-    def __init__(self, model, initial_coordinates, embeddings=None, dt=5e-4, 
+
+    def __init__(self, model, initial_coordinates, embeddings=None, dt=5e-4,
                  beta=1.0, friction=None, masses=None, diffusion=1.0,
                  save_forces=False, save_potential=False, length=100,
                  save_interval=10, verbose=False, random_seed=None,
@@ -182,11 +183,11 @@ class Simulation():
                 if np.any([type(self.model.feature.layer_list[i]) == SchnetFeature
                            for i in range(len(self.model.feature.layer_list))]):
                     raise RuntimeError('Since you have a SchnetFeature, you must '
-                                        'provide an embeddings array')
+                                       'provide an embeddings array')
             except:
                 if type(self.model.feature) == SchnetFeature:
                     raise RuntimeError('Since you have a SchnetFeature, you must '
-                                        'provide an embeddings array')
+                                       'provide an embeddings array')
 
         # if there are embeddings, make sure their shape is correct
         if self.embeddings is not None:
@@ -207,17 +208,17 @@ class Simulation():
             initial_coordinates = torch.tensor(self.initial_coordinates)
 
         self._initial_x = self.initial_coordinates.clone().detach().requires_grad_(
-                                                True).to(self.device)
+            True).to(self.device)
 
         if self.friction is not None:
             if self.masses is None:
                 raise RuntimeError(
                     'if friction is not None, masses must be given'
-                    )
+                )
             if len(self.masses) != self.initial_coordinates.shape[1]:
                 raise ValueError(
                     'mass list length must be number of CG beads'
-                    )
+                )
             self.masses = torch.tensor(self.masses, dtype=torch.float32)
 
             self.vscale = np.exp(-self.dt * self.friction)
@@ -230,9 +231,9 @@ class Simulation():
                 "Diffusion other than 1. was provided, but since friction "
                 "and masses were given, Langevin dynamics will be used "
                 "which do not incorporate this diffusion parameter"
-                )
+            )
 
-        else: # Brownian dynamics
+        else:  # Brownian dynamics
             self._dtau = self.diffusion * self.dt
 
     def _set_up_simulation(self, overwrite):
@@ -258,7 +259,6 @@ class Simulation():
 
         if self.friction is not None:
             self.kinetic_energies = torch.zeros((self._save_size, self.n_sims))
-
 
     def _timestep(self, x_old, v_old, forces):
         """Shell method for routing to either Langevin or overdamped Langevin
@@ -300,7 +300,7 @@ class Simulation():
         x_new = x_old + v_new * self.dt / 2.
 
         # O (noise)
-        noise = np.sqrt(1. / self.beta / self.masses[...,None])
+        noise = np.sqrt(1. / self.beta / self.masses[..., None])
         noise = noise * torch.randn(*x_new.shape,
                                     generator=self.rng).to(self.device)
         v_new = v_new * self.vscale
@@ -310,7 +310,6 @@ class Simulation():
         x_new = x_new + v_new * self.dt / 2.
 
         return x_new, v_new
-
 
     def _overdamped_timestep(self, x_old, v_old, forces):
         """Heavy lifter for overdamped Langevin (Brownian) dynamics
@@ -329,7 +328,6 @@ class Simulation():
         x_new = (x_old.detach() + forces*self._dtau +
                  np.sqrt(2*self._dtau/self.beta)*noise)
         return x_new, None
-
 
     def _save_timepoint(self, x_new, v_new, forces, potential, t):
         """Utilities to store saved values of coordinates and, if relevant,
@@ -370,9 +368,8 @@ class Simulation():
 
         if v_new is not None:
             kes = 0.5 * torch.sum(torch.sum(self.masses[..., None]*v_new**2,
-                                  axis=2), axis=1)
+                                            axis=2), axis=1)
             self.kinetic_energies[save_ind, :] = kes
-
 
     def swap_axes(self, data, axis1, axis2):
         """Helper method to exchange the zeroth and first axes of tensors after
@@ -399,7 +396,6 @@ class Simulation():
         axes[axis2] = axis1
         swapped_data = data.permute(*axes)
         return swapped_data
-
 
     def simulate(self, overwrite=False):
         """Generates independent simulations.
@@ -485,7 +481,6 @@ class Simulation():
 
         if self.friction is not None:
             self.kinetic_energies = self.swap_axes(self.kinetic_energies,
-                                                      0, 1).cpu().detach().numpy()
+                                                   0, 1).cpu().detach().numpy()
 
         self._simulated = True
-        return self.simulated_traj
