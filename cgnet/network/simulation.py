@@ -76,7 +76,7 @@ class Simulation():
         are used. In that case, masses must be a list of floats with length
         equal to the number of beads in the coarse-grained system.
     diffusion : float (default=1.0)
-        The constant diffusion parameter for overdamped Langevin dynamics
+        The constant diffusion parameter D for overdamped Langevin dynamics
         *only*. By default, the diffusion is set to unity and is absorbed into
         the dt argument. However, users may specify separate diffusion and dt
         parameters in the case that they have some estimate of the CG
@@ -147,7 +147,15 @@ class Simulation():
         self._simulated = False
 
     def _input_checks(self):
-        """TODO"""
+        """Method to catch any problems before starting a simulation:
+        - Warns if model is not in eval mode
+        - Make sure the save_interval evenly divides the simulation length
+        - Make sure if the network has SchnetFeatures, there are embeddings
+          provided
+        - Checks shapes of starting coordinates and embeddings
+        - Ensures masses are provided if friction is not None
+        - Warns if diffusion is specified but won't be used
+        """
 
         # warn if model is in train mode, but don't prevent
         if self.model.training:
@@ -223,7 +231,8 @@ class Simulation():
             self._dtau = self.diffusion * self.dt
 
     def _set_up_simulation(self, overwrite):
-        """TODO"""
+        """Method to initialize helpful objects for simulation later
+        """
         if self._simulated and not overwrite:
             raise RuntimeError('Simulation results are already populated. '
                                'To rerun, set overwrite=True.')
