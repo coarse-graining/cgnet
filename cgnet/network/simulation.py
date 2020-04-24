@@ -33,6 +33,8 @@ class Simulation():
     The diffusion constant D can be back-calculated using the Einstein relation
         D = 1 / (beta * friction)
 
+    Initial velocities are set to zero with noise.
+
     If friction is None, this indicates Langevin dynamics with *infinite*
     friction, and the system evolves according to overdamped Langevin
     dynamics (i.e., Brownian dynamics) according to the following stochastic
@@ -103,6 +105,9 @@ class Simulation():
     Notes
     -----
     Long simulation lengths may take a significant amount of time.
+
+    Langevin dynamics simulation velocities are currently initialized from
+    zero. You should probably remove the beginning part of the simulation.
 
     Langevin dynamics code based on:
     https://github.com/choderalab/openmmtools/blob/master/openmmtools/integrators.py
@@ -436,9 +441,10 @@ class Simulation():
         if self.friction is None:
             v_old = None
         else:
+            # initialize velocities at zero, with noise
             v_old = torch.tensor(np.zeros(x_old.shape), dtype=torch.float32)
-            # TODO: change to torch and use generator
-            #v_old += np.random.randn(*x_old.shape)) 
+            v_old = v_old + torch.randn(*v_old.shape,
+                                        generator=self.rng).to(self.device)
 
         for t in range(self.length):
             # produce potential and forces from model
