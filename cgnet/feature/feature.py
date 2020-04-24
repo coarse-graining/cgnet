@@ -227,7 +227,8 @@ class SchnetFeature(nn.Module):
     share_batchnorm_parameters: bool (default=False)
         If True, all BatchNorm1d instances in the model share parameters.
         Note: this option is only applicable if a nn.BatchNorm1d object
-        has been passed to the 'normalization_layer' kwarg.
+        has been passed to the 'normalization_layer' kwarg. By default,
+        SchnetFeature instances do not include normalization layers.
 
     Notes
     -----
