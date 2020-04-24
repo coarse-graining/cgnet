@@ -9,8 +9,8 @@ from cgnet.feature import SchnetFeature
 
 
 class Simulation():
-    """Simulate an artificial trajectory from a CGnet using overdamped Langevin
-    dynamics.
+    """Simulate an artificial trajectory from a CGnet using Langevin dynamics.
+
     Parameters
     ----------
     model : cgnet.network.CGNet() instance
@@ -23,31 +23,33 @@ class Simulation():
         Embedding data of dimension [n_simulations, n_beads]. Each entry
         in the first dimension corresponds to the embeddings for the
         initial_coordinates data. If no embeddings, use None.
+    dt : float (default=5e-4)
+        The integration time step for Langevin dynamics. Units are determined
+        by the frame striding of the original training data simulation
+    beta : float (default=1.0)
+        The thermodynamic inverse temperature, 1/(k_B T), for Boltzman constant
+        k_B and temperature T. The units of k_B and T are fixed from the units
+        of training forces and settings of the training simulation data
+        respectively
     friction : float (default=None)
         TODO / None means infinite here
     masses : TODO
         TODO
-    save_forces : bool (defalt=False)
-        Whether to save forces at the same saved interval as the simulation
-        coordinates
-    length : int (default=100)
-        The length of the simulation in simulation timesteps
-    save_interval : int (default=10)
-        The interval at which simulation timesteps should be saved. Must be
-        a factor of the simulation length
-    dt : float (default=5e-4)
-        The integration time step for Langevin dynamics. Units are determined
-        by the frame striding of the original training data simulation
     diffusion : float (default=1.0)
         The constant diffusion parameter for overdamped Langevin dynamics. By
         default, the diffusion is set to unity and is absorbed into the dt
         argument. However, users may specify separate diffusion and dt
         parameters in the case that they have some estimate of the CG diffusion
-    beta : float (default=0.01)
-        The thermodynamic inverse temperature, 1/(k_B T), for Boltzman constant
-        k_B and temperature T. The units of k_B and T are fixed from the units
-        of training forces and settings of the training simulation data
-        respectively
+    save_forces : bool (defalt=False)
+        Whether to save forces at the same saved interval as the simulation
+        coordinates
+    save_potential : bool (default=False)
+        TODO
+    length : int (default=100)
+        The length of the simulation in simulation timesteps
+    save_interval : int (default=10)
+        The interval at which simulation timesteps should be saved. Must be
+        a factor of the simulation length
     verbose : bool (default=False)
         Whether to print simulation progress information
     random_seed : int or None (default=None)
@@ -55,11 +57,14 @@ class Simulation():
         identical for the same random seed
     device : torch.device (default=torch.device('cpu'))
         Device upon which simulation compuation will be carried out
+
     Notes
     -----
     A system evolves under Langevin dyanmics using the following, stochastic
     differential equation:
+
         dX_t = - grad( U( X_t ) ) * a * dt + sqrt( 2 * a * dt / beta ) * dW_t
+
     for coordinates X_t at time t, potential energy U, diffusion a,
     thermodynamic inverse temperature beta, time step dt, and stochastic Weiner
     process W. The choice of Langevin dynamics is made because CG systems
@@ -67,11 +72,11 @@ class Simulation():
     modeled indirectly using a stochastic term.
     Long simulation lengths may take a significant amount of time.
     """
-    def __init__(self, model, initial_coordinates, embeddings=None,
-                 friction=None, masses=None, 
+    def __init__(self, model, initial_coordinates, embeddings=None, dt=5e-4, 
+                 beta=1.0, friction=None, masses=None, diffusion=1.0,
                  save_forces=False, save_potential=False, length=100,
-                 save_interval=10, dt=5e-4, diffusion=1.0, beta=1.0,
-                 verbose=False, random_seed=None, device=torch.device('cpu')):
+                 save_interval=10, verbose=False, random_seed=None,
+                 device=torch.device('cpu')):
         self.model = model
 
         self.initial_coordinates = initial_coordinates
