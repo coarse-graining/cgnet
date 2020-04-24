@@ -67,9 +67,10 @@ class Simulation():
         of training forces and settings of the training simulation data
         respectively
     friction : float (default=None)
-        If None, overdamped Langevin dynamics are used. If a float is given,
-        Langevin dynamics are utilized with this friction value (sometimes
-        referred to as gama)
+        If None, overdamped Langevin dynamics are used (this is equivalent to
+        "infinite" friction). If a float is given, Langevin dynamics are
+        utilized with this (finite) friction value (sometimes referred to as
+        gamma)
     masses : list of floats (default=None)
         Only relevant if friction is not None and (therefore) Langevin dynamics
         are used. In that case, masses must be a list of floats with length
@@ -246,7 +247,19 @@ class Simulation():
 
 
     def _timestep(self, x_old, v_old, forces):
-        """TODO"""
+        """Shell method for routing to either Langevin or overdamped Langevin
+        dynamics
+
+        Parameters
+        ----------
+        x_old : torch.Tensor
+            coordinates before propagataion
+        v_old : None or torch.Tensor
+            None if overdamped Langevin; velocities before propagation
+            otherwise
+        forces: torch.Tensor
+            forces at x_old
+        """
         if self.friction is None:
             assert v_old is None
             return self._overdamped_timestep(x_old, v_old, forces)
@@ -254,9 +267,19 @@ class Simulation():
             return self._langevin_timestep(x_old, v_old, forces)
 
     def _langevin_timestep(self, x_old, v_old, forces):
-        """TODO"""
+        """Heavy lifter for Langevin dynamics
 
-        # B (velocity update); use whole timestep
+        Parameters
+        ----------
+        x_old : torch.Tensor
+            coordinates before propagataion
+        v_old : torch.Tensor
+            velocities before propagation
+        forces: torch.Tensor
+            forces at x_old
+        """
+
+        # BB (velocity update); uses whole timestep
         v_new = v_old + self.dt * forces / self.masses[..., None]
 
         # A (position update)
@@ -269,21 +292,48 @@ class Simulation():
         v_new = v_new * self.vscale
         v_new = v_new + self.noisescale * noise
 
-        # A & B
+        # A
         x_new = x_new + v_new * self.dt / 2.
 
         return x_new, v_new
 
+
     def _overdamped_timestep(self, x_old, v_old, forces):
-        """TODO"""
+        """Heavy lifter for overdamped Langevin (Brownian) dynamics
+
+        Parameters
+        ----------
+        x_old : torch.Tensor
+            coordinates before propagataion
+        v_old : None
+            Placeholder
+        forces: torch.Tensor
+            forces at x_old
+        """
         noise = torch.randn(*x_old.shape,
                             generator=self.rng).to(self.device)
         x_new = (x_old.detach() + forces*self._dtau +
                  np.sqrt(2*self._dtau/self.beta)*noise)
         return x_new, None
 
+
     def _save_timepoint(self, x_new, v_new, forces, potential, t):
-        """TODO"""
+        """Utilities to store saved values of coordinates and, if relevant,
+        also forces, potential, and/or kinetic energy
+
+        Parameters
+        ----------
+        x_new : torch.Tensor
+            current coordinates
+        v_new : None or torch.Tensor
+            current velocities, if Langevin dynamics are used
+        forces: torch.Tensor
+            current forces
+        potential : torch.Tensor
+            current potential
+        t : int
+            Timestep iteration index
+        """
         save_ind = t // self.save_interval
 
         self.simulated_traj[save_ind, :, :] = x_new
