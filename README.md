@@ -33,7 +33,7 @@ Notes
 -----
 For backwards compatibility with software before the incorporations of variable size utilities and Langevin dynamics, please use the `invariable` branch.
 
-For compatibility with `pytorch` 1.1, please use the `pytorch-1.1` branch. This branch currently does not include the updates for variable size and Langevin dynamics, nor some normalization options.
+For compatibility with `pytorch==1.1`, please use the `pytorch-1.1` branch. This branch currently does not include the updates for variable size and Langevin dynamics, nor some normalization options.
 
 Cite
 ----
