@@ -1,23 +1,23 @@
 cgnet
-===
+=====
 
 In development!
 
 Dependencies
----
+------------
 Required:
-+ ``numpy``
-+ ``pytorch`` (1.2 or higher)
-+ ``scipy``
++ `numpy`
++ `pytorch` (1.2 or higher)
++ `scipy`
 
 Optional:
-+ ``mdtraj`` (for ``cgnet.molecule`` only)
-+ ``pandas`` (for ``cgnet.molecule`` only)
-+ ``sklearn`` (for testing)
-+ ``Jupyter`` (for ``examples``)
++ `mdtraj` (for `cgnet.molecule` only)
++ `pandas` (for `cgnet.molecule` only)
++ `sklearn` (for testing)
++ `Jupyter` (for `examples`)
 
 Usage
----
+-----
 Clone the repository:
 ```
 git clone git@github.com:coarse-graining/cgnet.git
@@ -29,8 +29,14 @@ cd cgnet
 python setup.py install
 ```
 
+Notes
+-----
+For backwards compatibility with software before the incorporations of variable size utilities and Langevin dynamics, please use the `invariable` branch.
+
+For compatibility with `pytorch` 1.1, please use the `pytorch-1.1` branch. This branch currently does not include the updates for variable size and Langevin dynamics, nor some normalization options.
+
 Cite
----
+----
 Based off the CGnet paper,
 
 ```bibtex
