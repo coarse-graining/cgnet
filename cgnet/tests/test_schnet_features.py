@@ -361,10 +361,10 @@ def test_cfconv_simple_norm():
 
     # Calculate continuous convolution output with the created layer
     cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
-                                         normalization=simple_norm,
+                                         normalization_layer=simple_norm,
                                          n_filters=n_filters)
     # Check to see if batchnorm is embedded properly in the cfconv
-    assert isinstance(cfconv.normlayer, SimpleNormLayer)
+    assert isinstance(cfconv.normalization_layer, SimpleNormLayer)
 
     cfconv_layer_out = cfconv.forward(test_cfconv_features, test_rbf,
                                       test_nbh, test_nbh_mask).detach()
@@ -421,9 +421,9 @@ def test_cfconv_neighbor_norm():
     # using a NeighborNormLayer for normalization
     neighbor_norm_layer = NeighborNormLayer()
     cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
-                                         normalization=neighbor_norm_layer,
+                                         normalization_layer=neighbor_norm_layer,
                                          n_filters=n_filters)
-    assert isinstance(cfconv.normlayer, NeighborNormLayer)
+    assert isinstance(cfconv.normalization_layer, NeighborNormLayer)
 
     cfconv_layer_out = cfconv.forward(test_cfconv_features, test_rbf,
                                       test_nbh, test_nbh_mask).detach()
@@ -471,9 +471,9 @@ def test_cfconv_batchnorm():
     batchnorm_layer = nn.BatchNorm1d(beads)
     cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                          n_filters=n_filters,
-                                         normalization=batchnorm_layer)
+                                         normalization_layer=batchnorm_layer)
     # Check to see if batchnorm is embedded properly in the cfconv
-    assert isinstance(cfconv.normlayer, nn.BatchNorm1d)
+    assert isinstance(cfconv.normalization_layer, nn.BatchNorm1d)
 
     cfconv_layer_out = cfconv.forward(test_cfconv_features, test_rbf,
                                       test_nbh, test_nbh_mask).detach()

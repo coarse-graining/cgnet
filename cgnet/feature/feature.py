@@ -215,7 +215,7 @@ class SchnetFeature(nn.Module):
     n_gaussians: int (default=50)
         Number of gaussians for the gaussian expansion in the radial basis
         function.
-    normalization: nn.Module (default=None)
+    normalization_layer: nn.Module (default=None)
         Normalization layer to be applied to the ouptut of the
         ContinuousFilterConvolution
     variance: float (default=1.0)
@@ -225,7 +225,9 @@ class SchnetFeature(nn.Module):
     share_weights: bool (default=False)
         If True, shares the weights between all interaction blocks.
     share_batchnorm_parameters: bool (default=False)
-        If True, all BatchNorm1d instances in the model share parameters
+        If True, all BatchNorm1d instances in the model share parameters.
+        Note: this option is only applicable if a nn.BatchNorm1d object
+        has been passed to the 'normalization_layer' kwarg.
 
     Notes
     -----
@@ -313,7 +315,7 @@ class SchnetFeature(nn.Module):
                 self.interaction_blocks = nn.ModuleList(
                     [InteractionBlock(feature_size, n_gaussians,
                                       feature_size, activation=activation,
-                                      normalization=normalization_layer)]
+                                      normalization_layer=normalization_layer)]
                     * n_interaction_blocks
                 )
             if not share_batchnorm_parameters:
@@ -321,7 +323,7 @@ class SchnetFeature(nn.Module):
                 self.interaction_blocks = nn.ModuleList(
                     [InteractionBlock(feature_size, n_gaussians,
                                       feature_size, activation=activation,
-                                      normalization=normalization_layer)]
+                                      normalization_layer=normalization_layer)]
                     * n_interaction_blocks
                 )
                 for interaction_block in self.interaction_blocks:
@@ -343,7 +345,7 @@ class SchnetFeature(nn.Module):
             self.interaction_blocks = nn.ModuleList(
                 [InteractionBlock(feature_size, n_gaussians,
                                   feature_size, activation=activation,
-                                  normalization=normalization_layer)
+                                  normalization_layer=normalization_layer)
                  for _ in range(n_interaction_blocks)]
             )
 

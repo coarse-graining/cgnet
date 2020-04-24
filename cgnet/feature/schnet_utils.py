@@ -146,7 +146,7 @@ class ContinuousFilterConvolution(nn.Module):
         Activation function for the filter generating network. Following
         Schütt et al, the default value is ShiftedSoftplus, but any
         differentiable activation function can be used (see Notes).
-    normalization: nn.Module (default=None)
+    normalization_layer: nn.Module (default=None)
         Normalization layer to be applied to the ouptut of the
         ContinuousFilterConvolution
 
@@ -172,7 +172,7 @@ class ContinuousFilterConvolution(nn.Module):
     """
 
     def __init__(self, n_gaussians, n_filters, activation=ShiftedSoftplus(),
-                 normalization=None):
+                 normalization_layer=None):
         super(ContinuousFilterConvolution, self).__init__()
         filter_layers = LinearLayer(n_gaussians, n_filters, bias=True,
                                     activation=activation)
@@ -181,10 +181,10 @@ class ContinuousFilterConvolution(nn.Module):
         filter_layers += LinearLayer(n_filters, n_filters, bias=True)
         self.filter_generator = nn.Sequential(*filter_layers)
 
-        if normalization:
-           self.normlayer = normalization
+        if normalization_layer:
+           self.normalization_layer = normalization_layer
         else:
-           self.normlayer = None
+           self.normalization_layer = None
 
     def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask, bead_mask=None):
         """ Compute convolutional block
@@ -255,11 +255,11 @@ class ContinuousFilterConvolution(nn.Module):
         if bead_mask is not None:
             aggregated_features = aggregated_features * bead_mask[:, :, None]
 
-        if self.normlayer is not None:
-            if isinstance(self.normlayer, NeighborNormLayer):
-                return self.normlayer(aggregated_features, n_neighbors)
+        if self.normalization_layer is not None:
+            if isinstance(self.normalization_layer, NeighborNormLayer):
+                return self.normalization_layer(aggregated_features, n_neighbors)
             else:
-                return self.normlayer(aggregated_features)
+                return self.normalization_layer(aggregated_features)
         else:
             return aggregated_features
 
@@ -296,7 +296,7 @@ class InteractionBlock(nn.Module):
         Activation function for the atom-wise layers. Following Schütt et al,
         the default value is ShiftedSoftplus, but any differentiable activation
         function can be used (see Notes).
-    normalization: nn.Module (default=None)
+    normalization_layer: nn.Module (default=None)
         Normalization layer to be applied to the ouptut of the
         ContinuousFilterConvolution
 
@@ -322,7 +322,7 @@ class InteractionBlock(nn.Module):
     """
 
     def __init__(self, n_inputs, n_gaussians, n_filters,
-                 activation=ShiftedSoftplus(), normalization=None):
+                 activation=ShiftedSoftplus(), normalization_layer=None):
         super(InteractionBlock, self).__init__()
 
         self.initial_dense = nn.Sequential(
@@ -336,7 +336,7 @@ class InteractionBlock(nn.Module):
         self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                                   n_filters=n_filters,
                                                   activation=activation,
-                                                  normalization=normalization)
+                                                  normalization_layer=normalization_layer)
         output_layers = LinearLayer(n_filters, n_filters, bias=True,
                                     activation=activation)
         output_layers += LinearLayer(n_filters, n_filters, bias=True,
