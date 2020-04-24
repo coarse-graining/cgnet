@@ -213,8 +213,12 @@ def test_schnet_feature_geometry():
 
     # Here, we make sure that schnet_feature's calls to Geometry
     # can replicate those of a GeometryStatistics instance
-    assert schnet_feature._distance_pairs == geom_stats._distance_pairs
-    np.testing.assert_equal(schnet_feature.redundant_distance_mapping,
+    schnet_distance_pairs, _ = schnet_feature.geometry.get_distance_indices(beads,
+                                                                         [], [])
+    schnet_red_dist_map = schnet_feature.geometry.get_redundant_distance_mapping(
+                                                            schnet_distance_pairs)
+    assert schnet_distance_pairs == geom_stats._distance_pairs
+    np.testing.assert_equal(schnet_red_dist_map,
                             geom_stats.redundant_distance_mapping)
 
 
