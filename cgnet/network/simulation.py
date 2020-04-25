@@ -484,3 +484,5 @@ class Simulation():
                                                    0, 1).cpu().detach().numpy()
 
         self._simulated = True
+
+        return self.simulated_traj
