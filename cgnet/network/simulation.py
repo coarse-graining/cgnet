@@ -169,7 +169,7 @@ class Simulation():
                           'layers, such as BatchNorm1d, behave differently '
                           'in training mode in ways that can negatively bias '
                           'simulations. We recommend that you put the model '
-                          'into inference mode by calling `model.eval`.')
+                          'into inference mode by calling `model.eval()`.')
 
         # make sure save interval is a factor of total length
         if self.length % self.save_interval != 0:
