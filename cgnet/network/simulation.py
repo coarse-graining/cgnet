@@ -33,7 +33,7 @@ class Simulation():
     The diffusion constant D can be back-calculated using the Einstein relation
         D = 1 / (beta * friction)
 
-    Initial velocities are set to zero with noise.
+    Initial velocities are set to zero with Gaussian noise.
 
     If friction is None, this indicates Langevin dynamics with *infinite*
     friction, and the system evolves according to overdamped Langevin
