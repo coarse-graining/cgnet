@@ -75,8 +75,8 @@ class Simulation():
         gamma)
     masses : list of floats (default=None)
         Only relevant if friction is not None and (therefore) Langevin dynamics
-        are used. In that case, masses must be a list of floats with length
-        equal to the number of beads in the coarse-grained system.
+        are used. In that case, masses must be a list of floats where the float
+        at mass index i corresponds to the ith CG bead.
     diffusion : float (default=1.0)
         The constant diffusion parameter D for overdamped Langevin dynamics
         *only*. By default, the diffusion is set to unity and is absorbed into
@@ -235,6 +235,12 @@ class Simulation():
 
         else:  # Brownian dynamics
             self._dtau = self.diffusion * self.dt
+
+            if self.masses is not None:
+                warnings.warn(
+                    "Masses were provided, but will not be used since "
+                    "friction is None (i.e., infinte)."
+                )
 
     def _set_up_simulation(self, overwrite):
         """Method to initialize helpful objects for simulation later
