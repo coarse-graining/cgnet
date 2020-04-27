@@ -249,11 +249,17 @@ class SchnetFeature(nn.Module):
                                       embedding_dim=10)
 
     beads = 5  # example number of coarse-grain beads in the dataset
+
+    # Next, create a SimpleNormLayer to normalize ContinuousFilterConvolution
+    # output.
+    norm_layer = SimpleNormLayer(n_beads)
+
     schnet_feature = SchnetFeature(feature_size=10,
                                    embedding_layer=embedding_layer,
                                    n_interaction_blocks=2,
                                    calculate_geometry=True,
                                    n_beads=beads,
+                                   normalization_layer=norm_layer,
                                    neighbor_cutoff=5.0)
 
     # To perform a forward pass, pass coordinates and properties to embed to
