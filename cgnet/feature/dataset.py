@@ -231,8 +231,8 @@ class MultiMoleculeDataset(Dataset):
     embeddings_list: list of numpy.arrays
         List of embeddings. Each item i in the list must be a numpy array
         of shape [n_beads_i], containing the bead embeddings of a
-        single frame for molecule i. The embedding_list CANNOT be None - it
-        must be supplied to the MultiMoleculeDataset.
+        single frame for molecule i. The embedding_list may not be None;
+        MultiMoleculeDataset is only compatible with SchnetFeatures.
 
     Attributes
     ----------
