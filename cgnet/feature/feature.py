@@ -310,7 +310,9 @@ class SchnetFeature(nn.Module):
                 "Basis function type must be 'uniform' or 'modulated'.")
 
         if share_weights:
-            # Lets the interaction blocks share the weights
+            # Lets the interaction blocks share weight parameters.
+            # If batchnorm layers are used, their parameters
+            # are shared as well.
             if share_batchnorm_parameters:
                 # Batchnorm parameters are the same for all instances
                 self.interaction_blocks = nn.ModuleList(
@@ -320,16 +322,22 @@ class SchnetFeature(nn.Module):
                     * n_interaction_blocks
                 )
             if not share_batchnorm_parameters:
-                # Batchnorm parameters are not share across all instances
+                # This represents the case where weights parameters are 
+                # shared between the interaction blocks, but the batchnorm
+                # parameters are not shared.
                 self.interaction_blocks = nn.ModuleList(
                     [InteractionBlock(feature_size, n_gaussians,
                                       feature_size, activation=activation,
                                       normalization_layer=normalization_layer)]
                     * n_interaction_blocks
                 )
+                # We reinstance each bathcnorm layer in each interaction block
+                # as a deep copy of the original layer in order to prevent parameter
+                # sharing between the batchnorm layers
                 for interaction_block in self.interaction_blocks:
                     if isinstance(normalization_layer, nn.BatchNorm1d):
-                        # get batchnorm parameters to make shallow copies
+                        # get batchnorm parameters to make deep copies
+                        # that do not have linked parameters
                         num_features = normalization.num_features
                         eps = normalization.eps
                         momentum = normalization.momentum
