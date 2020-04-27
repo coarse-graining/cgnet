@@ -326,8 +326,7 @@ class MultiMoleculeDataset(Dataset):
                              " is intended to be used only with SchNet utilities.")
         else:
             for embedding in embeddings_list:
-                if (np.any(embedding < 1) or
-                    not np.all(embedding.astype(int) == embedding)):
+                if np.any(embedding < 1):
                     raise ValueError("Embeddings must be positive integers.")
 
         if not (len(coordinates_list) == len(forces_list) == len(embeddings_list)):
