@@ -413,9 +413,6 @@ class SchnetFeature(nn.Module):
 
         neighbors, neighbor_mask = self.geometry.get_neighbors(distances,
                                                                cutoff=self.neighbor_cutoff)
-        #print("Neighbors and masks:")
-        #print(neighbors)
-        #print(neighbor_mask)
 
         neighbors = neighbors.to(self.device)
         neighbor_mask = neighbor_mask.to(self.device)
@@ -446,7 +443,6 @@ class SchnetFeature(nn.Module):
         tmp_distances = torch.zeros_like(distances)
         tmp_distances[bead_distances_mask != 0] = distances[bead_distances_mask != 0]
         distances = tmp_distances * neighbor_mask
-        #print("Masked distances:",distances,distances.size())
 
         features = self.embedding_layer(embedding_property)
         rbf_expansion = self.rbf_layer(distances=distances,
