@@ -207,7 +207,7 @@ class Simulation():
         if type(self.initial_coordinates) is not torch.Tensor:
             initial_coordinates = torch.tensor(self.initial_coordinates)
 
-        self._initial_x = self.initial_coordinates.clone().detach().requires_grad_(
+        self._initial_x = self.initial_coordinates.detach().requires_grad_(
             True).to(self.device)
 
         if self.friction is not None:
@@ -226,12 +226,12 @@ class Simulation():
 
             self.kinetic_energies = []
 
-        if self.diffusion != 1:
-            warnings.warn(
-                "Diffusion other than 1. was provided, but since friction "
-                "and masses were given, Langevin dynamics will be used "
-                "which do not incorporate this diffusion parameter"
-            )
+            if self.diffusion != 1:
+                warnings.warn(
+                    "Diffusion other than 1. was provided, but since friction "
+                    "and masses were given, Langevin dynamics will be used "
+                    "which do not incorporate this diffusion parameter"
+                )
 
         else:  # Brownian dynamics
             self._dtau = self.diffusion * self.dt
@@ -462,7 +462,7 @@ class Simulation():
                 self._save_timepoint(x_new, v_new, forces, potential, t)
 
             # prepare for next timestep
-            x_old = x_new.clone().detach().requires_grad_(True).to(self.device)
+            x_old = x_new.detach().requires_grad_(True).to(self.device)
 
             # print info if desired
             if self.verbose:
