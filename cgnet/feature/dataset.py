@@ -318,12 +318,18 @@ class MultiMoleculeDataset(Dataset):
 
     def _check_inputs(self, coordinates_list, forces_list, embeddings_list):
         """Helper function for ensuring data has the correct shape when
-        adding examples to a MultiMoleculeDataset.
+        adding examples to a MultiMoleculeDataset. This function also checks to
+        to make sure that no embeddings are 0.
         """
 
         if embeddings_list is None:
             raise ValueError("Embeddings must be supplied, as MultiMoleculeDataset"
                              " is intended to be used only with SchNet utilities.")
+        else:
+            for embedding in embeddings_list:
+                if (np.any(embedding < 1) or
+                    not np.all(embedding.astype(int) == embedding)):
+                    raise ValueError("Embeddings must be positive integers.")
 
         if not (len(coordinates_list) == len(forces_list) == len(embeddings_list)):
             raise ValueError("Coordinates, forces, and embeddings lists must "
