@@ -55,7 +55,7 @@ def multi_molecule_collate(input_dictionaries, device=torch.device('cpu')):
     Notes
     -----
     See docs in MultiMoleculeDataset. While this function pads the inputs
-    to the model, It is imoprtant to properly mask padded portions of tensors
+    to the model, It is important to properly mask padded portions of tensors
     that are passed to the model. If these padded portions are not masked,
     then their artifical contribution carries through to the
     calculation of forces from the energy and the evaluation of the
