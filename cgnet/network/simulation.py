@@ -300,13 +300,13 @@ class Simulation():
         """
 
         # BB (velocity update); uses whole timestep
-        v_new = v_old + self.dt * forces / self.masses[..., None]
+        v_new = v_old + self.dt * forces / self.masses[:, None]
 
         # A (position update)
         x_new = x_old + v_new * self.dt / 2.
 
         # O (noise)
-        noise = np.sqrt(1. / self.beta / self.masses[..., None])
+        noise = np.sqrt(1. / self.beta / self.masses[:, None])
         noise = noise * torch.randn(*x_new.shape,
                                     generator=self.rng).to(self.device)
         v_new = v_new * self.vscale
@@ -373,7 +373,7 @@ class Simulation():
             self.simulated_potential[t//self.save_interval] = potential
 
         if v_new is not None:
-            kes = 0.5 * torch.sum(torch.sum(self.masses[..., None]*v_new**2,
+            kes = 0.5 * torch.sum(torch.sum(self.masses[:, None]*v_new**2,
                                             axis=2), axis=1)
             self.kinetic_energies[save_ind, :] = kes
 
