@@ -360,7 +360,7 @@ def test_cfconv_simple_norm():
 
     test_cfconv_features = torch.randn((frames, beads, n_filters))
     # Create a random number for a simple normalization
-    random_normalization = np.random.uniform(low=2.0,high=10.0)
+    random_normalization = np.random.uniform(low=2.0, high=10.0)
     simple_norm = SimpleNormLayer(random_normalization)
 
     # Calculate continuous convolution output with the created layer
@@ -471,7 +471,7 @@ def test_cfconv_batchnorm():
 
     test_cfconv_features = torch.randn((frames, beads, n_filters))
     # Calculate continuous convolution output with the created layer
-    # Armed with a BatchNorm1d Layer
+    # supplied with a BatchNorm1d Layer
     batchnorm_layer = nn.BatchNorm1d(beads)
     cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                          n_filters=n_filters,
