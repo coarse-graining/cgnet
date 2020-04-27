@@ -236,6 +236,8 @@ class Simulation():
         else:  # Brownian dynamics
             self._dtau = self.diffusion * self.dt
 
+            self.kinetic_energies = None
+
             if self.masses is not None:
                 warnings.warn(
                     "Masses were provided, but will not be used since "

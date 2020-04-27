@@ -51,9 +51,6 @@ arch = (LinearLayer(dims, dims, activation=nn.Tanh()) +
 # as well as variables to be used in CG simulation tests
 model = CGnet(arch, ForceLoss()).float()
 model.eval()
-length = np.random.choice([2, 4])*2  # Number of frames to simulate
-save = np.random.choice([2, 4])  # Frequency with which to save simulation
-# frames (choice of 2 or 4)
 
 # Here, we set of the parameters of the SchnetFeature
 # for dataset_loss tests below
