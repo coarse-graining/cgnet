@@ -8,7 +8,9 @@ import torch.nn as nn
 
 from cgnet.feature import (ContinuousFilterConvolution, InteractionBlock,
                            SchnetFeature, CGBeadEmbedding, GeometryStatistics,
-                           Geometry, ShiftedSoftplus)
+                           Geometry, ShiftedSoftplus, SimpleNormLayer,
+                           NeighborNormLayer)
+
 g = Geometry(method='torch')
 
 # Define sizes for a pseudo-dataset
@@ -90,6 +92,60 @@ def test_continuous_convolution():
     np.testing.assert_allclose(cfconv_layer_out, cfconv_manual_out)
 
 
+
+def test_cfconv_bead_masking():
+    # tests to see if the output of ContinousFilterConvolution
+    # is properly masked if tha input has padding to account
+    # for variable molecule sizes
+
+    # First, we assmeble a tensor of mock padded embeddings
+    # to emulate the effect of using a padded dataset
+    variable_beads = np.random.randint(3, beads, size=frames) # random protein sizes
+    variable_embeddings = [np.random.randint(1,
+                           high=beads, size=bead) for bead in variable_beads]
+    padded_embedding_list = []
+    for embedding in variable_embeddings:
+        pads_needed = beads - embedding.shape[0]
+        padded_embeddings = np.hstack((embedding, np.zeros(pads_needed)))
+        padded_embedding_list.append(padded_embeddings)
+    embedding_property = torch.tensor(padded_embedding_list).long()
+    bead_mask = torch.clamp(embedding_property, min=0, max=1).float()
+
+    # We repeate the same procedure here as in test_continuous_convolution
+    # But in addition we apply the bead_mask to the forward operation
+    # and test to see if the artifical beads introduced by padding are 
+    # zeroed out properly
+    test_cfconv_features = torch.randn((frames, beads, n_filters))
+    # Calculate continuous convolution output with the created layer
+    cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
+                                         n_filters=n_filters)
+    cfconv_layer_out = cfconv.forward(test_cfconv_features, test_rbf,
+                                      test_nbh, test_nbh_mask,
+                                      bead_mask=bead_mask).detach()
+
+    # Calculate convolution manually
+    n_neighbors = beads - 1
+    test_nbh_np = test_nbh.numpy()
+    test_nbh_mask_np = test_nbh_mask.numpy()
+    test_feat_np = test_cfconv_features.numpy()
+    neighbor_list = test_nbh_np.reshape(-1, beads * n_neighbors, 1)
+    neighbor_list = neighbor_list.repeat(n_filters, axis=2)
+    neighbor_features = np.take_along_axis(test_feat_np, neighbor_list, axis=1)
+    neighbor_features = neighbor_features.reshape(frames, beads,
+                                                  n_neighbors, -1)
+    test_conv_filter = cfconv.filter_generator(test_rbf).detach().numpy()
+    conv_features = neighbor_features * test_conv_filter
+    conv_features_masked = conv_features * test_nbh_mask_np[:, :, :, None]
+    cfconv_manual_out = torch.tensor(np.sum(conv_features_masked, axis=2))
+
+    # Here we mask the contributions from padded portions of the input
+    cfconv_manual_out = cfconv_manual_out * bead_mask[:,:,None]
+
+    # Test if the torch and numpy calculation are the same, including
+    # after the filtering done by the bead_mask
+    np.testing.assert_allclose(cfconv_layer_out, cfconv_manual_out.numpy())
+
+
 def test_interaction_block():
     # Tests the correct output shape of an interaction block
     test_features = torch.randn((frames, beads, n_feats))
@@ -157,8 +213,12 @@ def test_schnet_feature_geometry():
 
     # Here, we make sure that schnet_feature's calls to Geometry
     # can replicate those of a GeometryStatistics instance
-    assert schnet_feature._distance_pairs == geom_stats._distance_pairs
-    np.testing.assert_equal(schnet_feature.redundant_distance_mapping,
+    schnet_distance_pairs, _ = schnet_feature.geometry.get_distance_indices(beads,
+                                                                         [], [])
+    schnet_red_dist_map = schnet_feature.geometry.get_redundant_distance_mapping(
+                                                            schnet_distance_pairs)
+    assert schnet_distance_pairs == geom_stats._distance_pairs
+    np.testing.assert_equal(schnet_red_dist_map,
                             geom_stats.redundant_distance_mapping)
 
 
@@ -294,216 +354,21 @@ def test_schnet_activation_default():
                           ShiftedSoftplus)
 
 
-def test_batchnorm_instancing_share_weights_true():
-    # Test to see if the batchnorm is properly instanced in the cfconv
-    # downstream from the SchnetFeature class when specified
-    # and share_weights=True
-    embedding_property = torch.randint(low=1, high=n_embeddings,
-                                       size=(frames, beads))
-
-    # Initialize the embedding and SchnetFeature class
-    embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
-                                      embedding_dim=n_feats)
-    schnet_feature = SchnetFeature(feature_size=n_feats,
-                                   embedding_layer=embedding_layer,
-                                   n_interaction_blocks=2,
-                                   calculate_geometry=True,
-                                   n_beads=beads,
-                                   beadwise_batchnorm=beads,
-                                   share_weights=True,
-                                   neighbor_cutoff=neighbor_cutoff)
-
-    for interaction_block in schnet_feature.interaction_blocks:
-        assert isinstance(interaction_block.cfconv.normlayer, nn.BatchNorm1d)
-        assert interaction_block.cfconv.normlayer.num_features == beads
-
-
-def test_batchnorm_instancing_share_weights_false():
-    # Test to see if the batchnorm is properly instanced in the cfconv
-    # downstream from the SchnetFeature class when specified
-    # and share_weights=False
-    embedding_property = torch.randint(low=1, high=n_embeddings,
-                                       size=(frames, beads))
-
-    # Initialize the embedding and SchnetFeature class
-    embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
-                                      embedding_dim=n_feats)
-    schnet_feature = SchnetFeature(feature_size=n_feats,
-                                   embedding_layer=embedding_layer,
-                                   n_interaction_blocks=2,
-                                   calculate_geometry=True,
-                                   n_beads=beads,
-                                   beadwise_batchnorm=beads,
-                                   share_weights=True,
-                                   neighbor_cutoff=neighbor_cutoff)
-
-    for interaction_block in schnet_feature.interaction_blocks:
-        assert isinstance(interaction_block.cfconv.normlayer, nn.BatchNorm1d)
-        assert interaction_block.cfconv.normlayer.num_features == beads
-
-
-def test_batchnorm_default_shared_weights_true():
-    # Test to see if the batchnorm is properly ignored in the cfconv
-    # downstream from the SchnetFeature class when not specified
-    # and share_weights=True
-    embedding_property = torch.randint(low=1, high=n_embeddings,
-                                       size=(frames, beads))
-
-    # Initialize the embedding and SchnetFeature class
-    embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
-                                      embedding_dim=n_feats)
-    schnet_feature = SchnetFeature(feature_size=n_feats,
-                                   embedding_layer=embedding_layer,
-                                   n_interaction_blocks=2,
-                                   calculate_geometry=True,
-                                   n_beads=beads,
-                                   share_weights=True,
-                                   neighbor_cutoff=neighbor_cutoff)
-
-    for interaction_block in schnet_feature.interaction_blocks:
-        assert interaction_block.cfconv.normlayer == None
-
-
-def test_batchnorm_default_shared_weights_false():
-    # Test to see if the batchnorm is properly ignored in the cfconv
-    # downstream from the SchnetFeature class when not specified
-    # and share_weights=False
-    embedding_property = torch.randint(low=1, high=n_embeddings,
-                                       size=(frames, beads))
-
-    # Initialize the embedding and SchnetFeature class
-    embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
-                                      embedding_dim=n_feats)
-    schnet_feature = SchnetFeature(feature_size=n_feats,
-                                   embedding_layer=embedding_layer,
-                                   n_interaction_blocks=2,
-                                   calculate_geometry=True,
-                                   n_beads=beads,
-                                   share_weights=False,
-                                   neighbor_cutoff=neighbor_cutoff)
-
-    for interaction_block in schnet_feature.interaction_blocks:
-        assert interaction_block.cfconv.normlayer == None
-
-
-def test_beadwise_batchnorm_logic_bools():
-    # Tests to make sure the beadwise batchnorm logic is working properly
-    # in SchnetFeature, InteractionBlock, and ContinuousFilterConvolution
-    # Specifically, this test checks to see if passing a boolean value
-    # as a beadwise_batchnorm value raises a ValueError
-    embedding_property = torch.randint(low=1, high=n_embeddings,
-                                       size=(frames, beads))
-
-    # Initialize the embedding and SchnetFeature class
-    embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
-                                      embedding_dim=n_feats)
-
-    feature_size = np.random.randint(4, 8)
-    # We test beadwise_batchnorm = True or False (Booleans)
-    # This should raise a ValueError
-    classes = [InteractionBlock, ContinuousFilterConvolution]
-    bools = [True, False]
-    for _bool in bools:
-        for _class in classes:
-            if _class == ContinuousFilterConvolution:
-                assert_raises(ValueError, _class, *[n_gaussians,
-                                                    n_filters],
-                              **{'beadwise_batchnorm': _bool})
-            if _class == InteractionBlock:
-                assert_raises(ValueError, _class, *[n_feats,
-                                                    n_gaussians,
-                                                    n_filters],
-                              **{'beadwise_batchnorm': _bool})
-
-
-def test_beadwise_batchnorm_logic_ints():
-    # Tests to make sure the beadwise batchnorm logic is working properly
-    # in SchnetFeature, InteractionBlock, and ContinuousFilterConvolution
-    # Specifically, this test checks to see if setting beadwise_batchnorm to
-    # an integer less than 1 raises a ValueError
-    # We test a random case where beadwise_batchnorm is an integer less
-    # than one - this should raise a ValueError
-
-    classes = [InteractionBlock, ContinuousFilterConvolution]
-    beadwise_batchnorm = np.random.randint(-100, high=1)
-    for _class in classes:
-        if _class == ContinuousFilterConvolution:
-            assert_raises(ValueError, _class, *[n_gaussians,
-                                                n_filters],
-                          **{'beadwise_batchnorm': beadwise_batchnorm})
-        if _class == InteractionBlock:
-            assert_raises(ValueError, _class, *[n_feats,
-                                                n_gaussians,
-                                                n_filters],
-                          **{'beadwise_batchnorm': beadwise_batchnorm})
-
-def test_simple_norm_logic_ints():
-    # Tests to make sure the bead number norm logic is working properly
-    # in SchnetFeature, InteractionBlock, and ContinuousFilterConvolution
-    # Specifically, this test checks to see if setting beadwise_batchnorm to
-    # an integer less than 1 raises a ValueError
-
-    # We test a random case where simple_norm is an integer less
-    # than one - this should raise a ValueError
-    classes = [InteractionBlock, ContinuousFilterConvolution]
-    simple_norm = np.random.randint(-100, high=1)
-    for _class in classes:
-        if _class == ContinuousFilterConvolution:
-            assert_raises(ValueError, _class, *[n_gaussians,
-                                                n_filters],
-                          **{'simple_norm': simple_norm})
-        if _class == InteractionBlock:
-            assert_raises(ValueError, _class, *[n_feats,
-                                                n_gaussians,
-                                                n_filters],
-                          **{'simple_norm': simple_norm})
-
-def test_simultaneous_beadwise_and_simple_norm():
-    # Tests to make sure a RuntimeError is raised if both beadwise_batchnorm
-    # and simple_norm are specified
-    embedding_property = torch.randint(low=1, high=n_embeddings,
-                                       size=(frames, beads))
-
-    # Initialize the embedding and SchnetFeature class
-    embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
-                                      embedding_dim=n_feats)
-
-    feature_size = np.random.randint(4, 8)
-    # We test a random case where simple_norm is an integer less
-    # than one - this should raise a ValueError
-    classes = [SchnetFeature, InteractionBlock, ContinuousFilterConvolution]
-    beadwise_batchnorm = np.random.randint(-100, high=100)
-    simple_norm = np.random.randint(-100, high=100)
-    for _class in classes:
-        if _class == ContinuousFilterConvolution:
-            assert_raises(RuntimeError, _class, *[n_gaussians,
-                                                n_filters],
-                          **{'simple_norm': simple_norm,
-                             'beadwise_batchnorm': beadwise_batchnorm})
-        if _class == InteractionBlock:
-            assert_raises(RuntimeError, _class, *[n_feats,
-                                                n_gaussians,
-                                                n_filters],
-                          **{'simple_norm': simple_norm,
-                             'beadwise_batchnorm': beadwise_batchnorm})
-        if _class == SchnetFeature:
-            assert_raises(RuntimeError, _class, *[feature_size,
-                                                  embedding_layer,
-                                                  beads],
-                          **{'simple_norm': True,
-                             'beadwise_batchnorm': True})
-
-
 def test_cfconv_simple_norm():
     # Tests to make sure simple bead number normalization on the output
     # of continuous filter convolution produces the expected numerical result
 
     test_cfconv_features = torch.randn((frames, beads, n_filters))
+    # Create a random number for a simple normalization
+    random_normalization = np.random.uniform(low=2.0, high=10.0)
+    simple_norm = SimpleNormLayer(random_normalization)
+
     # Calculate continuous convolution output with the created layer
     cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
-                                         n_filters=n_filters, simple_norm=beads)
+                                         normalization_layer=simple_norm,
+                                         n_filters=n_filters)
     # Check to see if batchnorm is embedded properly in the cfconv
-    assert isinstance(cfconv.normlayer, int)
+    assert isinstance(cfconv.normalization_layer, SimpleNormLayer)
 
     cfconv_layer_out = cfconv.forward(test_cfconv_features, test_rbf,
                                       test_nbh, test_nbh_mask).detach()
@@ -544,21 +409,75 @@ def test_cfconv_simple_norm():
         conv_features_masked[~test_nbh_mask_np.astype(np.bool)].astype(
             np.bool))
     # Test if the torch and numpy calculation are the same
-    normed_manual_out = torch.tensor(cfconv_manual_out) / beads
+    normed_manual_out = torch.tensor(cfconv_manual_out) / random_normalization
     np.testing.assert_allclose(
         cfconv_layer_out, normed_manual_out.detach().numpy())
 
 
-def test_cfconv_batchnorm():
-    # Tests the usage of batch normalization after application of the
-    # continuous filter convolution in
+def test_cfconv_neighbor_norm():
+    # Tests manual calculation of neighbor-normalized cfconv output with
+    # the output of cfconv instanced with neighbor_norm=True.
+    # This is the same test as above, but the output is normalized
+    # by the number of neighbors
 
     test_cfconv_features = torch.randn((frames, beads, n_filters))
     # Calculate continuous convolution output with the created layer
+    # using a NeighborNormLayer for normalization
+    neighbor_norm_layer = NeighborNormLayer()
     cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
-                                         n_filters=n_filters, beadwise_batchnorm=beads)
+                                         normalization_layer=neighbor_norm_layer,
+                                         n_filters=n_filters)
+    assert isinstance(cfconv.normalization_layer, NeighborNormLayer)
+
+    cfconv_layer_out = cfconv.forward(test_cfconv_features, test_rbf,
+                                      test_nbh, test_nbh_mask).detach()
+    # Calculate convolution manually
+    n_neighbors = beads - 1
+    test_nbh_np = test_nbh.numpy()
+    test_nbh_mask_np = test_nbh_mask.numpy()
+    test_feat_np = test_cfconv_features.numpy()
+
+    neighbor_list = test_nbh_np.reshape(-1, beads * n_neighbors, 1)
+    neighbor_list = neighbor_list.repeat(n_filters, axis=2)
+    neighbor_features = np.take_along_axis(test_feat_np, neighbor_list, axis=1)
+    neighbor_features = neighbor_features.reshape(frames, beads,
+                                                  n_neighbors, -1)
+
+    # In order to compare the layer output with the manual calculation, we
+    # need to use the same filter generator (2 linear layers with and without
+    # activation function, respectively).
+    test_conv_filter = cfconv.filter_generator(test_rbf).detach().numpy()
+
+    # element-wise multiplication and pooling
+    conv_features = neighbor_features * test_conv_filter
+    # Remove features from non-existing neighbors
+    conv_features_masked = conv_features * test_nbh_mask_np[:, :, :, None]
+    cfconv_manual_out = np.sum(conv_features_masked, axis=2)
+
+    # normalize by number of neighbors:
+    cfconv_manual_out = cfconv_manual_out / n_neighbors
+
+    # Test if all the removed features are indeed 0
+    assert not np.all(
+        conv_features_masked[~test_nbh_mask_np.astype(np.bool)].astype(
+            np.bool))
+    # Test if the torch and numpy calculation are the same
+    np.testing.assert_allclose(cfconv_layer_out, cfconv_manual_out)
+
+
+def test_cfconv_batchnorm():
+    # Tests the usage of batch normalization after application of the
+    # continuous filter convolution
+
+    test_cfconv_features = torch.randn((frames, beads, n_filters))
+    # Calculate continuous convolution output with the created layer
+    # supplied with a BatchNorm1d Layer
+    batchnorm_layer = nn.BatchNorm1d(beads)
+    cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
+                                         n_filters=n_filters,
+                                         normalization_layer=batchnorm_layer)
     # Check to see if batchnorm is embedded properly in the cfconv
-    assert isinstance(cfconv.normlayer, nn.BatchNorm1d)
+    assert isinstance(cfconv.normalization_layer, nn.BatchNorm1d)
 
     cfconv_layer_out = cfconv.forward(test_cfconv_features, test_rbf,
                                       test_nbh, test_nbh_mask).detach()
@@ -600,7 +519,6 @@ def test_cfconv_batchnorm():
         conv_features_masked[~test_nbh_mask_np.astype(np.bool)].astype(
             np.bool))
     # Test if the torch and numpy calculation are the same
-    batchnorm_layer = nn.BatchNorm1d(beads)
     normed_manual_out = batchnorm_layer(torch.tensor(cfconv_manual_out))
     np.testing.assert_allclose(
         cfconv_layer_out, normed_manual_out.detach().numpy())

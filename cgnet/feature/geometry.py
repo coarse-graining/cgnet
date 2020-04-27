@@ -132,14 +132,10 @@ class Geometry():
         """Calculates distances in a vectorized fashion.
         """
         self.check_array_vs_tensor(data, 'data')
-
         distances = self.get_vectorize_inputs(distance_inds, data)
-
         if norm:
             distances = self.norm(distances, axis=2)
-
         self.check_for_nans(distances, 'distances')
-
         return distances
 
     def get_angles(self, angle_inds, data, clip=True):

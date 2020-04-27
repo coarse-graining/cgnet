@@ -215,21 +215,20 @@ class SchnetFeature(nn.Module):
     n_gaussians: int (default=50)
         Number of gaussians for the gaussian expansion in the radial basis
         function.
-    simple_norm: bool (default=False)
-        If True, the output of the continuous filter convolution will be
-        be normalized by the number of beads in the system.
-    beadwise_batchnorm: bool (default=False)
-        If True, batch normalization will be applied after application of the
-        continuous filter convolution according to n_beads.
-    batchnorm_running_stats: bool (default=False)
-        If beadwise_batchnorm is True, this argument populates the
-        track_running_stats argument in torch.nn.BatchNorm1d
+    normalization_layer: nn.Module (default=None)
+        Normalization layer to be applied to the ouptut of the
+        ContinuousFilterConvolution
     variance: float (default=1.0)
         The variance (standard deviation squared) of the Gaussian functions.
     n_interaction_blocks: int (default=1)
         Number of interaction blocks.
     share_weights: bool (default=False)
         If True, shares the weights between all interaction blocks.
+    share_batchnorm_parameters: bool (default=False)
+        If True, all BatchNorm1d instances in the model share parameters.
+        Note: this option is only applicable if a nn.BatchNorm1d object
+        has been passed to the 'normalization_layer' kwarg. By default,
+        SchnetFeature instances do not include normalization layers.
 
     Notes
     -----
@@ -250,11 +249,17 @@ class SchnetFeature(nn.Module):
                                       embedding_dim=10)
 
     beads = 5  # example number of coarse-grain beads in the dataset
+
+    # Next, create a SimpleNormLayer to normalize ContinuousFilterConvolution
+    # output.
+    norm_layer = SimpleNormLayer(n_beads)
+
     schnet_feature = SchnetFeature(feature_size=10,
                                    embedding_layer=embedding_layer,
                                    n_interaction_blocks=2,
                                    calculate_geometry=True,
                                    n_beads=beads,
+                                   normalization_layer=norm_layer,
                                    neighbor_cutoff=5.0)
 
     # To perform a forward pass, pass coordinates and properties to embed to
@@ -288,12 +293,11 @@ class SchnetFeature(nn.Module):
                  neighbor_cutoff=None,
                  rbf_cutoff=5.0,
                  n_gaussians=50,
-                 simple_norm=False,
-                 beadwise_batchnorm=False,
-                 batchnorm_running_stats=False,
+                 normalization_layer=None,
                  variance=1.0,
                  n_interaction_blocks=1,
                  share_weights=False,
+                 share_batchnorm_parameters=False,
                  device=torch.device('cpu')):
         super(SchnetFeature, self).__init__()
         self.device = device
@@ -311,48 +315,59 @@ class SchnetFeature(nn.Module):
             raise RuntimeError(
                 "Basis function type must be 'uniform' or 'modulated'.")
 
-        if beadwise_batchnorm and simple_norm:
-            raise RuntimeError('beadwise_batchnorm and simple_norm '
-                               'cannot be used simultaneously')
-        else:
-            if beadwise_batchnorm:
-                beadwise_batchnorm = n_beads
-            else:
-                beadwise_batchnorm = None
-
-            if simple_norm:
-                simple_norm = n_beads
-            else:
-                simple_norm = None
-
         if share_weights:
-            # Lets the interaction blocks share the weights
-            self.interaction_blocks = nn.ModuleList(
-                [InteractionBlock(feature_size, n_gaussians,
-                                  feature_size, activation=activation,
-                                  simple_norm=simple_norm,
-                                  beadwise_batchnorm=beadwise_batchnorm,
-                                  batchnorm_running_stats=batchnorm_running_stats)]
-                * n_interaction_blocks
-            )
+            # Lets the interaction blocks share weight parameters.
+            # If batchnorm layers are used, their parameters
+            # are shared as well.
+            if share_batchnorm_parameters:
+                # Batchnorm parameters are the same for all instances
+                self.interaction_blocks = nn.ModuleList(
+                    [InteractionBlock(feature_size, n_gaussians,
+                                      feature_size, activation=activation,
+                                      normalization_layer=normalization_layer)]
+                    * n_interaction_blocks
+                )
+            if not share_batchnorm_parameters:
+                # This represents the case where weights parameters are 
+                # shared between the interaction blocks, but the batchnorm
+                # parameters are not shared.
+                self.interaction_blocks = nn.ModuleList(
+                    [InteractionBlock(feature_size, n_gaussians,
+                                      feature_size, activation=activation,
+                                      normalization_layer=normalization_layer)]
+                    * n_interaction_blocks
+                )
+                # We reinstance each bathcnorm layer in each interaction block
+                # as a deep copy of the original layer in order to prevent parameter
+                # sharing between the batchnorm layers
+                for interaction_block in self.interaction_blocks:
+                    if isinstance(normalization_layer, nn.BatchNorm1d):
+                        # get batchnorm parameters to make deep copies
+                        # that do not have linked parameters
+                        num_features = normalization.num_features
+                        eps = normalization.eps
+                        momentum = normalization.momentum
+                        affine = normalization.affine
+                        track_running_stats = normalization.track_running_stats
+                        new_layer = nn.BatchNorm1d(num_features, eps=eps,
+                                                   momentum=momentum,
+                                                   affine=affine,
+                                                   track_running_stats=track_running_stats)
+                        interaction_block.cfconv.normlayer = new_layer
+
         else:
             # Every interaction block has their own weights
             self.interaction_blocks = nn.ModuleList(
                 [InteractionBlock(feature_size, n_gaussians,
                                   feature_size, activation=activation,
-                                  simple_norm=simple_norm,
-                                  beadwise_batchnorm=beadwise_batchnorm,
-                                  batchnorm_running_stats=batchnorm_running_stats)
+                                  normalization_layer=normalization_layer)
                  for _ in range(n_interaction_blocks)]
             )
 
         self.neighbor_cutoff = neighbor_cutoff
         self.calculate_geometry = calculate_geometry
         if self.calculate_geometry:
-            self._distance_pairs, _ = self.geometry.get_distance_indices(n_beads,
-                                                                         [], [])
-            self.redundant_distance_mapping = self.geometry.get_redundant_distance_mapping(
-                self._distance_pairs)
+            pass
         else:
             self._distance_pairs, _ = self.geometry.get_distance_indices(n_beads,
                                                                          [], [])
@@ -376,29 +391,75 @@ class SchnetFeature(nn.Module):
             Atom-wise feature representation.
             Size [n_frames, n_beads, n_features]
 
+        Notes
+        -----
+        If a dataset with variable molecule sizes is being used, it is
+        important to mask the contributions from padded portions of
+        the input into the neural network. This is done using the batchwise
+        variables 'bead_mask' (shape [n_frames, n_beads]) and
+        'bead_distance_mask' (shape [n_frames, n_beads, n_neighbors]).
+        These masks are used to set contributions from non-physical beads
+        to zero through elementwise multiplication with layer outputs
         """
+
         # if geometry is specified, the distances are calculated from input
         # coordinates. Otherwise, it is assumed that in_features are
         # pairwise distances in redundant form
         if self.calculate_geometry:
+            n_beads = embedding_property.size()[1]
+            self._distance_pairs, _ = self.geometry.get_distance_indices(n_beads,
+                                                                         [], [])
+            redundant_distance_mapping = self.geometry.get_redundant_distance_mapping(
+                self._distance_pairs)
             distances = self.geometry.get_distances(self._distance_pairs,
                                                     in_features, norm=True)
-            distances = distances[:, self.redundant_distance_mapping]
+            distances = distances[:, redundant_distance_mapping]
         else:
             distances = in_features
 
         neighbors, neighbor_mask = self.geometry.get_neighbors(distances,
                                                                cutoff=self.neighbor_cutoff)
+
         neighbors = neighbors.to(self.device)
         neighbor_mask = neighbor_mask.to(self.device)
+        batches, _, neighbor_beads = neighbors.size()
+
+        # Here we make the beadwise mask from the embedding property information
+        # for use in masking out non-physical beads introduced by variable
+        # length padding. The embeddings of these non-physical beads are all
+        # 0s, as constructed by collating function if multi_molecule_collate
+        # is used. We can directly make a mask from this variable by creating
+        # a copy in which the values are clamped to be either 0 or 1.
+        # This mask plays many important roles, such as filtering out
+        # non-physical distances, energies, and other properties propgated
+        # through the network that might ultimately add non-physical contributions
+        # to the loss function used during training
+        bead_mask = torch.clamp(embedding_property, min=0, max=1).float()
+
+        # A similar mask is made to mask the distances in redundant form
+        # so that they do not contain distances evaluated using non-physical
+        # atoms introduced by padding.
+        # This mask has shape [n_frames, max_n_beads, max_n_neighbors]
+        bead_distances_mask = (bead_mask[:,:,None].repeat(1,1,neighbor_beads)*bead_mask[None,:,1:].view(batches,1,neighbor_beads)).float()
+
+        # In order to prevent backpropagation instabilities associated with
+        # evaluating square root derivatives at 0, the masking must be done
+        # in the following way. This method also avoids in-place operations
+        # that are not compatible with backward gradient flow
+        tmp_distances = torch.zeros_like(distances)
+        tmp_distances[bead_distances_mask != 0] = distances[bead_distances_mask != 0]
+        distances = tmp_distances * neighbor_mask
+
         features = self.embedding_layer(embedding_property)
-        rbf_expansion = self.rbf_layer(distances=distances)
+        rbf_expansion = self.rbf_layer(distances=distances,
+                                       distance_mask=bead_distances_mask)
 
         for interaction_block in self.interaction_blocks:
             interaction_features = interaction_block(features=features,
                                                      rbf_expansion=rbf_expansion,
                                                      neighbor_list=neighbors,
-                                                     neighbor_mask=neighbor_mask)
+                                                     neighbor_mask=neighbor_mask,
+                                                     bead_mask=bead_mask)
             features = features + interaction_features
 
         return features
