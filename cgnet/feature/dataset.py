@@ -80,7 +80,6 @@ def multi_molecule_collate(input_dictionaries, device=torch.device('cpu')):
     embeddings = pad_sequence([torch.tensor(example['embeddings'], device=device)
                                for example in input_dictionaries],
                                batch_first=True)
-    # TODO what if there are no embeddings
     return coordinates, forces, embeddings
 
 
