@@ -309,7 +309,7 @@ class Simulation():
 
         # O (noise)
         noise = np.sqrt(1. / self.beta / self.masses[:, None])
-        noise = noise * torch.randn(*x_new.shape,
+        noise = noise * torch.randn(size=x_new.size(),
                                     generator=self.rng).to(self.device)
         v_new = v_new * self.vscale
         v_new = v_new + self.noisescale * noise
@@ -331,7 +331,7 @@ class Simulation():
         forces: torch.Tensor
             forces at x_old
         """
-        noise = torch.randn(*x_old.shape,
+        noise = torch.randn(size=x_old.size(),
                             generator=self.rng).to(self.device)
         x_new = (x_old.detach() + forces*self._dtau +
                  np.sqrt(2*self._dtau/self.beta)*noise)
@@ -447,8 +447,8 @@ class Simulation():
         else:
             # initialize velocities at zero, with noise
             v_old = torch.tensor(np.zeros(x_old.shape), dtype=torch.float32)
-            v_old = v_old + torch.randn(*v_old.shape,
-                                        generator=self.rng).to(self.device)
+            # v_old = v_old + torch.randn(size=v_old.size(),
+            #                             generator=self.rng).to(self.device)
 
         for t in range(self.length):
             # produce potential and forces from model
@@ -471,6 +471,9 @@ class Simulation():
                 if t % (self.length/10) == 0 and t > 0:
                     print('{}0% finished'.format(i))
                     i += 1
+
+            x_old = x_new
+            v_old = v_new
 
         if self.verbose:
             print('100% finished.')
