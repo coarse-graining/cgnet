@@ -283,7 +283,8 @@ def test_langevin_simulation_safety():
     assert sim._simulated
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# ....
+# The following tests are functional tests based on simulations on a        #
+# harmonic potential                                                        #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 class HarmonicPotential():
@@ -341,10 +342,11 @@ class HarmonicPotential():
 
 
 def test_harmonic_potential_shape_and_temperature():
-    # TODO
+    # Tests a single harmonic potential simulation for shape and temperature
     # - Tests shapes of trajectory and kinetic energies
     # - Tests that average temperature is about 300
 
+    # set up model, internal coords, and sim using class attirbutes
     model = HarmonicPotential(k=1, T=300, n_particles=1000, dt=0.001,
                               friction=100, n_sims=1, sim_length=500)
 
@@ -357,23 +359,36 @@ def test_harmonic_potential_shape_and_temperature():
                         )
 
     traj = my_sim.simulate()
+
+    # check shape of trajectory and kinetic energies
     assert traj.shape == (model.n_sims, model.sim_length, model.n_particles, 3)
     assert my_sim.kinetic_energies.shape == (1, model.sim_length)
 
+    # Calculate temperatures, removing the first 20 time points (this is
+    # about what it takes to get to a constant temperature)
     n_dofs = 3 * model.n_particles
     temperatures = my_sim.kinetic_energies * 2 / n_dofs / model.kB
     temperatures = temperatures[:, 20:]
     mean_temps = np.mean(temperatures, axis=1)
 
+    # Test that the means are all about the right temperature
     np.testing.assert_allclose(np.mean(temperatures, axis=1),
                                np.repeat(model.T, model.n_sims),               
                                rtol=1)
 
+    # Test that the stdevs are all less than 25 (heuristic)
+    np.testing.assert_array_less(np.std(temperatures, axis=1),
+                                 np.repeat(25, model.n_sims))
+
 def test_harmonic_potential_several_temperatures():
-    # TODO
+    # Tests several harmonic potential simulations for correct temperature
+
+    # Pick 5 random temperatures
     temps = [np.random.randint(low=50, high=900) for _ in range(5)]
 
     for temp in temps:
+
+        # set up model, internal coords, and sim using class attirbutes
         model = HarmonicPotential(k=1, T=temp, n_particles=1000, dt=0.001,
                                   friction=100, n_sims=1, sim_length=500)
 
@@ -390,6 +405,11 @@ def test_harmonic_potential_several_temperatures():
         temperatures = my_sim.kinetic_energies * 2 / n_dofs / model.kB
         temperatures = temperatures[:, 20:]
 
+        # Test that the means are all about the right temperature
         np.testing.assert_allclose(np.mean(temperatures, axis=1),
                                    np.repeat(model.T, model.n_sims),               
                                    rtol=1)
+
+        # Test that the stdevs are all less than 25 (heuristic)
+        np.testing.assert_array_less(np.std(temperatures, axis=1),
+                                     np.repeat(25, model.n_sims))
