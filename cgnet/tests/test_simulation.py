@@ -30,8 +30,9 @@ arch = (LinearLayer(dims, dims, activation=nn.Tanh()) +
 model = CGnet(arch, ForceLoss()).float()
 model.eval()
 sim_length = np.random.choice([2, 4])*2  # Number of frames to simulate
-save_interval = np.random.choice([2, 4])  # Frequency with which to save simulation
-                                 # frames (choice of 2 or 4)
+# Frequency with which to save simulation
+save_interval = np.random.choice([2, 4])
+# frames (choice of 2 or 4)
 
 # Grab intitial coordinates as a simulation starting configuration
 # from the moleular dataset
@@ -121,7 +122,7 @@ def test_langevin_simulation_saved_forces_shape():
     assert traj.shape == (frames, sim_length // save_interval, beads, dims)
     assert my_sim.simulated_forces.shape == (
         frames, sim_length // save_interval, beads, dims
-        )
+    )
     assert my_sim.simulated_potential is None
     assert my_sim.kinetic_energies.shape == (frames,
                                              sim_length // save_interval)
@@ -143,7 +144,7 @@ def test_brownian_simulation_saved_potential_shape():
     assert my_sim.simulated_forces is None
     assert my_sim.simulated_potential.shape == (
         frames, sim_length // save_interval, beads, 1
-        )
+    )
     assert my_sim.kinetic_energies is None
 
 
@@ -163,9 +164,10 @@ def test_langevin_simulation_saved_potential_shape():
     assert my_sim.simulated_forces is None
     assert my_sim.simulated_potential.shape == (
         frames, sim_length // save_interval, beads, 1
-        )
+    )
     assert my_sim.kinetic_energies.shape == (frames,
                                              sim_length // save_interval)
+
 
 def test_brownian_simulation_seeding():
     # Test determinism of Brownian (overdamped langevin) simulation with
@@ -196,7 +198,7 @@ def test_brownian_simulation_seeding():
 
 
 def test_langevin_simulation_seeding():
-    # Test determinism of Langevin simulation with random seed. If the 
+    # Test determinism of Langevin simulation with random seed. If the
     # same seed is used for two separate simulations, the results
     # (trajectory, forces, potential) should be identical
 
@@ -287,6 +289,7 @@ def test_langevin_simulation_safety():
 # harmonic potential                                                        #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+
 class HarmonicPotential():
     """Defines a harmonic potential according to
 
@@ -313,7 +316,7 @@ class HarmonicPotential():
     save_interval : int (default=1)
         Number of time points at which to record simulation results
     """
-    
+
     def __init__(self, k=1, T=300, n_particles=1000, dt=0.001, friction=100,
                  n_sims=1, sim_length=500, save_interval=1):
         self.k = k
@@ -333,11 +336,10 @@ class HarmonicPotential():
 
         self.masses = np.ones((n_particles,))
 
-        
     def __call__(self, positions, embeddings=None):
         """in kilojoule/mole/nm"""
         forces = -self.k * positions
-        potential = torch.zeros(1) # dont need meaningful values here
+        potential = torch.zeros(1)  # dont need meaningful values here
         return potential, forces
 
 
@@ -373,12 +375,13 @@ def test_harmonic_potential_shape_and_temperature():
 
     # Test that the means are all about the right temperature
     np.testing.assert_allclose(np.mean(temperatures, axis=1),
-                               np.repeat(model.T, model.n_sims),               
+                               np.repeat(model.T, model.n_sims),
                                rtol=1)
 
     # Test that the stdevs are all less than 25 (heuristic)
     np.testing.assert_array_less(np.std(temperatures, axis=1),
                                  np.repeat(25, model.n_sims))
+
 
 def test_harmonic_potential_several_temperatures():
     # Tests several harmonic potential simulations for correct temperature
@@ -407,7 +410,7 @@ def test_harmonic_potential_several_temperatures():
 
         # Test that the means are all about the right temperature
         np.testing.assert_allclose(np.mean(temperatures, axis=1),
-                                   np.repeat(model.T, model.n_sims),               
+                                   np.repeat(model.T, model.n_sims),
                                    rtol=1)
 
         # Test that the stdevs are all less than 25 (heuristic)
