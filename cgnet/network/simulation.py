@@ -472,7 +472,7 @@ class Simulation():
                     print('{}0% finished'.format(i))
                     i += 1
 
-            x_old = x_new
+            x_old = x_new.detach().requires_grad_(True).to(self.device)
             v_old = v_new
 
         if self.verbose:

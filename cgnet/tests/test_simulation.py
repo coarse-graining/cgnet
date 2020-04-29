@@ -1,6 +1,8 @@
 # Authors: Brooke Husic
+# Contributors: Andreas Kraemer
 
 import numpy as np
+import torch
 import torch.nn as nn
 
 from cgnet.feature import MoleculeDataset, LinearLayer
@@ -40,10 +42,12 @@ masses = np.ones(beads)
 friction = np.random.randint(10, 20)
 
 
-# The following tests probe basic shapes/functionalities of the simulation
-# class and are repeated for Brownian (i.e., overdamped Langevin) and
-# Langevin simulations. Checks are routinely made to mkae sure that
-# there are no kinetic energies in the former, but there are in the latter.
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# The following tests probe basic shapes/functionalities of the simulation  #
+# class and are repeated for Brownian (i.e., overdamped Langevin) and.      #
+# Langevin simulations. Checks are routinely made to mkae sure that.        #
+# there are no kinetic energies in the former, but there are in the latter. #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 def test_brownian_simulation_shape():
     # Test shape of Brownian (overdamped Langevin) simulation without
@@ -277,3 +281,115 @@ def test_langevin_simulation_safety():
     # this command raises no error
     traj2 = sim.simulate(overwrite=True)
     assert sim._simulated
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# ....
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+class HarmonicPotential():
+    """Defines a harmonic potential according to
+
+    U(x) = k/2 * x**2
+
+    with attributes enabling it to get through all the error checks
+
+    Parameters
+    ----------
+    k : float (default=1)
+        Constant for harmonic potential (see above)
+    T : float (defaul=300)
+        Temperature in K
+    particles : int (default=1000)
+        Number of particles in a given simulation
+    dt : float (default=0.001)
+        Length of simulation timestep
+    friction : float (default=100)
+        Friction constant (see cgnet.network.Simulation)
+    sims : int (default=1)
+        Number of simulations to run in parallel
+    sim_length : int (default=500)
+        Number of time steps per simulation
+    save_interval : int (default=1)
+        Number of time points at which to record simulation results
+    """
+    
+    def __init__(self, k=1, T=300, n_particles=1000, dt=0.001, friction=100,
+                 n_sims=1, sim_length=500, save_interval=1):
+        self.k = k
+        self.training = False
+        self.feature = None
+
+        self.T = T
+        self.kB = 0.008314472471220215
+        self.beta = 1. / self.kB / self.T
+
+        self.n_particles = n_particles
+        self.dt = dt
+        self.friction = friction
+        self.n_sims = n_sims
+        self.sim_length = sim_length
+        self.save_interval = save_interval
+
+        self.masses = np.ones((n_particles,))
+
+        
+    def __call__(self, positions, embeddings=None):
+        """in kilojoule/mole/nm"""
+        forces = -self.k * positions
+        potential = torch.zeros(1) # dont need meaningful values here
+        return potential, forces
+
+
+def test_harmonic_potential_shape_and_temperature():
+    # TODO
+    # - Tests shapes of trajectory and kinetic energies
+    # - Tests that average temperature is about 300
+
+    model = HarmonicPotential(k=1, T=300, n_particles=1000, dt=0.001,
+                              friction=100, n_sims=1, sim_length=500)
+
+    initial_coordinates = torch.zeros((model.n_sims, model.n_particles, 3))
+
+    my_sim = Simulation(model, initial_coordinates, embeddings=None,
+                        beta=model.beta, length=model.sim_length,
+                        friction=model.friction, dt=model.dt,
+                        masses=model.masses, save_interval=model.save_interval
+                        )
+
+    traj = my_sim.simulate()
+    assert traj.shape == (model.n_sims, model.sim_length, model.n_particles, 3)
+    assert my_sim.kinetic_energies.shape == (1, model.sim_length)
+
+    n_dofs = 3 * model.n_particles
+    temperatures = my_sim.kinetic_energies * 2 / n_dofs / model.kB
+    temperatures = temperatures[:, 20:]
+    mean_temps = np.mean(temperatures, axis=1)
+
+    np.testing.assert_allclose(np.mean(temperatures, axis=1),
+                               np.repeat(model.T, model.n_sims),               
+                               rtol=1)
+
+def test_harmonic_potential_several_temperatures():
+    # TODO
+    temps = [np.random.randint(low=50, high=900) for _ in range(5)]
+
+    for temp in temps:
+        model = HarmonicPotential(k=1, T=temp, n_particles=1000, dt=0.001,
+                                  friction=100, n_sims=1, sim_length=500)
+
+        initial_coordinates = torch.zeros((model.n_sims, model.n_particles, 3))
+
+        my_sim = Simulation(model, initial_coordinates, embeddings=None,
+                            beta=model.beta, length=model.sim_length,
+                            friction=model.friction, dt=model.dt,
+                            masses=model.masses, save_interval=model.save_interval
+                            )
+
+        traj = my_sim.simulate()
+        n_dofs = 3 * model.n_particles
+        temperatures = my_sim.kinetic_energies * 2 / n_dofs / model.kB
+        temperatures = temperatures[:, 20:]
+
+        np.testing.assert_allclose(np.mean(temperatures, axis=1),
+                                   np.repeat(model.T, model.n_sims),               
+                                   rtol=1)
