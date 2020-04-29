@@ -390,8 +390,7 @@ def test_harmonic_potential_several_temperatures():
     # observed it doesn't tend to exceed a standard deviation of 25 for 
     # simulation lengths of 500 and max temperatures of 900.
 
-    # Pick 5 random temperatures
-    temp_parameter = sorted([np.random.randint(low=50, high=900) for _ in range(5)])
+    temp_parameter = [100, 300, 500, 700, 900]
     mean_temp_measured = []
     std_temp_measured = []
 
@@ -434,3 +433,26 @@ def test_harmonic_potential_several_temperatures():
     # Test that the stdevs go up as the temperature goes up
     np.testing.assert_array_equal(std_temp_measured,
                                   sorted(std_temp_measured))
+
+
+def test_harmonic_potential_zero_friction():
+    # Test that zero friction returns a traj of zeroes and kinetic energy
+    # of zeroess
+
+    # set up model, internal coords, and sim using class attirbutes
+    model = HarmonicPotential(k=1, T=300, n_particles=1000, dt=0.001,
+                              friction=0, n_sims=1, sim_length=500)
+
+    initial_coordinates = torch.zeros((model.n_sims, model.n_particles, 3))
+
+    my_sim = Simulation(model, initial_coordinates, embeddings=None,
+                        beta=model.beta, length=model.sim_length,
+                        friction=model.friction, dt=model.dt,
+                        masses=model.masses, save_interval=model.save_interval
+                        )
+
+    traj = my_sim.simulate()
+
+    np.testing.assert_array_equal(traj, np.zeros(traj.shape))
+    np.testing.assert_array_equal(my_sim.kinetic_energies,
+                                  np.zeros(my_sim.kinetic_energies.shape))
