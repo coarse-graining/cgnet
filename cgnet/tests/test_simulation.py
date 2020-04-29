@@ -387,7 +387,7 @@ def test_harmonic_potential_several_temperatures():
     # Tests several harmonic potential simulations for correct temperature.
     # The standard deviation in measured temperature across the simulation
     # is expected to increase as the temperature increases. Heursitically I
-    # observed it doesn't tend to exceed a standard deviation of 25 for 
+    # observed it doesn't tend to exceed a standard deviation of 25 for
     # simulation lengths of 500 and max temperatures of 900.
 
     temp_parameter = [100, 300, 500, 700, 900]
@@ -414,11 +414,11 @@ def test_harmonic_potential_several_temperatures():
         sim_temps = sim_temps[:, 20:]
 
         # store mean
-        sim_temp_mean = np.mean(sim_temps, axis=1)[0] # only one simulation
+        sim_temp_mean = np.mean(sim_temps, axis=1)[0]  # only one simulation
         mean_temp_measured.append(sim_temp_mean)
 
         # store stdev
-        sim_temp_std = np.std(sim_temps, axis=1)[0] # only one simulation
+        sim_temp_std = np.std(sim_temps, axis=1)[0]  # only one simulation
         std_temp_measured.append(sim_temp_std)
 
     # Test that the means are all about the right temperature
