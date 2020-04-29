@@ -384,12 +384,18 @@ def test_harmonic_potential_shape_and_temperature():
 
 
 def test_harmonic_potential_several_temperatures():
-    # Tests several harmonic potential simulations for correct temperature
+    # Tests several harmonic potential simulations for correct temperature.
+    # The standard deviation in measured temperature across the simulation
+    # is expected to increase as the temperature increases. Heursitically I
+    # observed it doesn't tend to exceed a standard deviation of 25 for 
+    # simulation lengths of 500 and max temperatures of 900.
 
     # Pick 5 random temperatures
-    temps = [np.random.randint(low=50, high=900) for _ in range(5)]
+    temp_parameter = sorted([np.random.randint(low=50, high=900) for _ in range(5)])
+    mean_temp_measured = []
+    std_temp_measured = []
 
-    for temp in temps:
+    for temp in temp_parameter:
 
         # set up model, internal coords, and sim using class attirbutes
         model = HarmonicPotential(k=1, T=temp, n_particles=1000, dt=0.001,
@@ -405,14 +411,26 @@ def test_harmonic_potential_several_temperatures():
 
         traj = my_sim.simulate()
         n_dofs = 3 * model.n_particles
-        temperatures = my_sim.kinetic_energies * 2 / n_dofs / model.kB
-        temperatures = temperatures[:, 20:]
+        sim_temps = my_sim.kinetic_energies * 2 / n_dofs / model.kB
+        sim_temps = sim_temps[:, 20:]
 
-        # Test that the means are all about the right temperature
-        np.testing.assert_allclose(np.mean(temperatures, axis=1),
-                                   np.repeat(model.T, model.n_sims),
-                                   rtol=1)
+        # store mean
+        sim_temp_mean = np.mean(sim_temps, axis=1)[0] # only one simulation
+        mean_temp_measured.append(sim_temp_mean)
 
-        # Test that the stdevs are all less than 25 (heuristic)
-        np.testing.assert_array_less(np.std(temperatures, axis=1),
-                                     np.repeat(25, model.n_sims))
+        # store stdev
+        sim_temp_std = np.std(sim_temps, axis=1)[0] # only one simulation
+        std_temp_measured.append(sim_temp_std)
+
+    # Test that the means are all about the right temperature
+    np.testing.assert_allclose(temp_parameter,
+                               mean_temp_measured,
+                               rtol=1)
+
+    # Test that the stdevs are all less than 25 (heuristic)
+    np.testing.assert_array_less(std_temp_measured,
+                                 np.repeat(25, len(temp_parameter)))
+
+    # Test that the stdevs go up as the temperature goes up
+    np.testing.assert_array_equal(std_temp_measured,
+                                  sorted(std_temp_measured))
