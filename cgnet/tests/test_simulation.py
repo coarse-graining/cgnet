@@ -440,7 +440,12 @@ def test_harmonic_potential_several_temperatures():
 
 def test_harmonic_potential_zero_friction():
     # Test that zero friction returns a traj of zeroes and kinetic energy
-    # of zeroess
+    # of zeroes. Zero friction means vscale will be zero, which means
+    # that velocities will only ever be updated by zero. We therefore
+    # expect zero friction to leave our velocities completely unchanged.
+    # Particularly, in the case where the starting velocities are zero,
+    # we expect them to remain zero, and thus the positions do not
+    # change either.
 
     # set up model, internal coords, and sim using class attirbutes
     model = HarmonicPotential(k=1, T=300, n_particles=1000, dt=0.001,
