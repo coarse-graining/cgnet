@@ -46,7 +46,7 @@ friction = np.random.randint(10, 20)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # The following tests probe basic shapes/functionalities of the simulation  #
 # class and are repeated for Brownian (i.e., overdamped Langevin) and.      #
-# Langevin simulations. Checks are routinely made to mkae sure that.        #
+# Langevin simulations. Checks are routinely made to make sure that.        #
 # there are no kinetic energies in the former, but there are in the latter. #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -320,8 +320,8 @@ class HarmonicPotential():
     def __init__(self, k=1, T=300, n_particles=1000, dt=0.001, friction=100,
                  n_sims=1, sim_length=500, save_interval=1):
         self.k = k
-        self.training = False
-        self.feature = None
+        self.training = False # needed for cgnet compatibility
+        self.feature = None # needed for cgnet compatibility
 
         self.T = T
         self.kB = 0.008314472471220215
@@ -347,6 +347,9 @@ def test_harmonic_potential_shape_and_temperature():
     # Tests a single harmonic potential simulation for shape and temperature
     # - Tests shapes of trajectory and kinetic energies
     # - Tests that average temperature is about 300
+    # - Tests that the standard deviation is less than 10; this is just
+    #   heuristic based on trying out the data in a notebook when
+    #   writing the test
 
     # set up model, internal coords, and sim using class attirbutes
     model = HarmonicPotential(k=1, T=300, n_particles=1000, dt=0.001,
@@ -380,7 +383,7 @@ def test_harmonic_potential_shape_and_temperature():
 
     # Test that the stdevs are all less than 25 (heuristic)
     np.testing.assert_array_less(np.std(temperatures, axis=1),
-                                 np.repeat(25, model.n_sims))
+                                 np.repeat(10, model.n_sims))
 
 
 def test_harmonic_potential_several_temperatures():
