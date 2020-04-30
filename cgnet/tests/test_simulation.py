@@ -320,8 +320,8 @@ class HarmonicPotential():
     def __init__(self, k=1, T=300, n_particles=1000, dt=0.001, friction=100,
                  n_sims=1, sim_length=500, save_interval=1):
         self.k = k
-        self.training = False # needed for cgnet compatibility
-        self.feature = None # needed for cgnet compatibility
+        self.training = False  # needed for cgnet compatibility
+        self.feature = None  # needed for cgnet compatibility
 
         self.T = T
         self.kB = 0.008314472471220215
