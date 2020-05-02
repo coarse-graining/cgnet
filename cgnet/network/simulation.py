@@ -101,6 +101,7 @@ class Simulation():
         identical for the same random seed
     device : torch.device (default=torch.device('cpu'))
         Device upon which simulation compuation will be carried out
+    # TODO
 
     Notes
     -----
@@ -117,7 +118,8 @@ class Simulation():
                  beta=1.0, friction=None, masses=None, diffusion=1.0,
                  save_forces=False, save_potential=False, length=100,
                  save_interval=10, verbose=False, random_seed=None,
-                 device=torch.device('cpu')):
+                 device=torch.device('cpu'), save_npys=None, log=None,
+                 filename=None):
         self.model = model
 
         self.initial_coordinates = initial_coordinates
@@ -141,6 +143,9 @@ class Simulation():
         self.verbose = verbose
 
         self.device = device
+        self.save_npys = save_npys
+        self.log = log
+        self.filename = filename
 
         self._input_checks()
 
@@ -161,6 +166,7 @@ class Simulation():
         - Checks shapes of starting coordinates and embeddings
         - Ensures masses are provided if friction is not None
         - Warns if diffusion is specified but won't be used
+        - Checks compatibility of arguments to save and log
         """
 
         # warn if model is in train mode, but don't prevent
@@ -243,6 +249,28 @@ class Simulation():
                     "Masses were provided, but will not be used since "
                     "friction is None (i.e., infinte)."
                 )
+
+        # check whether a directory is specified if any saving is done
+        if self.save_npys is not None and self.filename is None:
+            raise RuntimeError(
+                "Must specify save_dir if save_npys is not None"
+                )
+        if self.log is not None and self.filename is None:
+            raise RuntimeError(
+                "Must specify save_dir if log is True"
+                )
+
+        if self.save_npys is not None:
+            if self.save_npys >= 1:
+                self._npy_interval = self.length // self.save_npys
+            elif self.save_npys < 1:
+                self._npy_interval = self.length * self.save_npys
+
+        if self.log is not None:
+            if self.log >= 1:
+                self._log_interval = self.length // self.log
+            if self.log < 1:
+                self._log_interval = self.length * self.log
 
     def _set_up_simulation(self, overwrite):
         """Method to initialize helpful objects for simulation later
