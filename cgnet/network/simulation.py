@@ -3,6 +3,7 @@
 
 import torch
 import numpy as np
+import time
 import warnings
 
 from cgnet.feature import SchnetFeature
@@ -119,7 +120,7 @@ class Simulation():
                  save_forces=False, save_potential=False, length=100,
                  save_interval=10, verbose=False, random_seed=None,
                  device=torch.device('cpu'), save_npys=None, log=None,
-                 filename=None):
+                 log_type='write', filename=None):
         self.model = model
 
         self.initial_coordinates = initial_coordinates
@@ -145,6 +146,12 @@ class Simulation():
         self.device = device
         self.save_npys = save_npys
         self.log = log
+
+        if log_type not in ['print', 'write']:
+            raise ValueError(
+                "log_type can be either 'print' or 'write'"
+                )
+        self.log_type = log_type
         self.filename = filename
 
         self._input_checks()
@@ -253,12 +260,13 @@ class Simulation():
         # check whether a directory is specified if any saving is done
         if self.save_npys is not None and self.filename is None:
             raise RuntimeError(
-                "Must specify save_dir if save_npys is not None"
+                "Must specify filename if save_npys isn't None"
                 )
-        if self.log is not None and self.filename is None:
-            raise RuntimeError(
-                "Must specify save_dir if log is True"
-                )
+        if self.log is not None:
+            if self.log_type == 'write' and self.filename is None:
+                raise RuntimeError(
+                "Must specify filename if log isn't None and log_type=='write'"
+                    )
 
         if self.save_npys is not None:
             if self.save_npys >= 1:
@@ -407,6 +415,24 @@ class Simulation():
                                             axis=2), axis=1)
             self.kinetic_energies[save_ind, :] = kes
 
+    def _log_progress(self, t):
+        percent = np.round(t / self.length, 2)
+
+        printstring = 't = {}; {}% finished ({})'.format(t, int(100*percent), time.asctime())
+
+        if self.log_type == 'print':
+            print(printstring)
+
+        elif self.log_type == 'write':
+            printstring += '\n'
+            file = open(self.filename, 'a')
+            file.write(printstring)
+            file.close()
+
+    def _save_numpy(self):
+        """TODO"""
+        return
+
     def swap_axes(self, data, axis1, axis2):
         """Helper method to exchange the zeroth and first axes of tensors after
         simulations have finished
@@ -460,8 +486,7 @@ class Simulation():
         """
         self._set_up_simulation(overwrite)
 
-        if self.verbose:
-            i = 1
+        if self.log is not None:
             print(
                 "Generating {} simulations of length {} at {}-step intervals".format(
                     self.n_sims, self.length, self.save_interval)
@@ -487,24 +512,27 @@ class Simulation():
             # step forward in time
             x_new, v_new = self._timestep(x_old, v_old, forces)
 
-            # save if relevant
+            # save to arrays if relevant
             if t % self.save_interval == 0:
                 self._save_timepoint(x_new, v_new, forces, potential, t)
 
+            # log if relevant
+            if self.log:
+                if int(t % self._log_interval) == 0 and t > 0:
+                    self._log_progress(t)
+
+            # save numpys if relevant
+            if self.save_npys:
+                if int(t % self._npy_interval) == 0 and t > 0:
+                    print('save npy')
+                # TODO
+
             # prepare for next timestep
-            x_old = x_new.detach().requires_grad_(True).to(self.device)
-
-            # print info if desired
-            if self.verbose:
-                if t % (self.length/10) == 0 and t > 0:
-                    print('{}0% finished'.format(i))
-                    i += 1
-
             x_old = x_new.detach().requires_grad_(True).to(self.device)
             v_old = v_new
 
-        if self.verbose:
-            print('100% finished.')
+        if self.log:
+            print('100% finished ({}).'.format(time.asctime()))
 
         # finalize data structures
         self.simulated_traj = self.swap_axes(
