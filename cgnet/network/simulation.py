@@ -95,8 +95,6 @@ class Simulation():
     save_interval : int (default=10)
         The interval at which simulation timesteps should be saved. Must be
         a factor of the simulation length
-    verbose : bool (default=False)
-        Whether to print simulation progress information
     random_seed : int or None (default=None)
         Seed for random number generator; if seeded, results always will be
         identical for the same random seed
@@ -118,9 +116,8 @@ class Simulation():
     def __init__(self, model, initial_coordinates, embeddings=None, dt=5e-4,
                  beta=1.0, friction=None, masses=None, diffusion=1.0,
                  save_forces=False, save_potential=False, length=100,
-                 save_interval=10, verbose=False, random_seed=None,
-                 device=torch.device('cpu'), save_npys=None, log=None,
-                 log_type='write', filename=None):
+                 save_interval=10, random_seed=None, device=torch.device('cpu'),
+                 save_npys=None, log=None, log_type='write', filename=None):
         self.model = model
 
         self.initial_coordinates = initial_coordinates
@@ -139,9 +136,7 @@ class Simulation():
 
         self.dt = dt
         self.diffusion = diffusion
-
         self.beta = beta
-        self.verbose = verbose
 
         self.device = device
         self.save_npys = save_npys
