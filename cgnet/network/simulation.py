@@ -3,8 +3,8 @@
 
 import torch
 import numpy as np
-import time
-import warnings
+
+import os, time, warnings
 
 from cgnet.feature import SchnetFeature
 
@@ -280,6 +280,14 @@ class Simulation():
             if self.log < 1:
                 self._log_interval = self.length * self.log
 
+            if self.log_type == 'write':
+                self._log_file = self.filename + '_log.txt'
+
+                if os.path.isfile(self._log_file):
+                    raise ValueError(
+                        "{} already exists; choose a different filename.".format(self._log_file)
+                        )
+
     def _set_up_simulation(self, overwrite):
         """Method to initialize helpful objects for simulation later
         """
@@ -425,7 +433,7 @@ class Simulation():
 
         elif self.log_type == 'write':
             printstring += '\n'
-            file = open(self.filename, 'a')
+            file = open(self._log_file, 'a')
             file.write(printstring)
             file.close()
 
@@ -487,10 +495,16 @@ class Simulation():
         self._set_up_simulation(overwrite)
 
         if self.log is not None:
-            print(
-                "Generating {} simulations of length {} at {}-step intervals".format(
-                    self.n_sims, self.length, self.save_interval)
-            )
+            printstring = "Generating {} simulations of length {} at {}-step intervals ({})".format(
+                    self.n_sims, self.length, self.save_interval, time.asctime())
+            if self.log_type == 'print':
+                print(printstring)
+
+            elif self.log_type == 'write':
+                printstring += '\n'
+                file = open(self._log_file, 'a')
+                file.write(printstring)
+                file.close()
 
         x_old = self._initial_x
 
@@ -517,7 +531,7 @@ class Simulation():
                 self._save_timepoint(x_new, v_new, forces, potential, t)
 
             # log if relevant
-            if self.log:
+            if self.log is not None:
                 if int(t % self._log_interval) == 0 and t > 0:
                     self._log_progress(t)
 
@@ -531,8 +545,15 @@ class Simulation():
             x_old = x_new.detach().requires_grad_(True).to(self.device)
             v_old = v_new
 
-        if self.log:
-            print('100% finished ({}).'.format(time.asctime()))
+        if self.log is not None:
+            printstring = '100% finished ({}).'.format(time.asctime())
+            if self.log_type == 'print':
+                print(printstring)
+            elif self.log_type == 'write':
+                printstring += '\n'
+                file = open(self._log_file, 'a')
+                file.write(printstring)
+                file.close()
 
         # finalize data structures
         self.simulated_traj = self.swap_axes(
