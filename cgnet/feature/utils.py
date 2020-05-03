@@ -119,7 +119,7 @@ class RadialBasisFunction(nn.Module):
 
         # Mask the output of the radial distribution with the distance mask
         if distance_mask is not None:
-            gaussian_exp = gaussian_exp * distance_mask[:,:,:,None]
+            gaussian_exp = gaussian_exp * distance_mask[:, :, :, None]
         return gaussian_exp
 
 
@@ -271,7 +271,7 @@ class ModulatedRBF(nn.Module):
                                  expansions,
                                  torch.zeros_like(expansions))
         if distance_mask is not None:
-            expansions = expansions * distance_mask[:,:,:,None]
+            expansions = expansions * distance_mask[:, :, :,None]
         return expansions
 
 

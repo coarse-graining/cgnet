@@ -3,44 +3,69 @@
 
 import torch
 import torch.nn as nn
-
 from cgnet.feature.utils import ShiftedSoftplus, LinearLayer
 
 
-def _check_normalization_input(n_beads):
-    """Helper function for ensuring n_beads is an
-    integer greater than or equal to one. This helper function is used
-    by both ContinuousFilterConvolution and InteractionBlock to
-    ensure that the the instancing of either a simple bead number
-    normalizaiton or beadwise batch normalization after the continuous
-    convolution filter output is done with a proper integer that
-    represents the number of beads in the system.
+class SimpleNormLayer(nn.Module):
+    """Simple normalization layer that divides the output of a
+    preceding layer by a specified number
 
     Parameters
     ----------
-    n_beads: any type
-        the input value used to construct either an nn.BatchNorm1d instance
-        within a ContinuousFilterConvolution, or a simple bead number
-        normalization after element-wise filter convolution.
+    normalization_strength: float
+        The number with which input is normalized/dived by
     """
 
-    # Make sure n_beads is an integer
-    if not isinstance(n_beads, int):
-        raise ValueError(
-            "n_beads must be an integer.")
-    else:
-        # Make sure n_beads is specifically not a bool (Python 3.7 types
-        # bools as integers)
-        if isinstance(n_beads, bool):
-            raise ValueError(
-                "n_beads must be specified by an integer, not a bool.")
-        # Make sure n_beads, if an integer, is greater than or equal to one
-        if n_beads < 1:
-            raise ValueError(
-                "n_beads must be positive.")
+    def __init__(self, normalization_strength):
+        super(SimpleNormLayer, self).__init__()
+        self.normalization_strength = normalization_strength
+
+    def forward(self, input_features):
+        """Computes normalized output
+
+        Parameters
+        ----------
+        input_features: torch.Tensor
+            Input tensor of featuers of any shape
+
+        Returns
+        -------
+        normalized_features: torch.Tensor
+            Normalized input features
+        """
+        return input_features / self.normalization_strength
 
 
-class CGBeadEmbedding(torch.nn.Module):
+class NeighborNormLayer(nn.Module):
+    """Normalization layer that divides the output of a
+    preceding layer by the number of neighbor features.
+    Unlike the SimpleNormLayer, this layer allows for
+    dynamically changing number of neighbors during training.
+    """
+
+    def __init__(self):
+        super(NeighborNormLayer, self).__init__()
+
+    def forward(self, input_features, n_neighbors):
+        """Computes normalized output
+
+        Parameters
+        ----------
+        input_features: torch.Tensor
+            Input tensor of featuers of shape
+            (n_frames, n_beads, n_feats)
+        n_neighbors: int
+            the number of neighbors
+
+        Returns
+        -------
+        normalized_features: torch.Tensor
+            Normalized input features
+        """
+        return input_features / n_neighbors
+
+
+class CGBeadEmbedding(nn.Module):
     """Simple embedding class for coarse-grain beads.
     Serves as a lookup table that returns a fixed size embedding.
 
@@ -121,21 +146,9 @@ class ContinuousFilterConvolution(nn.Module):
         Activation function for the filter generating network. Following
         Schütt et al, the default value is ShiftedSoftplus, but any
         differentiable activation function can be used (see Notes).
-    simple_norm: int (default=None)
-        Number of beads in the system, with which the output of the continuous
-        filter convolution will be normalized
-    neighbor_norm: bool (default=False)
-        If using a simple norm, normalize by the number of neighbors as
-        determined by the shape of the neighbor mask. If simple_norm is
-        specified, the number of simple_norm beads will be overridden and
-        replaced with the number of neighbors
-    beadwise_batchnorm: int (default=None)
-        Number of beads over which batch normalization will be applied after
-        application of the continuous filter convolution. If None, batch
-        normalization will not be used
-    batchnorm_running_stats: bool (default=False)
-        If beadwise_batchnorm is not None, this argument populates the
-        track_running_stats argument in torch.nn.BatchNorm1d
+    normalization_layer: nn.Module (default=None)
+        Normalization layer to be applied to the ouptut of the
+        ContinuousFilterConvolution
 
     Notes
     -----
@@ -159,8 +172,7 @@ class ContinuousFilterConvolution(nn.Module):
     """
 
     def __init__(self, n_gaussians, n_filters, activation=ShiftedSoftplus(),
-                 simple_norm=None, neighbor_norm=False, beadwise_batchnorm=None,
-                 batchnorm_running_stats=False):
+                 normalization_layer=None):
         super(ContinuousFilterConvolution, self).__init__()
         filter_layers = LinearLayer(n_gaussians, n_filters, bias=True,
                                     activation=activation)
@@ -169,19 +181,10 @@ class ContinuousFilterConvolution(nn.Module):
         filter_layers += LinearLayer(n_filters, n_filters, bias=True)
         self.filter_generator = nn.Sequential(*filter_layers)
 
-        if beadwise_batchnorm and simple_norm:
-            raise RuntimeError('beadwise_batchnorm and simple_norm '
-                               'cannot be used simultaneously')
-        elif beadwise_batchnorm != None:
-            _check_normalization_input(beadwise_batchnorm)
-            self.normlayer = nn.BatchNorm1d(beadwise_batchnorm,
-                                            track_running_stats=batchnorm_running_stats)
-        elif simple_norm != None:
-            _check_normalization_input(simple_norm)
-            self.normlayer = simple_norm
-        elif beadwise_batchnorm == None and simple_norm == None:
-            self.normlayer = None
-        self.neighbor_norm = neighbor_norm
+        if normalization_layer:
+           self.normalization_layer = normalization_layer
+        else:
+           self.normalization_layer = None
 
     def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask, bead_mask=None):
         """ Compute convolutional block
@@ -241,25 +244,20 @@ class ContinuousFilterConvolution(nn.Module):
 
         # Remove features from non-existing neighbors outside the cutoff
         conv_features = conv_features * neighbor_mask[:, :, :, None]
-        ##print("Masked conv_features:")
-        ##print(conv_features)
         # Aggregate/pool the features from (n_frames, n_beads, n_neighs, n_feats)
         # to (n_frames, n_beads, n_features)
         aggregated_features = torch.sum(conv_features, dim=2)
 
         # Filter out contributions from non-existent beads introduced by padding
-        #print(aggregated_features.size())
-        #print(bead_mask.size())
+
         if bead_mask is not None:
             aggregated_features = aggregated_features * bead_mask[:, :, None]
 
-        if self.normlayer is not None:
-            if isinstance(self.normlayer, nn.BatchNorm1d):
-                return self.normlayer(aggregated_features)
-            elif isinstance(self.normlayer, int):
-                return aggregated_features / self.normlayer
-        elif self.neighbor_norm is True:
-            return aggregated_features / n_neighbors
+        if self.normalization_layer is not None:
+            if isinstance(self.normalization_layer, NeighborNormLayer):
+                return self.normalization_layer(aggregated_features, n_neighbors)
+            else:
+                return self.normalization_layer(aggregated_features)
         else:
             return aggregated_features
 
@@ -296,19 +294,9 @@ class InteractionBlock(nn.Module):
         Activation function for the atom-wise layers. Following Schütt et al,
         the default value is ShiftedSoftplus, but any differentiable activation
         function can be used (see Notes).
-    simple_norm: int (default=None)
-        Number of beads in the system, with which the output of the continuous
-        filter convolution will be normalized
-    neighbor_norm: bool (default=False)
-        If True, the output of the continuous filter convolution will be
-        normalized by the number of neighbors for each example.
-    beadwise_batchnorm: int (default=None)
-        Number of beads over which batch normalization will be applied after
-        application of the continuous filter convolution. If None, batch
-        normalization will not be used
-    batchnorm_running_stats: bool (default=False)
-        If beadwise_batchnorm is not None, this argument populates the
-        track_running_stats argument in torch.nn.BatchNorm1d
+    normalization_layer: nn.Module (default=None)
+        Normalization layer to be applied to the ouptut of the
+        ContinuousFilterConvolution
 
     Notes
     -----
@@ -332,9 +320,7 @@ class InteractionBlock(nn.Module):
     """
 
     def __init__(self, n_inputs, n_gaussians, n_filters,
-                 activation=ShiftedSoftplus(), simple_norm=None,
-                 neighbor_norm=False, beadwise_batchnorm=None,
-                 batchnorm_running_stats=False):
+                 activation=ShiftedSoftplus(), normalization_layer=None):
         super(InteractionBlock, self).__init__()
 
         self.initial_dense = nn.Sequential(
@@ -345,33 +331,15 @@ class InteractionBlock(nn.Module):
         # WARNING : This will be removed in the future!
         self.inital_dense = self.initial_dense
 
-        self._check_norm_options(simple_norm, beadwise_batchnorm, neighbor_norm)
-
-        if beadwise_batchnorm != None:
-            _check_normalization_input(beadwise_batchnorm)
-        if simple_norm != None:
-            _check_normalization_input(simple_norm)
-
         self.cfconv = ContinuousFilterConvolution(n_gaussians=n_gaussians,
                                                   n_filters=n_filters,
                                                   activation=activation,
-                                                  simple_norm=simple_norm,
-                                                  neighbor_norm=neighbor_norm,
-                                                  beadwise_batchnorm=beadwise_batchnorm,
-                                                  batchnorm_running_stats=batchnorm_running_stats)
+                                                  normalization_layer=normalization_layer)
         output_layers = LinearLayer(n_filters, n_filters, bias=True,
                                     activation=activation)
         output_layers += LinearLayer(n_filters, n_filters, bias=True,
                                      activation=None)
         self.output_dense = nn.Sequential(*output_layers)
-
-    def _check_norm_options(self, simple_norm, beadwise_batchnorm, neighbor_norm):
-        """Helper method to make sure that only one normalization scheme is chosen"""
-        options = [simple_norm, beadwise_batchnorm, neighbor_norm]
-        if len([option for option in options if option]) > 1:
-           raise RuntimeError('More than one normalization option has been '
-                              'specified - you may only utlize one normalization '
-                              'scheme.')
 
     def forward(self, features, rbf_expansion, neighbor_list, neighbor_mask, bead_mask=None):
         """ Compute interaction block

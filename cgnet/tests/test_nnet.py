@@ -395,8 +395,6 @@ def test_bead_energy_masking():
     for i in range(frames):
         masked_forces = force[i][variable_beads[i]:]
         zero_forces = np.zeros((beads - variable_beads[i],3))
-        print(masked_forces)
-        print(zero_forces)
         np.testing.assert_array_equal(masked_forces.detach().numpy(), zero_forces)
 
 

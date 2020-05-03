@@ -245,16 +245,8 @@ class CGnet(nn.Module):
             # Their contribution to the predicted energy and forces
             # should be zero
             bead_mask = torch.clamp(embedding_property, min=0, max=1).float()
-            #print("bead_mask")
-            #print(bead_mask)
-            #print(bead_mask.size())
-            #print("energy")
-            #print(energy)
-            #print(energy.size())
             masked_energy = energy * bead_mask[:, :, None]
-            #print("Masked energies:", masked_energy)
             energy = torch.sum(masked_energy, axis=-2)
-            #print("total energy:", energy)
         # Perform autograd to learn potential of conservative force field
         force = torch.autograd.grad(-torch.sum(energy),
                                     coordinates,

@@ -55,7 +55,7 @@ def multi_molecule_collate(input_dictionaries, device=torch.device('cpu')):
     Notes
     -----
     See docs in MultiMoleculeDataset. While this function pads the inputs
-    to the model, It is imoprtant to properly mask padded portions of tensors
+    to the model, It is important to properly mask padded portions of tensors
     that are passed to the model. If these padded portions are not masked,
     then their artifical contribution carries through to the
     calculation of forces from the energy and the evaluation of the
@@ -80,7 +80,6 @@ def multi_molecule_collate(input_dictionaries, device=torch.device('cpu')):
     embeddings = pad_sequence([torch.tensor(example['embeddings'], device=device)
                                for example in input_dictionaries],
                                batch_first=True)
-    # TODO what if there are no embeddings
     return coordinates, forces, embeddings
 
 
@@ -231,8 +230,8 @@ class MultiMoleculeDataset(Dataset):
     embeddings_list: list of numpy.arrays
         List of embeddings. Each item i in the list must be a numpy array
         of shape [n_beads_i], containing the bead embeddings of a
-        single frame for molecule i. The embedding_list CANNOT be None - it
-        must be supplied to the MultiMoleculeDataset.
+        single frame for molecule i. The embedding_list may not be None;
+        MultiMoleculeDataset is only compatible with SchnetFeatures.
 
     Attributes
     ----------
@@ -318,12 +317,17 @@ class MultiMoleculeDataset(Dataset):
 
     def _check_inputs(self, coordinates_list, forces_list, embeddings_list):
         """Helper function for ensuring data has the correct shape when
-        adding examples to a MultiMoleculeDataset.
+        adding examples to a MultiMoleculeDataset. This function also checks to
+        to make sure that no embeddings are 0.
         """
 
         if embeddings_list is None:
             raise ValueError("Embeddings must be supplied, as MultiMoleculeDataset"
                              " is intended to be used only with SchNet utilities.")
+        else:
+            for embedding in embeddings_list:
+                if np.any(embedding < 1):
+                    raise ValueError("Embeddings must be positive integers.")
 
         if not (len(coordinates_list) == len(forces_list) == len(embeddings_list)):
             raise ValueError("Coordinates, forces, and embeddings lists must "

@@ -215,24 +215,20 @@ class SchnetFeature(nn.Module):
     n_gaussians: int (default=50)
         Number of gaussians for the gaussian expansion in the radial basis
         function.
-    simple_norm: bool (default=False)
-        If True, the output of the continuous filter convolution will be
-        be normalized by the number of beads in the system.
-    neighbor_norm: bool (default=False)
-        If True, the output of the continuous filter convolution will be
-        normalized by the the number of neighbors for each example.
-    beadwise_batchnorm: bool (default=False)
-        If True, batch normalization will be applied after application of the
-        continuous filter convolution according to n_beads.
-    batchnorm_running_stats: bool (default=False)
-        If beadwise_batchnorm is True, this argument populates the
-        track_running_stats argument in torch.nn.BatchNorm1d
+    normalization_layer: nn.Module (default=None)
+        Normalization layer to be applied to the ouptut of the
+        ContinuousFilterConvolution
     variance: float (default=1.0)
         The variance (standard deviation squared) of the Gaussian functions.
     n_interaction_blocks: int (default=1)
         Number of interaction blocks.
     share_weights: bool (default=False)
         If True, shares the weights between all interaction blocks.
+    share_batchnorm_parameters: bool (default=False)
+        If True, all BatchNorm1d instances in the model share parameters.
+        Note: this option is only applicable if a nn.BatchNorm1d object
+        has been passed to the 'normalization_layer' kwarg. By default,
+        SchnetFeature instances do not include normalization layers.
 
     Notes
     -----
@@ -253,11 +249,17 @@ class SchnetFeature(nn.Module):
                                       embedding_dim=10)
 
     beads = 5  # example number of coarse-grain beads in the dataset
+
+    # Next, create a SimpleNormLayer to normalize ContinuousFilterConvolution
+    # output.
+    norm_layer = SimpleNormLayer(n_beads)
+
     schnet_feature = SchnetFeature(feature_size=10,
                                    embedding_layer=embedding_layer,
                                    n_interaction_blocks=2,
                                    calculate_geometry=True,
                                    n_beads=beads,
+                                   normalization_layer=norm_layer,
                                    neighbor_cutoff=5.0)
 
     # To perform a forward pass, pass coordinates and properties to embed to
@@ -291,13 +293,11 @@ class SchnetFeature(nn.Module):
                  neighbor_cutoff=None,
                  rbf_cutoff=5.0,
                  n_gaussians=50,
-                 simple_norm=False,
-                 neighbor_norm=False,
-                 beadwise_batchnorm=False,
-                 batchnorm_running_stats=False,
+                 normalization_layer=None,
                  variance=1.0,
                  n_interaction_blocks=1,
                  share_weights=False,
+                 share_batchnorm_parameters=False,
                  device=torch.device('cpu')):
         super(SchnetFeature, self).__init__()
         self.device = device
@@ -315,39 +315,52 @@ class SchnetFeature(nn.Module):
             raise RuntimeError(
                 "Basis function type must be 'uniform' or 'modulated'.")
 
-        self._check_norm_options(simple_norm, beadwise_batchnorm, neighbor_norm)
-
-        if beadwise_batchnorm:
-            beadwise_batchnorm = n_beads
-        else:
-            beadwise_batchnorm = None
-
-        if simple_norm:
-            simple_norm = n_beads
-        else:
-            simple_norm = None
-
         if share_weights:
-            # Lets the interaction blocks share the weights
-            self.interaction_blocks = nn.ModuleList(
-                [InteractionBlock(feature_size, n_gaussians,
-                                  feature_size, activation=activation,
-                                  simple_norm=simple_norm,
-                                  neighbor_norm=neighbor_norm,
-                                  beadwise_batchnorm=beadwise_batchnorm,
-                                  batchnorm_running_stats=batchnorm_running_stats)]
-                * n_interaction_blocks
-            )
+            # Lets the interaction blocks share weight parameters.
+            # If batchnorm layers are used, their parameters
+            # are shared as well.
+            if share_batchnorm_parameters:
+                # Batchnorm parameters are the same for all instances
+                self.interaction_blocks = nn.ModuleList(
+                    [InteractionBlock(feature_size, n_gaussians,
+                                      feature_size, activation=activation,
+                                      normalization_layer=normalization_layer)]
+                    * n_interaction_blocks
+                )
+            if not share_batchnorm_parameters:
+                # This represents the case where weights parameters are 
+                # shared between the interaction blocks, but the batchnorm
+                # parameters are not shared.
+                self.interaction_blocks = nn.ModuleList(
+                    [InteractionBlock(feature_size, n_gaussians,
+                                      feature_size, activation=activation,
+                                      normalization_layer=normalization_layer)]
+                    * n_interaction_blocks
+                )
+                # We reinstance each bathcnorm layer in each interaction block
+                # as a deep copy of the original layer in order to prevent parameter
+                # sharing between the batchnorm layers
+                for interaction_block in self.interaction_blocks:
+                    if isinstance(normalization_layer, nn.BatchNorm1d):
+                        # get batchnorm parameters to make deep copies
+                        # that do not have linked parameters
+                        num_features = normalization.num_features
+                        eps = normalization.eps
+                        momentum = normalization.momentum
+                        affine = normalization.affine
+                        track_running_stats = normalization.track_running_stats
+                        new_layer = nn.BatchNorm1d(num_features, eps=eps,
+                                                   momentum=momentum,
+                                                   affine=affine,
+                                                   track_running_stats=track_running_stats)
+                        interaction_block.cfconv.normlayer = new_layer
 
         else:
             # Every interaction block has their own weights
             self.interaction_blocks = nn.ModuleList(
                 [InteractionBlock(feature_size, n_gaussians,
                                   feature_size, activation=activation,
-                                  simple_norm=simple_norm,
-                                  neighbor_norm=neighbor_norm,
-                                  beadwise_batchnorm=beadwise_batchnorm,
-                                  batchnorm_running_stats=batchnorm_running_stats)
+                                  normalization_layer=normalization_layer)
                  for _ in range(n_interaction_blocks)]
             )
 
@@ -359,14 +372,6 @@ class SchnetFeature(nn.Module):
             self._distance_pairs, _ = self.geometry.get_distance_indices(n_beads,
                                                                          [], [])
             self.redundant_distance_mapping = None
-
-    def _check_norm_options(self, simple_norm, beadwise_batchnorm, neighbor_norm):
-        """Helper method to make sure that only one normalization scheme is chosen"""
-        options = [simple_norm, beadwise_batchnorm, neighbor_norm]
-        if len([option for option in options if option]) > 1:
-           raise RuntimeError('More than one normalization option has been '
-                              'specified - you may only utlize one normalization '
-                              'scheme.')
 
     def forward(self, in_features, embedding_property):
         """Forward method through single Schnet block
@@ -414,9 +419,6 @@ class SchnetFeature(nn.Module):
 
         neighbors, neighbor_mask = self.geometry.get_neighbors(distances,
                                                                cutoff=self.neighbor_cutoff)
-        #print("Neighbors and masks:")
-        #print(neighbors)
-        #print(neighbor_mask)
 
         neighbors = neighbors.to(self.device)
         neighbor_mask = neighbor_mask.to(self.device)
@@ -447,7 +449,6 @@ class SchnetFeature(nn.Module):
         tmp_distances = torch.zeros_like(distances)
         tmp_distances[bead_distances_mask != 0] = distances[bead_distances_mask != 0]
         distances = tmp_distances * neighbor_mask
-        #print("Masked distances:",distances,distances.size())
 
         features = self.embedding_layer(embedding_property)
         rbf_expansion = self.rbf_layer(distances=distances,
