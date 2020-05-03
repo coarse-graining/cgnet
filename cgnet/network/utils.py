@@ -315,8 +315,8 @@ def dataset_loss(model, loader, optimizer=None,
                 "The first batch was not the largest batch, so you cannot use "
                 "dataset loss."
             )
-        if (loader.dataset.embeddings is not None or isinstance(loader.dataset,
-            MultiMoleculeDataset)):
+        if (isinstance(loader.dataset, MultiMoleculeDataset) or
+            loader.dataset.embeddings is not None):
             potential, predicted_force = model.forward(coords,
                                                        embedding_property=embedding_property)
         else:
