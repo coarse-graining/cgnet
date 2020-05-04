@@ -105,10 +105,11 @@ class Simulation():
         the int specifies how many numpy files will be output per observable.
         If a float between 0 and 1 is given, the float specifies at what
         percentage of simulation completion the numpy files will be output.
-        Forces and potentials will also be saved according to the save_forces
-        and save_potential arguments, respectively. If friction is not None,
-        kinetic energies will also be saved. This method is only implemented
-        for a maximum of 1000 files per observable.
+        All files should be the same shape except possibly the one with the
+        hightest index. Forces and potentials will also be saved according to
+        the save_forces and save_potential arguments, respectively. If friction
+        is not None, kinetic energies will also be saved. This method is only
+        implemented for a maximum of 1000 files per observable.
     log : int or float (default=None)
         If not none, a log will be generated. If an int is given, then
         the int specifies how many log statements will be output.
@@ -496,25 +497,25 @@ class Simulation():
         traj_to_export = self.simulated_traj[self._npy_starting_index:iter_]
         traj_to_export = self._swap_and_export(traj_to_export)
         self.save_dict[key]['traj'] = traj_to_export
-        np.save("{}_traj_{}.npy".format(self.filename, key), traj_to_export)
+        #np.save("{}_traj_{}.npy".format(self.filename, key), traj_to_export)
 
         if self.save_forces:
             forces_to_export = self.simulated_forces[self._npy_starting_index:iter_]
             forces_to_export = self._swap_and_export(forces_to_export)
             self.save_dict[key]['forces'] = forces_to_export
-            np.save("{}_forces_{}.npy".format(self.filename, key), forces_to_export)
+            #np.save("{}_forces_{}.npy".format(self.filename, key), forces_to_export)
 
         if self.save_potential:
             potentials_to_export = self.simulated_potential[self._npy_starting_index:iter_]
             potentials_to_export = self._swap_and_export(potentials_to_export)
             self.save_dict[key]['potential'] = potentials_to_export
-            np.save("{}_potential_{}.npy".format(self.filename, key), potentials_to_export)
+            #np.save("{}_potential_{}.npy".format(self.filename, key), potentials_to_export)
 
         if self.friction is not None:
             kinetic_energies_to_export = self.kinetic_energies[self._npy_starting_index:iter_]
             kinetic_energies_to_export = self._swap_and_export(kinetic_energies_to_export)
             self.save_dict[key]['kes'] = kinetic_energies_to_export
-            np.save("{}_ke_{}.npy".format(self.filename, key), kinetic_energies_to_export)
+            #np.save("{}_ke_{}.npy".format(self.filename, key), kinetic_energies_to_export)
 
         self._npy_starting_index = iter_
         self._npy_file_index += 1
@@ -611,6 +612,15 @@ class Simulation():
 
             # step forward in time
             x_new, v_new = self._timestep(x_old, v_old, forces)
+
+            # check for nans
+            if np.any(np.isnan(x_new.detach().numpy())):
+                if self.save_npys:
+                    self._save_numpy(t+1)
+                raise RuntimeError("NaN encountered in simulation; terminating.")
+
+            self._x_new = x_new #debug
+            self._v_new = v_new #debug
 
             # save to arrays if relevant
             if (t+1) % self.save_interval == 0:
