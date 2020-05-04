@@ -615,7 +615,7 @@ class Simulation():
 
             # check for nans
             if np.any(np.isnan(x_new.detach().numpy())):
-                if self.save_npys:
+                if self.save_npys is not None:
                     self._save_numpy(t+1)
                 raise RuntimeError(
                     "NaN encountered in simulation; terminating."
@@ -629,7 +629,7 @@ class Simulation():
                 self._save_timepoint(x_new, v_new, forces, potential, t)
 
             # save numpys if relevant
-            if self.save_npys:
+            if self.save_npys is not None:
                 if int((t + 1) % self._npy_interval) == 0:
                     self._save_numpy(t+1)
 
@@ -643,8 +643,9 @@ class Simulation():
             v_old = v_new
 
         # if relevant, save the remainder of the simulation
-        if int(t+1) % self._npy_interval > 0:
-            self._save_numpy(t+1)
+        if self.save_npys is not None:
+            if int(t+1) % self._npy_interval > 0:
+                self._save_numpy(t+1)
 
         # if relevant, log that simulation has been completed
         if self.log is not None:
