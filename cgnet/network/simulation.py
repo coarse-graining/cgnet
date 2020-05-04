@@ -103,6 +103,9 @@ class Simulation():
     save_npys : int or float (default=None)
         If not None, .npy files will be saved. If an int is given, then
         the int specifies how many numpy files will be output per observable.
+        Note that the actual number of files returned may be somewhat
+        greater if save_npys does not evenly divide the simulation length,
+        as the integer floor of length / save_npys will be used.
         If a float between 0 and 1 is given, the float specifies at what
         percentage of simulation completion the numpy files will be output.
         All files should be the same shape except possibly the one with the
