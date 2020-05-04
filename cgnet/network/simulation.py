@@ -125,7 +125,7 @@ class Simulation():
         Specifies the location to which numpys and/or log files are saved.
         Must be provided if save_npys is not None and/or if log is not None
         and log_type is 'write'. This provides the base file name; for numpy
-        outputs, '_traj_000.npy' or similar is added. For log outputs,
+        outputs, '_coords_000.npy' or similar is added. For log outputs,
         '_log.txt' is added.
 
     Notes
@@ -304,10 +304,10 @@ class Simulation():
         "Simulation saving is not implemented if more than 1000 files will be generated"
                     )
 
-            if os.path.isfile("{}_traj_000.npy".format(self.filename)):
+            if os.path.isfile("{}_coords_000.npy".format(self.filename)):
                 raise ValueError(
                     "{} already exists; choose a different filename.".format(
-                        "{}_traj_000.npy".format(self.filename))
+                        "{}_coords_000.npy".format(self.filename))
                     )
 
             if self.save_npys >= 1:
@@ -499,8 +499,8 @@ class Simulation():
 
         traj_to_export = self.simulated_traj[self._npy_starting_index:iter_]
         traj_to_export = self._swap_and_export(traj_to_export)
-        self.save_dict[key]['traj'] = traj_to_export # debug
-        np.save("{}_traj_{}.npy".format(self.filename, key), traj_to_export)
+        self.save_dict[key]['coords'] = traj_to_export # debug
+        np.save("{}_coords_{}.npy".format(self.filename, key), traj_to_export)
 
         if self.save_forces:
             forces_to_export = self.simulated_forces[self._npy_starting_index:iter_]
