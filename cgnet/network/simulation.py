@@ -212,13 +212,15 @@ class Simulation():
                 'initial_coordinates shape must be [frames, beads, dimensions]'
             )
 
+        # set up initial coordinates
         if type(self.initial_coordinates) is not torch.Tensor:
             initial_coordinates = torch.tensor(self.initial_coordinates)
 
         self._initial_x = self.initial_coordinates.detach().requires_grad_(
             True).to(self.device)
 
-        if self.friction is not None:
+        # set up simulatio parameters
+        if self.friction is not None: # langevin
             if self.masses is None:
                 raise RuntimeError(
                     'if friction is not None, masses must be given'
@@ -252,6 +254,8 @@ class Simulation():
                     "friction is None (i.e., infinte)."
                 )
 
+        # everything below has to do with saving logs/numpys
+
         # check whether a directory is specified if any saving is done
         if self.save_npys is not None and self.filename is None:
             raise RuntimeError(
@@ -263,12 +267,21 @@ class Simulation():
                 "Must specify filename if log isn't None and log_type=='write'"
                     )
 
+        # saving numpys
         if self.save_npys is not None:
+            if self.save_npys >= 1000 or self.save_npys <= 0.001:
+                raise ValueError(
+        "Simulation saving is not implemented if more than 1000 files will be generated"
+                    )
+
             if self.save_npys >= 1:
                 self._npy_interval = self.length // self.save_npys
             elif self.save_npys < 1:
                 self._npy_interval = self.length * self.save_npys
+            self._npy_file_index = 0
+            self._npy_starting_index = 0
 
+        # logging
         if self.log is not None:
             if self.log >= 1:
                 self._log_interval = self.length // self.log
@@ -418,10 +431,10 @@ class Simulation():
                                             axis=2), axis=1)
             self.kinetic_energies[save_ind, :] = kes
 
-    def _log_progress(self, t):
-        percent = np.round(t / self.length, 2)
+    def _log_progress(self, iter_):
+        percent = np.round(iter_ / self.length, 2)
 
-        printstring = 't = {}; {}% finished ({})'.format(t, int(100*percent), time.asctime())
+        printstring = 'Iteration = {}; {}% finished ({})'.format(iter_, int(100*percent), time.asctime())
 
         if self.log_type == 'print':
             print(printstring)
@@ -432,11 +445,20 @@ class Simulation():
             file.write(printstring)
             file.close()
 
+    def _get_numpy_count(self):
+        """TODO"""
+        if self._npy_file_index < 10:
+            return '00{}'.format(self._npy_file_index)
+        elif self._npy_file_index < 100:
+            return '0{}'.format(self._npy_file_index)
+        else:
+            return '{}'.format(self._npy_file_index)
+
     def _save_numpy(self):
         """TODO"""
         return
 
-    def swap_axes(self, data, axis1, axis2):
+    def _swap_and_export(self, data, axis1=0, axis2=1):
         """Helper method to exchange the zeroth and first axes of tensors after
         simulations have finished
 
@@ -460,7 +482,7 @@ class Simulation():
         axes[axis1] = axis2
         axes[axis2] = axis1
         swapped_data = data.permute(*axes)
-        return swapped_data
+        return swapped_data.cpu().detach().numpy()
 
     def simulate(self, overwrite=False):
         """Generates independent simulations.
@@ -488,6 +510,8 @@ class Simulation():
 
         """
         self._set_up_simulation(overwrite)
+
+        self.save_dict = {} # debug
 
         if self.log is not None:
             printstring = "Generating {} simulations of length {} at {}-step intervals ({})".format(
@@ -522,19 +546,44 @@ class Simulation():
             x_new, v_new = self._timestep(x_old, v_old, forces)
 
             # save to arrays if relevant
-            if t % self.save_interval == 0:
+            if (t+1) % self.save_interval == 0:
                 self._save_timepoint(x_new, v_new, forces, potential, t)
-
-            # log if relevant
-            if self.log is not None:
-                if int(t % self._log_interval) == 0 and t > 0:
-                    self._log_progress(t)
 
             # save numpys if relevant
             if self.save_npys:
-                if int(t % self._npy_interval) == 0 and t > 0:
-                    print('save npy')
-                # TODO
+                print('t={}'.format(t))
+                if int((t + 1) % self._npy_interval) == 0 and t > 0:
+                    print('save numpy @ t={}'.format(t))
+
+                    key = self._get_numpy_count()
+                    self.save_dict[key] = {}
+
+                    traj_to_export = self.simulated_traj[self._npy_starting_index:t+1]
+                    traj_to_export = self._swap_and_export(traj_to_export)
+                    self.save_dict[key]['traj'] = traj_to_export
+
+                    if self.save_forces:
+                        forces_to_export = self.simulated_forces[self._npy_starting_index:t+1]
+                        forces_to_export = self._swap_and_export(forces_to_export)
+                        self.save_dict[key]['forces'] = forces_to_export
+
+                    if self.save_potential:
+                        potentials_to_export = self.simulated_potential[self._npy_starting_index:t+1]
+                        potentials_to_export = self._swap_and_export(potentials_to_export)
+                        self.save_dict[key]['potential'] = potentials_to_export
+
+                    if self.friction is not None:
+                        kinetic_energies_to_export = self.kinetic_energies[self._npy_starting_index:t+1]
+                        kinetic_energies_to_export = self._swap_and_export(kinetic_energies_to_export)
+                        self.save_dict[key]['kes'] = kinetic_energies_to_export
+
+                    self._npy_starting_index = t+1
+                    self._npy_file_index += 1
+
+            # log if relevant
+            if self.log is not None:
+                if int((t + 1) % self._log_interval) == 0:
+                    self._log_progress(t+1)
 
             # prepare for next timestep
             x_old = x_new.detach().requires_grad_(True).to(self.device)
@@ -551,20 +600,31 @@ class Simulation():
                 file.close()
 
         # finalize data structures
-        self.simulated_traj = self.swap_axes(
-            self.simulated_traj, 0, 1).cpu().detach().numpy()
+        # self.simulated_traj = self.swap_axes(
+        #     self.simulated_traj, 0, 1).cpu().detach().numpy()
+
+        # if self.save_forces:
+        #     self.simulated_forces = self.swap_axes(self.simulated_forces,
+        #                                            0, 1).cpu().detach().numpy()
+
+        # if self.save_potential:
+        #     self.simulated_potential = self.swap_axes(self.simulated_potential,
+        #                                               0, 1).cpu().detach().numpy()
+
+        # if self.friction is not None:
+        #     self.kinetic_energies = self.swap_axes(self.kinetic_energies,
+        #                                            0, 1).cpu().detach().numpy()
+
+        self.simulated_traj = self._swap_and_export(self.simulated_traj)
 
         if self.save_forces:
-            self.simulated_forces = self.swap_axes(self.simulated_forces,
-                                                   0, 1).cpu().detach().numpy()
+            self.simulated_forces = self._swap_and_export(self.simulated_forces)
 
         if self.save_potential:
-            self.simulated_potential = self.swap_axes(self.simulated_potential,
-                                                      0, 1).cpu().detach().numpy()
+            self.simulated_potential = self._swap_and_export(self.simulated_potential)
 
         if self.friction is not None:
-            self.kinetic_energies = self.swap_axes(self.kinetic_energies,
-                                                   0, 1).cpu().detach().numpy()
+            self.kinetic_energies = self._swap_and_export(self.kinetic_energies)
 
         self._simulated = True
 
