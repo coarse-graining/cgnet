@@ -313,7 +313,7 @@ class Simulation():
             if self.save_npys >= 1:
                 self._npy_interval = self.length // self.save_npys
             elif self.save_npys < 1:
-                self._npy_interval = self.length * self.save_npys
+                self._npy_interval = np.ceil(self.length * self.save_npys)
             self._npy_file_index = 0
             self._npy_starting_index = 0
 
@@ -322,7 +322,7 @@ class Simulation():
             if self.log >= 1:
                 self._log_interval = self.length // self.log
             if self.log < 1:
-                self._log_interval = self.length * self.log
+                self._log_interval = np.ceil(self.length * self.log)
 
             if self.log_type == 'write':
                 self._log_file = self.filename + '_log.txt'
