@@ -522,7 +522,7 @@ class Simulation():
             kinetic_energies_to_export = self._swap_and_export(
                 kinetic_energies_to_export)
             self.save_dict[key]['kes'] = kinetic_energies_to_export  # debug
-            np.save("{}_ke_{}.npy".format(self.filename, key),
+            np.save("{}_kineticenergy_{}.npy".format(self.filename, key),
                     kinetic_energies_to_export)
 
         self._npy_starting_index = iter_

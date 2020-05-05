@@ -567,7 +567,8 @@ def test_saving_all_quantities_int():
             [file for file in file_list if 'forces' in file])
         potential_file_list = sorted(
             [file for file in file_list if 'potential' in file])
-        ke_file_list = sorted([file for file in file_list if 'ke' in file])
+        ke_file_list = sorted(
+            [file for file in file_list if 'kineticenergy' in file])
         file_list_list = [coords_file_list, force_file_list,
                           potential_file_list, ke_file_list]
         expected_chunk_length = npy_interval / save_interval
