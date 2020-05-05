@@ -312,10 +312,15 @@ class Simulation():
                         "{}_coords_000.npy".format(self.filename))
                     )
 
-            if self.save_npys >= 1:
-                self._npy_interval = self.length // self.save_npys
-            elif self.save_npys < 1:
-                self._npy_interval = np.ceil(self.length * self.save_npys)
+            if self.save_npys < 1:
+                self._npy_interval = self.length * self.save_npys
+            else:
+                self._npy_interval = self.save_npys
+
+            if self.save_npys % self.save_interval != 0:
+                raise ValueError(
+                "save_npys must be a multiple of save_interval"
+                    )
             self._npy_file_index = 0
             self._npy_starting_index = 0
 
@@ -633,10 +638,11 @@ class Simulation():
             if (t+1) % self.save_interval == 0:
                 self._save_timepoint(x_new, v_new, forces, potential, t)
 
-            # save numpys if relevant
-            if self.save_npys is not None:
-                if int((t + 1) % self._npy_interval) == 0:
-                    self._save_numpy(t+1)
+                # save numpys if relevant; this can be indented here because
+                # it only happens when time when time points are also recorded
+                if self.save_npys is not None:
+                    if (t + 1) % self.save_npys == 0:
+                        self._save_numpy(t+1)
 
             # log if relevant
             if self.log is not None:
