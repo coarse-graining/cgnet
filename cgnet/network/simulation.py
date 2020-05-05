@@ -102,7 +102,7 @@ class Simulation():
         identical for the same random seed
     device : torch.device (default=torch.device('cpu'))
         Device upon which simulation compuation will be carried out
-    save_npys : int (default=None)
+    export_interval : int (default=None)
         If not None, .npy files will be saved. If an int is given, then
         the int specifies at what intervals numpy files will be saved per
         observable. This number must be an integer multiple of save_interval.
@@ -111,20 +111,20 @@ class Simulation():
         arguments, respectively. If friction is not None, kinetic energies
         will also be saved. This method is only implemented for a maximum of
         1000 files per observable due to file naming conventions.
-    log : int (default=None)
+    log_interval : int (default=None)
         If not None, a log will be generated indicating simulation start and
         end times as well as completion updates at regular intervals. If an
         int is given, then the int specifies how many log statements will be
         output. This number must be a multiple of save_interval.
     log_type : 'print' or 'write' (default='write')
-        Only relevant if log is not None. If 'print', a log statement will
-        be printed. If 'write', the log will be written to a .txt file.
+        Only relevant if log_interval is not None. If 'print', a log statement
+        will be printed. If 'write', the log will be written to a .txt file.
     filename : string (default=None)
         Specifies the location to which numpys and/or log files are saved.
-        Must be provided if save_npys is not None and/or if log is not None
-        and log_type is 'write'. This provides the base file name; for numpy
-        outputs, '_coords_000.npy' or similar is added. For log outputs,
-        '_log.txt' is added.
+        Must be provided if export_interval is not None and/or if log_interval
+        is not None and log_type is 'write'. This provides the base file name;
+        for numpy outputs, '_coords_000.npy' or similar is added. For log
+        outputs, '_log.txt' is added.
 
     Notes
     -----
@@ -143,8 +143,10 @@ class Simulation():
     def __init__(self, model, initial_coordinates, embeddings=None, dt=5e-4,
                  beta=1.0, friction=None, masses=None, diffusion=1.0,
                  save_forces=False, save_potential=False, length=100,
-                 save_interval=10, random_seed=None, device=torch.device('cpu'),
-                 save_npys=None, log=None, log_type='write', filename=None):
+                 save_interval=10, random_seed=None,
+                 device=torch.device('cpu'),
+                 export_interval=None, log_interval=None,
+                 log_type='write', filename=None):
         self.model = model
 
         self.initial_coordinates = initial_coordinates
@@ -166,8 +168,8 @@ class Simulation():
         self.beta = beta
 
         self.device = device
-        self.save_npys = save_npys
-        self.log = log
+        self.export_interval = export_interval
+        self.log_interval = log_interval
 
         if log_type not in ['print', 'write']:
             raise ValueError(
@@ -285,19 +287,19 @@ class Simulation():
         # everything below has to do with saving logs/numpys
 
         # check whether a directory is specified if any saving is done
-        if self.save_npys is not None and self.filename is None:
+        if self.export_interval is not None and self.filename is None:
             raise RuntimeError(
-                "Must specify filename if save_npys isn't None"
+                "Must specify filename if export_interval isn't None"
             )
-        if self.log is not None:
+        if self.log_interval is not None:
             if self.log_type == 'write' and self.filename is None:
                 raise RuntimeError(
-                    "Must specify filename if log isn't None and log_type=='write'"
+                    "Must specify filename if log_interval isn't None and log_type=='write'"
                 )
 
         # saving numpys
-        if self.save_npys is not None:
-            if self.save_npys >= 1000:
+        if self.export_interval is not None:
+            if self.export_interval >= 1000:
                 raise ValueError(
                     "Simulation saving is not implemented if more than 1000 files will be generated"
                 )
@@ -308,8 +310,8 @@ class Simulation():
                         "{}_coords_000.npy".format(self.filename))
                 )
 
-            if self.save_npys is not None:
-                if self.save_npys % self.save_interval != 0:
+            if self.export_interval is not None:
+                if self.export_interval % self.save_interval != 0:
                     raise ValueError(
                         "Numpy saving must occur at a multiple of save_interval"
                     )
@@ -317,8 +319,8 @@ class Simulation():
                 self._npy_starting_index = 0
 
         # logging
-        if self.log is not None:
-            if self.log % self.save_interval != 0:
+        if self.log_interval is not None:
+            if self.log_interval % self.save_interval != 0:
                 raise ValueError(
                     "Logging must occur at a multiple of save_interval"
                 )
@@ -587,7 +589,7 @@ class Simulation():
 
         self.save_dict = {}  # debug
 
-        if self.log is not None:
+        if self.log_interval is not None:
             printstring = "Generating {} simulations of length {} saved at {}-step intervals ({})".format(
                 self.n_sims, self.length, self.save_interval, time.asctime())
             if self.log_type == 'print':
@@ -621,7 +623,7 @@ class Simulation():
 
             # check for nans
             if np.any(np.isnan(x_new.detach().numpy())):
-                if self.save_npys is not None:
+                if self.export_interval is not None:
                     self._save_numpy(t+1)
                 raise RuntimeError(
                     "NaN encountered in simulation; terminating."
@@ -636,14 +638,14 @@ class Simulation():
 
                 # save numpys if relevant; this can be indented here because
                 # it only happens when time when time points are also recorded
-                if self.save_npys is not None:
-                    if (t + 1) % self.save_npys == 0:
+                if self.export_interval is not None:
+                    if (t + 1) % self.export_interval == 0:
                         self._save_numpy((t+1) // self.save_interval)
 
                 # log if relevant; this can be indented here because
                 # it only happens when time when time points are also recorded
-                if self.log is not None:
-                    if int((t + 1) % self.log) == 0:
+                if self.log_interval is not None:
+                    if int((t + 1) % self.log_interval) == 0:
                         self._log_progress((t+1) // self.save_interval)
 
             # prepare for next timestep
@@ -651,12 +653,12 @@ class Simulation():
             v_old = v_new
 
         # if relevant, save the remainder of the simulation
-        if self.save_npys is not None:
-            if int(t+1) % self.save_npys > 0:
+        if self.export_interval is not None:
+            if int(t+1) % self.export_interval > 0:
                 self._save_numpy(t+1)
 
         # if relevant, log that simulation has been completed
-        if self.log is not None:
+        if self.log_interval is not None:
             printstring = 'Done simulating ({})'.format(time.asctime())
             if self.log_type == 'print':
                 print(printstring)

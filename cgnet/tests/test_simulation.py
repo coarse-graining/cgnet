@@ -500,7 +500,7 @@ def test_saving_numpy_coordinates_int():
                             friction=model.friction, dt=model.dt,
                             save_forces=False, save_potential=False,
                             save_interval=model.save_interval,
-                            save_npys=npy_interval, filename=tmp+'/test')
+                            export_interval=npy_interval, filename=tmp+'/test')
 
         traj = my_sim.simulate()
         assert traj.shape[1] == sim_length / save_interval
@@ -554,7 +554,7 @@ def test_saving_all_quantities_int():
                             save_forces=True, save_potential=True,
                             masses=model.masses,
                             save_interval=model.save_interval,
-                            save_npys=npy_interval, filename=tmp+'/test')
+                            export_interval=npy_interval, filename=tmp+'/test')
 
         traj = my_sim.simulate()
         assert traj.shape[1] == sim_length / save_interval
@@ -628,7 +628,7 @@ def test_log_file_basics():
                             friction=model.friction, dt=model.dt,
                             save_forces=False, save_potential=False,
                             save_interval=model.save_interval,
-                            log=log_interval, log_type='write',
+                            log_interval=log_interval, log_type='write',
                             filename=tmp+'/test')
 
         traj = my_sim.simulate()
