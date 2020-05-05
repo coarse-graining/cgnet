@@ -343,7 +343,7 @@ class Simulation():
 
         self._save_size = int(self.length/self.save_interval)
 
-        self.simulated_traj = torch.zeros((self._save_size, self.n_sims, self.n_beads,
+        self.simulated_coords = torch.zeros((self._save_size, self.n_sims, self.n_beads,
                                            self.n_dims))
         if self.save_forces:
             self.simulated_forces = torch.zeros((self._save_size, self.n_sims,
@@ -446,7 +446,7 @@ class Simulation():
         """
         save_ind = t // self.save_interval
 
-        self.simulated_traj[save_ind, :, :] = x_new
+        self.simulated_coords[save_ind, :, :] = x_new
         if self.save_forces:
             self.simulated_forces[save_ind, :, :] = forces
 
@@ -499,10 +499,10 @@ class Simulation():
         key = self._get_numpy_count()
         self.save_dict[key] = {} # debug
 
-        traj_to_export = self.simulated_traj[self._npy_starting_index:iter_]
-        traj_to_export = self._swap_and_export(traj_to_export)
-        self.save_dict[key]['coords'] = traj_to_export # debug
-        np.save("{}_coords_{}.npy".format(self.filename, key), traj_to_export)
+        coords_to_export = self.simulated_coords[self._npy_starting_index:iter_]
+        coords_to_export = self._swap_and_export(coords_to_export)
+        self.save_dict[key]['coords'] = coords_to_export # debug
+        np.save("{}_coords_{}.npy".format(self.filename, key), coords_to_export)
 
         if self.save_forces:
             forces_to_export = self.simulated_forces[self._npy_starting_index:iter_]
@@ -561,7 +561,7 @@ class Simulation():
 
         Returns
         -------
-        simulated_traj : np.ndarray
+        simulated_coords : np.ndarray
             Shape [n_simulations, n_frames, n_atoms, n_dimensions]
             Also an attribute; stores the simulation coordinates at the
             save_interval
@@ -664,8 +664,8 @@ class Simulation():
                 file.close()
 
         # reshape output attributes
-        self.simulated_traj = self._swap_and_export(
-                                                self.simulated_traj)
+        self.simulated_coords = self._swap_and_export(
+                                                self.simulated_coords)
 
         if self.save_forces:
             self.simulated_forces = self._swap_and_export(
@@ -681,4 +681,4 @@ class Simulation():
 
         self._simulated = True
 
-        return self.simulated_traj
+        return self.simulated_coords
