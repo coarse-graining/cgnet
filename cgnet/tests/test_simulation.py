@@ -468,9 +468,10 @@ def test_harmonic_potential_zero_friction():
     np.testing.assert_array_equal(my_sim.kinetic_energies,
                                   np.zeros(my_sim.kinetic_energies.shape))
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-#
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# The following tests use temporary directories to test the functionality #
+# of exporting .npy files and recording logs as the simulation progresses #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 
 def test_saving_numpy_coordinates_int():
