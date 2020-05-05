@@ -102,7 +102,7 @@ class Simulation():
         Device upon which simulation compuation will be carried out
     save_npys : int or float (default=None)
         If not None, .npy files will be saved. If an int is given, then
-        the int specifies how many numpy files will be output per observable.
+        the int specifies how many numpy files will be saved per observable.
         Note that the actual number of files returned may be somewhat
         greater if save_npys does not evenly divide the simulation length,
         as the integer floor of length / save_npys will be used.
@@ -114,10 +114,12 @@ class Simulation():
         is not None, kinetic energies will also be saved. This method is only
         implemented for a maximum of 1000 files per observable.
     log : int or float (default=None)
-        If not none, a log will be generated. If an int is given, then
-        the int specifies how many log statements will be output.
-        If a float between 0 and 1 is given, the float specifies at what
-        percentage of simulation completion the log statement will be output.
+        If not none, a log will be generated indicating simulation start and
+        end times as well as completion updates at regular intervals. If an
+        int is given, then the int specifies how many log statements will be
+        output. If a float between 0 and 1 is given, the float specifies at
+        what percentage of simulation completion the log statement will be
+        output.
     log_type : 'print' or 'write' (default='write')
         Only relevant if log is not None. If 'print', a log statement will
         be printed. If 'write', the log will be written to a .txt file.
