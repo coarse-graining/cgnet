@@ -466,7 +466,7 @@ class Simulation():
 
     def _log_progress(self, iter_):
         """Utility to print log statement or write it to an text file"""
-        printstring = '{}/{} time points stored ({})'.format(
+        printstring = '{}/{} time points saved ({})'.format(
                        iter_, self.length // self.save_interval, time.asctime())
 
         if self.log_type == 'print':
@@ -580,7 +580,7 @@ class Simulation():
         self.save_dict = {} # debug
 
         if self.log is not None:
-            printstring = "Generating {} simulations of length {} at {}-step intervals ({})".format(
+            printstring = "Generating {} simulations of length {} saved at {}-step intervals ({})".format(
                     self.n_sims, self.length, self.save_interval, time.asctime())
             if self.log_type == 'print':
                 print(printstring)

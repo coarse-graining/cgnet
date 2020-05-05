@@ -590,4 +590,47 @@ def test_saving_all_quantities_int():
             # Test (iii)
             np.testing.assert_array_equal(obs_list[j], running_list[j])
 
+def test_log_file_basics():
+    # Tests whether the log file exists, is named correctly, and has the
+    # correct number of lines
 
+    n_sims = np.random.randint(1, high=5)
+    sim_length = np.random.choice([24, 36])
+    log_interval = np.random.choice([6, 12])
+    save_interval = np.random.choice([2, 3])
+
+    n_expected_logs = sim_length / log_interval
+
+    model = HarmonicPotential(k=1, T=300, n_particles=10,
+                              dt=0.001, friction=None,
+                              n_sims=n_sims, sim_length=sim_length,
+                              save_interval=save_interval)
+
+    initial_coordinates = torch.zeros((model.n_sims, model.n_particles, 3))
+
+    with tempfile.TemporaryDirectory() as tmp:
+        my_sim = Simulation(model, initial_coordinates, embeddings=None,
+                            beta=model.beta, length=model.sim_length,
+                            friction=model.friction, dt=model.dt,
+                            save_forces=False, save_potential=False,
+                            save_interval=model.save_interval,
+                            log=log_interval, log_type='write',
+                            filename= tmp+'/test')
+
+        traj = my_sim.simulate()
+        assert traj.shape[1] == sim_length / save_interval
+        file_list = os.listdir(tmp)
+
+        # Check that one file exists in the temp directory
+        assert len(file_list) == 1
+
+        # Check that it has the proper name
+        assert file_list[0] == 'test_log.txt'
+
+        # Gather its lines
+        with open(tmp+'/'+file_list[0]) as f:
+            line_list = f.readlines()
+
+    # We expect the log file to contain the expected number of logs, plus two
+    # extra lines: one at the start and one at the end. 
+    assert len(line_list) == n_expected_logs + 2
