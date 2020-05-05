@@ -100,19 +100,15 @@ class Simulation():
         identical for the same random seed
     device : torch.device (default=torch.device('cpu'))
         Device upon which simulation compuation will be carried out
-    save_npys : int or float (default=None)
+    save_npys : int (default=None)
         If not None, .npy files will be saved. If an int is given, then
-        the int specifies how many numpy files will be saved per observable.
-        Note that the actual number of files returned may be somewhat
-        greater if save_npys does not evenly divide the simulation length,
-        as the integer floor of length / save_npys will be used.
-        If a float between 0 and 1 is given, the float specifies at what
-        percentage of simulation completion the numpy files will be output.
-        All files should be the same shape except possibly the one with the
-        hightest index. Forces and potentials will also be saved according to
-        the save_forces and save_potential arguments, respectively. If friction
-        is not None, kinetic energies will also be saved. This method is only
-        implemented for a maximum of 1000 files per observable.
+        the int specifies at what intervals numpy files will be saved per
+        observable. This number must be an integer multiple of save_interval.
+        All output files should be the same shape. Forces and potentials will
+        also be saved according to the save_forces and save_potential
+        arguments, respectively. If friction is not None, kinetic energies
+        will also be saved. This method is only implemented for a maximum of
+        1000 files per observable due to file naming conventions.
     log : int or float (default=None)
         If not none, a log will be generated indicating simulation start and
         end times as well as completion updates at regular intervals. If an
@@ -301,7 +297,7 @@ class Simulation():
 
         # saving numpys
         if self.save_npys is not None:
-            if self.save_npys >= 1000 or self.save_npys <= 0.001:
+            if self.save_npys >= 1000:
                 raise ValueError(
         "Simulation saving is not implemented if more than 1000 files will be generated"
                     )
@@ -312,17 +308,13 @@ class Simulation():
                         "{}_coords_000.npy".format(self.filename))
                     )
 
-            if self.save_npys < 1:
-                self._npy_interval = self.length * self.save_npys
-            else:
-                self._npy_interval = self.save_npys
-
-            if self.save_npys % self.save_interval != 0:
-                raise ValueError(
-                "save_npys must be a multiple of save_interval"
-                    )
-            self._npy_file_index = 0
-            self._npy_starting_index = 0
+            if self.save_npys is not None:
+                if self.save_npys % self.save_interval != 0:
+                    raise ValueError(
+                    "Numpy saving must occur at a multiple of save_interval"
+                        )
+                self._npy_file_index = 0
+                self._npy_starting_index = 0
 
         # logging
         if self.log is not None:
@@ -655,7 +647,7 @@ class Simulation():
 
         # if relevant, save the remainder of the simulation
         if self.save_npys is not None:
-            if int(t+1) % self._npy_interval > 0:
+            if int(t+1) % self.save_npys > 0:
                 self._save_numpy(t+1)
 
         # if relevant, log that simulation has been completed
