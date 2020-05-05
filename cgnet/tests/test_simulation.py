@@ -468,3 +468,56 @@ def test_harmonic_potential_zero_friction():
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+def test_saving_numpy_coordinates_int():
+    # Tests, using a temporary directory, the saving of *coordinates*:
+    # (i)   That the number of numpy files saved is correct
+    # (ii)  That the saved numpy files have the proper shapes
+    # (iii) That the contatenation of the saved numpy files are equal to the
+    #        trajectory output from the simulation
+    n_sims = np.random.randint(1, high=5)
+    sim_length = np.random.choice([24, 36])
+    npy_interval = np.random.choice([6, 12])
+    save_interval = np.random.choice([2, 3])
+
+    n_expected_files = sim_length / npy_interval
+
+    model = HarmonicPotential(k=1, T=300, n_particles=10,
+                              dt=0.001, friction=None,
+                              n_sims=n_sims, sim_length=sim_length,
+                              save_interval=save_interval)
+
+    initial_coordinates = torch.zeros((model.n_sims, model.n_particles, 3))
+
+    with tempfile.TemporaryDirectory() as tmp:
+        my_sim = Simulation(model, initial_coordinates, embeddings=None,
+                            beta=model.beta, length=model.sim_length,
+                            friction=model.friction, dt=model.dt,
+                            save_forces=False, save_potential=False,
+                            save_interval=model.save_interval,
+                            save_npys=npy_interval, filename= tmp+'/test')
+
+        traj = my_sim.simulate()
+        assert traj.shape[1] == sim_length / save_interval
+        file_list = os.listdir(tmp)
+
+        assert len(file_list) == n_expected_files
+
+        expected_chunk_length = npy_interval / save_interval
+        running_traj = None # needed for (iii)
+        for i in range(len(file_list)):
+            temp_traj = np.load(tmp+'/'+file_list[i])
+            # Test (ii)
+            np.testing.assert_array_equal(temp_traj.shape,
+                            [n_sims, expected_chunk_length, model.n_particles, 3])
+
+            if running_traj is None:
+                running_traj= temp_traj
+            else:
+                running_traj = np.concatenate([running_traj, temp_traj], axis=1)
+
+        # Test (iii)
+        np.testing.assert_array_equal(traj, running_traj)
+
+
+

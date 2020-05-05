@@ -642,7 +642,7 @@ class Simulation():
                 # it only happens when time when time points are also recorded
                 if self.save_npys is not None:
                     if (t + 1) % self.save_npys == 0:
-                        self._save_numpy(t+1)
+                        self._save_numpy((t+1) // self.save_interval)
 
             # log if relevant
             if self.log is not None:
