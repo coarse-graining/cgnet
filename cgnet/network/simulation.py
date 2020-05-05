@@ -109,13 +109,11 @@ class Simulation():
         arguments, respectively. If friction is not None, kinetic energies
         will also be saved. This method is only implemented for a maximum of
         1000 files per observable due to file naming conventions.
-    log : int or float (default=None)
-        If not none, a log will be generated indicating simulation start and
+    log : int (default=None)
+        If not None, a log will be generated indicating simulation start and
         end times as well as completion updates at regular intervals. If an
         int is given, then the int specifies how many log statements will be
-        output. If a float between 0 and 1 is given, the float specifies at
-        what percentage of simulation completion the log statement will be
-        output.
+        output. This number must be a multiple of save_interval.
     log_type : 'print' or 'write' (default='write')
         Only relevant if log is not None. If 'print', a log statement will
         be printed. If 'write', the log will be written to a .txt file.
@@ -318,10 +316,10 @@ class Simulation():
 
         # logging
         if self.log is not None:
-            if self.log >= 1:
-                self._log_interval = self.length // self.log
-            if self.log < 1:
-                self._log_interval = np.ceil(self.length * self.log)
+            if self.log % self.save_interval != 0:
+                raise ValueError(
+                "Logging must occur at a multiple of save_interval"
+                    )
 
             if self.log_type == 'write':
                 self._log_file = self.filename + '_log.txt'
@@ -468,10 +466,8 @@ class Simulation():
 
     def _log_progress(self, iter_):
         """Utility to print log statement or write it to an text file"""
-        percent = np.round(iter_ / self.length, 2)
-
-        printstring = 'Iteration = {}; {}% finished ({})'.format(
-            iter_, int(100*percent), time.asctime())
+        printstring = '{}/{} time points stored ({})'.format(
+                       iter_, self.length // self.save_interval, time.asctime())
 
         if self.log_type == 'print':
             print(printstring)
@@ -636,10 +632,11 @@ class Simulation():
                     if (t + 1) % self.save_npys == 0:
                         self._save_numpy((t+1) // self.save_interval)
 
-            # log if relevant
-            if self.log is not None:
-                if int((t + 1) % self._log_interval) == 0:
-                    self._log_progress(t+1)
+                # log if relevant; this can be indented here because
+                # it only happens when time when time points are also recorded
+                if self.log is not None:
+                    if int((t + 1) % self.log) == 0:
+                        self._log_progress((t+1) // self.save_interval)
 
             # prepare for next timestep
             x_old = x_new.detach().requires_grad_(True).to(self.device)
