@@ -4,7 +4,9 @@
 import torch
 import numpy as np
 
-import os, time, warnings
+import os
+import time
+import warnings
 
 from cgnet.feature import SchnetFeature
 
@@ -170,7 +172,7 @@ class Simulation():
         if log_type not in ['print', 'write']:
             raise ValueError(
                 "log_type can be either 'print' or 'write'"
-                )
+            )
         self.log_type = log_type
         self.filename = filename
 
@@ -246,7 +248,7 @@ class Simulation():
             True).to(self.device)
 
         # set up simulatio parameters
-        if self.friction is not None: # langevin
+        if self.friction is not None:  # langevin
             if self.masses is None:
                 raise RuntimeError(
                     'if friction is not None, masses must be given'
@@ -286,31 +288,31 @@ class Simulation():
         if self.save_npys is not None and self.filename is None:
             raise RuntimeError(
                 "Must specify filename if save_npys isn't None"
-                )
+            )
         if self.log is not None:
             if self.log_type == 'write' and self.filename is None:
                 raise RuntimeError(
-                "Must specify filename if log isn't None and log_type=='write'"
-                    )
+                    "Must specify filename if log isn't None and log_type=='write'"
+                )
 
         # saving numpys
         if self.save_npys is not None:
             if self.save_npys >= 1000:
                 raise ValueError(
-        "Simulation saving is not implemented if more than 1000 files will be generated"
-                    )
+                    "Simulation saving is not implemented if more than 1000 files will be generated"
+                )
 
             if os.path.isfile("{}_coords_000.npy".format(self.filename)):
                 raise ValueError(
                     "{} already exists; choose a different filename.".format(
                         "{}_coords_000.npy".format(self.filename))
-                    )
+                )
 
             if self.save_npys is not None:
                 if self.save_npys % self.save_interval != 0:
                     raise ValueError(
-                    "Numpy saving must occur at a multiple of save_interval"
-                        )
+                        "Numpy saving must occur at a multiple of save_interval"
+                    )
                 self._npy_file_index = 0
                 self._npy_starting_index = 0
 
@@ -318,16 +320,17 @@ class Simulation():
         if self.log is not None:
             if self.log % self.save_interval != 0:
                 raise ValueError(
-                "Logging must occur at a multiple of save_interval"
-                    )
+                    "Logging must occur at a multiple of save_interval"
+                )
 
             if self.log_type == 'write':
                 self._log_file = self.filename + '_log.txt'
 
                 if os.path.isfile(self._log_file):
                     raise ValueError(
-                        "{} already exists; choose a different filename.".format(self._log_file)
-                        )
+                        "{} already exists; choose a different filename.".format(
+                            self._log_file)
+                    )
 
     def _set_up_simulation(self, overwrite):
         """Method to initialize helpful objects for simulation later
@@ -339,7 +342,7 @@ class Simulation():
         self._save_size = int(self.length/self.save_interval)
 
         self.simulated_coords = torch.zeros((self._save_size, self.n_sims, self.n_beads,
-                                           self.n_dims))
+                                             self.n_dims))
         if self.save_forces:
             self.simulated_forces = torch.zeros((self._save_size, self.n_sims,
                                                  self.n_beads, self.n_dims))
@@ -467,7 +470,7 @@ class Simulation():
     def _log_progress(self, iter_):
         """Utility to print log statement or write it to an text file"""
         printstring = '{}/{} time points saved ({})'.format(
-                       iter_, self.length // self.save_interval, time.asctime())
+            iter_, self.length // self.save_interval, time.asctime())
 
         if self.log_type == 'print':
             print(printstring)
@@ -490,30 +493,35 @@ class Simulation():
     def _save_numpy(self, iter_):
         """Utility to save numpy arrays"""
         key = self._get_numpy_count()
-        self.save_dict[key] = {} # debug
+        self.save_dict[key] = {}  # debug
 
         coords_to_export = self.simulated_coords[self._npy_starting_index:iter_]
         coords_to_export = self._swap_and_export(coords_to_export)
-        self.save_dict[key]['coords'] = coords_to_export # debug
-        np.save("{}_coords_{}.npy".format(self.filename, key), coords_to_export)
+        self.save_dict[key]['coords'] = coords_to_export  # debug
+        np.save("{}_coords_{}.npy".format(
+            self.filename, key), coords_to_export)
 
         if self.save_forces:
             forces_to_export = self.simulated_forces[self._npy_starting_index:iter_]
             forces_to_export = self._swap_and_export(forces_to_export)
-            self.save_dict[key]['forces'] = forces_to_export # debug
-            np.save("{}_forces_{}.npy".format(self.filename, key), forces_to_export)
+            self.save_dict[key]['forces'] = forces_to_export  # debug
+            np.save("{}_forces_{}.npy".format(
+                self.filename, key), forces_to_export)
 
         if self.save_potential:
             potentials_to_export = self.simulated_potential[self._npy_starting_index:iter_]
             potentials_to_export = self._swap_and_export(potentials_to_export)
-            self.save_dict[key]['potential'] = potentials_to_export # debug
-            np.save("{}_potential_{}.npy".format(self.filename, key), potentials_to_export)
+            self.save_dict[key]['potential'] = potentials_to_export  # debug
+            np.save("{}_potential_{}.npy".format(
+                self.filename, key), potentials_to_export)
 
         if self.friction is not None:
             kinetic_energies_to_export = self.kinetic_energies[self._npy_starting_index:iter_]
-            kinetic_energies_to_export = self._swap_and_export(kinetic_energies_to_export)
-            self.save_dict[key]['kes'] = kinetic_energies_to_export # debug
-            np.save("{}_ke_{}.npy".format(self.filename, key), kinetic_energies_to_export)
+            kinetic_energies_to_export = self._swap_and_export(
+                kinetic_energies_to_export)
+            self.save_dict[key]['kes'] = kinetic_energies_to_export  # debug
+            np.save("{}_ke_{}.npy".format(self.filename, key),
+                    kinetic_energies_to_export)
 
         self._npy_starting_index = iter_
         self._npy_file_index += 1
@@ -577,11 +585,11 @@ class Simulation():
         """
         self._set_up_simulation(overwrite)
 
-        self.save_dict = {} # debug
+        self.save_dict = {}  # debug
 
         if self.log is not None:
             printstring = "Generating {} simulations of length {} saved at {}-step intervals ({})".format(
-                    self.n_sims, self.length, self.save_interval, time.asctime())
+                self.n_sims, self.length, self.save_interval, time.asctime())
             if self.log_type == 'print':
                 print(printstring)
 
@@ -617,10 +625,10 @@ class Simulation():
                     self._save_numpy(t+1)
                 raise RuntimeError(
                     "NaN encountered in simulation; terminating."
-                    )
+                )
 
-            self._x_new = x_new #debug
-            self._v_new = v_new #debug
+            self._x_new = x_new  # debug
+            self._v_new = v_new  # debug
 
             # save to arrays if relevant
             if (t+1) % self.save_interval == 0:
@@ -660,19 +668,19 @@ class Simulation():
 
         # reshape output attributes
         self.simulated_coords = self._swap_and_export(
-                                                self.simulated_coords)
+            self.simulated_coords)
 
         if self.save_forces:
             self.simulated_forces = self._swap_and_export(
-                                                self.simulated_forces)
+                self.simulated_forces)
 
         if self.save_potential:
             self.simulated_potential = self._swap_and_export(
-                                                self.simulated_potential)
+                self.simulated_potential)
 
         if self.friction is not None:
             self.kinetic_energies = self._swap_and_export(
-                                                self.kinetic_energies)
+                self.kinetic_energies)
 
         self._simulated = True
 
