@@ -495,25 +495,21 @@ class Simulation():
     def _save_numpy(self, iter_):
         """Utility to save numpy arrays"""
         key = self._get_numpy_count()
-        self.save_dict[key] = {}  # debug
 
         coords_to_export = self.simulated_coords[self._npy_starting_index:iter_]
         coords_to_export = self._swap_and_export(coords_to_export)
-        self.save_dict[key]['coords'] = coords_to_export  # debug
         np.save("{}_coords_{}.npy".format(
             self.filename, key), coords_to_export)
 
         if self.save_forces:
             forces_to_export = self.simulated_forces[self._npy_starting_index:iter_]
             forces_to_export = self._swap_and_export(forces_to_export)
-            self.save_dict[key]['forces'] = forces_to_export  # debug
             np.save("{}_forces_{}.npy".format(
                 self.filename, key), forces_to_export)
 
         if self.save_potential:
             potentials_to_export = self.simulated_potential[self._npy_starting_index:iter_]
             potentials_to_export = self._swap_and_export(potentials_to_export)
-            self.save_dict[key]['potential'] = potentials_to_export  # debug
             np.save("{}_potential_{}.npy".format(
                 self.filename, key), potentials_to_export)
 
@@ -521,7 +517,6 @@ class Simulation():
             kinetic_energies_to_export = self.kinetic_energies[self._npy_starting_index:iter_]
             kinetic_energies_to_export = self._swap_and_export(
                 kinetic_energies_to_export)
-            self.save_dict[key]['kes'] = kinetic_energies_to_export  # debug
             np.save("{}_kineticenergy_{}.npy".format(self.filename, key),
                     kinetic_energies_to_export)
 
@@ -587,8 +582,6 @@ class Simulation():
         """
         self._set_up_simulation(overwrite)
 
-        self.save_dict = {}  # debug
-
         if self.log_interval is not None:
             printstring = "Generating {} simulations of length {} saved at {}-step intervals ({})".format(
                 self.n_sims, self.length, self.save_interval, time.asctime())
@@ -620,17 +613,6 @@ class Simulation():
 
             # step forward in time
             x_new, v_new = self._timestep(x_old, v_old, forces)
-
-            # check for nans
-            if np.any(np.isnan(x_new.detach().numpy())):
-                if self.export_interval is not None:
-                    self._save_numpy(t+1)
-                raise RuntimeError(
-                    "NaN encountered in simulation; terminating."
-                )
-
-            self._x_new = x_new  # debug
-            self._v_new = v_new  # debug
 
             # save to arrays if relevant
             if (t+1) % self.save_interval == 0:
