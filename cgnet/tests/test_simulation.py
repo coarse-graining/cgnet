@@ -474,7 +474,7 @@ def test_harmonic_potential_zero_friction():
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 
-def test_saving_numpy_coordinates_int():
+def test_saving_numpy_coordinates():
     # Tests, using a temporary directory, the saving of *coordinates*
     # from a Brownian (overdamped Langevin) simulation
     # (i)   That the number of numpy files saved is correct
@@ -527,9 +527,9 @@ def test_saving_numpy_coordinates_int():
         np.testing.assert_array_equal(traj, running_traj)
 
 
-def test_saving_all_quantities_int():
+def test_saving_all_quantities():
     # Tests, using a temporary directory, the saving of coordinates,
-    # forces, potential, and kinetic enregis from a Langevin simulation
+    # forces, potential, and kinetic energies from a Langevin simulation
     # (i)   That the number of numpy files saved is correct
     # (ii)  That the saved numpy files have the proper shapes
     # (iii) That the contatenation of the saved numpy files are equal to the
