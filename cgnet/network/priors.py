@@ -19,8 +19,10 @@ class _AbstractPriorLayer(nn.Module):
         mathematical steps to form each specific energy contribution to the
         potential energy.;
         """
-        raise NotImplementedError('forward() method must be overridden in \
-                                custom classes inheriting from _AbstractPriorLayer()')
+        raise NotImplementedError(
+            'forward() method must be overridden in \
+            custom classes inheriting from _AbstractPriorLayer()'
+                                  )
 
 class _PriorLayer(_AbstractPriorLayer):
     """Layer for adding prior energy computations external to CGnet hidden
