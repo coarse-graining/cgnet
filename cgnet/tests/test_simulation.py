@@ -2,6 +2,8 @@
 # Contributors: Andreas Kraemer
 
 import numpy as np
+import os
+import tempfile
 import torch
 import torch.nn as nn
 
@@ -284,10 +286,10 @@ def test_langevin_simulation_safety():
     traj2 = sim.simulate(overwrite=True)
     assert sim._simulated
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# The following tests are functional tests based on simulations on a        #
-# harmonic potential                                                        #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# The following tests are functional tests based on simulations on a  #
+# harmonic potential                                                  #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 
 class HarmonicPotential():
@@ -339,7 +341,8 @@ class HarmonicPotential():
     def __call__(self, positions, embeddings=None):
         """in kilojoule/mole/nm"""
         forces = -self.k * positions
-        potential = torch.zeros(1)  # dont need meaningful values here
+        # dont need meaningful values here
+        potential = torch.zeros(*forces.shape)
         return potential, forces
 
 
@@ -390,7 +393,7 @@ def test_harmonic_potential_several_temperatures():
     # Tests several harmonic potential simulations for correct temperature.
     # The standard deviation in measured temperature across the simulation
     # is expected to increase as the temperature increases. Heursitically I
-    # observed it doesn't tend to exceed a standard deviation of 25 for
+    # observed it doesn't tend to exceed a standard deviation of 30 for
     # simulation lengths of 500 and max temperatures of 900.
 
     temp_parameter = [100, 300, 500, 700, 900]
@@ -431,7 +434,7 @@ def test_harmonic_potential_several_temperatures():
 
     # Test that the stdevs are all less than 25 (heuristic)
     np.testing.assert_array_less(std_temp_measured,
-                                 np.repeat(25, len(temp_parameter)))
+                                 np.repeat(30, len(temp_parameter)))
 
     # Test that the stdevs go up as the temperature goes up
     np.testing.assert_array_equal(std_temp_measured,
@@ -464,3 +467,186 @@ def test_harmonic_potential_zero_friction():
     np.testing.assert_array_equal(traj, np.zeros(traj.shape))
     np.testing.assert_array_equal(my_sim.kinetic_energies,
                                   np.zeros(my_sim.kinetic_energies.shape))
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# The following tests use temporary directories to test the functionality #
+# of exporting .npy files and recording logs as the simulation progresses #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+
+def test_saving_numpy_coordinates():
+    # Tests, using a temporary directory, the saving of *coordinates*
+    # from a Brownian (overdamped Langevin) simulation
+    # (i)   That the number of numpy files saved is correct
+    # (ii)  That the saved numpy files have the proper shapes
+    # (iii) That the contatenation of the saved numpy files are equal to the
+    #        trajectory output from the simulation
+    n_sims = np.random.randint(1, high=5)
+    sim_length = np.random.choice([24, 36])
+    npy_interval = np.random.choice([6, 12])
+    save_interval = np.random.choice([2, 3])
+
+    n_expected_files = sim_length / npy_interval
+
+    model = HarmonicPotential(k=1, T=300, n_particles=10,
+                              dt=0.001, friction=None,
+                              n_sims=n_sims, sim_length=sim_length,
+                              save_interval=save_interval)
+
+    initial_coordinates = torch.zeros((model.n_sims, model.n_particles, 3))
+
+    with tempfile.TemporaryDirectory() as tmp:
+        my_sim = Simulation(model, initial_coordinates, embeddings=None,
+                            beta=model.beta, length=model.sim_length,
+                            friction=model.friction, dt=model.dt,
+                            save_forces=False, save_potential=False,
+                            save_interval=model.save_interval,
+                            export_interval=npy_interval, filename=tmp+'/test')
+
+        traj = my_sim.simulate()
+        assert traj.shape[1] == sim_length / save_interval
+        file_list = os.listdir(tmp)
+
+        assert len(file_list) == n_expected_files
+
+        expected_chunk_length = npy_interval / save_interval
+        running_traj = None  # needed for (iii)
+        for i in range(len(file_list)):
+            temp_traj = np.load(tmp+'/'+file_list[i])
+            # Test (ii)
+            np.testing.assert_array_equal(temp_traj.shape,
+                                          [n_sims, expected_chunk_length, model.n_particles, 3])
+
+            if running_traj is None:
+                running_traj = temp_traj
+            else:
+                running_traj = np.concatenate(
+                    [running_traj, temp_traj], axis=1)
+
+        # Test (iii)
+        np.testing.assert_array_equal(traj, running_traj)
+
+
+def test_saving_all_quantities():
+    # Tests, using a temporary directory, the saving of coordinates,
+    # forces, potential, and kinetic energies from a Langevin simulation
+    # (i)   That the number of numpy files saved is correct
+    # (ii)  That the saved numpy files have the proper shapes
+    # (iii) That the contatenation of the saved numpy files are equal to the
+    #        trajectory output from the simulation
+    n_sims = np.random.randint(1, high=5)
+    sim_length = np.random.choice([24, 36])
+    npy_interval = np.random.choice([6, 12])
+    save_interval = np.random.choice([2, 3])
+
+    n_expected_files = sim_length / npy_interval
+
+    model = HarmonicPotential(k=1, T=300, n_particles=10,
+                              dt=0.001, friction=10,
+                              n_sims=n_sims, sim_length=sim_length,
+                              save_interval=save_interval)
+
+    initial_coordinates = torch.zeros((model.n_sims, model.n_particles, 3))
+
+    with tempfile.TemporaryDirectory() as tmp:
+        my_sim = Simulation(model, initial_coordinates, embeddings=None,
+                            beta=model.beta, length=model.sim_length,
+                            friction=model.friction, dt=model.dt,
+                            save_forces=True, save_potential=True,
+                            masses=model.masses,
+                            save_interval=model.save_interval,
+                            export_interval=npy_interval, filename=tmp+'/test')
+
+        traj = my_sim.simulate()
+        assert traj.shape[1] == sim_length / save_interval
+        file_list = os.listdir(tmp)
+
+        assert len(file_list) == n_expected_files * 4  # coords, forces, pot, ke
+        coords_file_list = sorted(
+            [file for file in file_list if 'coords' in file])
+        force_file_list = sorted(
+            [file for file in file_list if 'forces' in file])
+        potential_file_list = sorted(
+            [file for file in file_list if 'potential' in file])
+        ke_file_list = sorted(
+            [file for file in file_list if 'kineticenergy' in file])
+        file_list_list = [coords_file_list, force_file_list,
+                          potential_file_list, ke_file_list]
+        expected_chunk_length = npy_interval / save_interval
+
+        # needed for (iii)
+        running_coords = None
+        running_forces = None
+        running_potential = None
+        running_ke = None
+        running_list = [running_coords, running_forces,
+                        running_potential, running_ke]
+
+        obs_list = [my_sim.simulated_coords, my_sim.simulated_forces,
+                    my_sim.simulated_potential, my_sim.kinetic_energies]
+
+        for j, obs_file_list in enumerate(file_list_list):
+            for i in range(len(obs_file_list)):
+                temp_traj = np.load(tmp+'/'+obs_file_list[i])
+                # Test (ii)
+                if j < 3:
+                    np.testing.assert_array_equal(temp_traj.shape,
+                                                  [n_sims, expected_chunk_length, model.n_particles, 3])
+                else:
+                    np.testing.assert_array_equal(temp_traj.shape,
+                                                  [n_sims, expected_chunk_length])
+
+                if running_list[j] is None:
+                    running_list[j] = temp_traj
+                else:
+                    running_list[j] = np.concatenate(
+                        [running_list[j], temp_traj], axis=1)
+
+            # Test (iii)
+            np.testing.assert_array_equal(obs_list[j], running_list[j])
+
+
+def test_log_file_basics():
+    # Tests whether the log file exists, is named correctly, and has the
+    # correct number of lines
+
+    n_sims = np.random.randint(1, high=5)
+    sim_length = np.random.choice([24, 36])
+    log_interval = np.random.choice([6, 12])
+    save_interval = np.random.choice([2, 3])
+
+    n_expected_logs = sim_length / log_interval
+
+    model = HarmonicPotential(k=1, T=300, n_particles=10,
+                              dt=0.001, friction=None,
+                              n_sims=n_sims, sim_length=sim_length,
+                              save_interval=save_interval)
+
+    initial_coordinates = torch.zeros((model.n_sims, model.n_particles, 3))
+
+    with tempfile.TemporaryDirectory() as tmp:
+        my_sim = Simulation(model, initial_coordinates, embeddings=None,
+                            beta=model.beta, length=model.sim_length,
+                            friction=model.friction, dt=model.dt,
+                            save_forces=False, save_potential=False,
+                            save_interval=model.save_interval,
+                            log_interval=log_interval, log_type='write',
+                            filename=tmp+'/test')
+
+        traj = my_sim.simulate()
+        assert traj.shape[1] == sim_length / save_interval
+        file_list = os.listdir(tmp)
+
+        # Check that one file exists in the temp directory
+        assert len(file_list) == 1
+
+        # Check that it has the proper name
+        assert file_list[0] == 'test_log.txt'
+
+        # Gather its lines
+        with open(tmp+'/'+file_list[0]) as f:
+            line_list = f.readlines()
+
+    # We expect the log file to contain the expected number of logs, plus two
+    # extra lines: one at the start and one at the end.
+    assert len(line_list) == n_expected_logs + 2
