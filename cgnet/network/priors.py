@@ -1,10 +1,13 @@
 # Author: Nick Charron
-# Contributors: Brooke Husic, Dominik Lemm, Jiang Wang
+# Contributors: Brooke Husic, Dominik Lemm, Jiang Wang, Simon Olsson
 
 import torch
 import torch.nn as nn
 
 class _AbstractPriorLayer(nn.Module):
+    """Abstract Layer for definition of priors, which only imposes the minimal
+    functional constraints to enable model estimation and inference. 
+    """
     def __init__(self):
         super(_AbstractPriorLayer, self).__init__()
         self.callback_indices = slice(None, None)
@@ -15,7 +18,7 @@ class _AbstractPriorLayer(nn.Module):
         Notes
         -----
         This must be explicitly implemented in a child class that inherits from
-        _PriorLayer(). The details of this method should encompass the
+        _AbstractPriorLayer(). The details of this method should encompass the
         mathematical steps to form each specific energy contribution to the
         potential energy.;
         """
