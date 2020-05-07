@@ -1,11 +1,33 @@
 # Author: Nick Charron
-# Contributors: Brooke Husic, Dominik Lemm, Jiang Wang
+# Contributors: Brooke Husic, Dominik Lemm, Jiang Wang, Simon Olsson
 
 import torch
 import torch.nn as nn
 
+class _AbstractPriorLayer(nn.Module):
+    """Abstract Layer for definition of priors, which only imposes the minimal
+    functional constraints to enable model estimation and inference. 
+    """
+    def __init__(self):
+        super(_AbstractPriorLayer, self).__init__()
+        self.callback_indices = slice(None, None)
 
-class _PriorLayer(nn.Module):
+    def forward(self, x):
+        """Forward method to compute the prior energy contribution.
+
+        Notes
+        -----
+        This must be explicitly implemented in a child class that inherits from
+        _AbstractPriorLayer(). The details of this method should encompass the
+        mathematical steps to form each specific energy contribution to the
+        potential energy.;
+        """
+        raise NotImplementedError(
+            'forward() method must be overridden in \
+            custom classes inheriting from _AbstractPriorLayer()'
+                                  )
+
+class _PriorLayer(_AbstractPriorLayer):
     """Layer for adding prior energy computations external to CGnet hidden
     output
 
@@ -74,21 +96,6 @@ class _PriorLayer(nn.Module):
                 )
         self.interaction_parameters = interaction_parameters
         self.callback_indices = callback_indices
-
-    def forward(self, in_feat):
-        """Forward method to compute the prior energy contribution.
-
-        Notes
-        -----
-        This must be explicitly implemented in a child class that inherits from
-        _PriorLayer(). The details of this method should encompass the
-        mathematical steps to form each specific energy contribution to the
-        potential energy.;
-        """
-
-        raise NotImplementedError('forward() method must be overridden in \
-                                custom classes inheriting from _PriorLayer()')
-
 
 class RepulsionLayer(_PriorLayer):
     """Layer for calculating pairwise repulsion energy prior. Pairwise repulsion
