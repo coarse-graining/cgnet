@@ -287,7 +287,7 @@ def test_cgschnet_simulation_shapes():
 
     traj = sim.simulate()
 
-    np.testing.assert_array_equal(sim.simulated_traj.shape,
+    np.testing.assert_array_equal(sim.simulated_coords.shape,
                                   [n_frames, sim_length, n_beads, 3])
     np.testing.assert_array_equal(sim.simulated_forces.shape,
                                   [n_frames, sim_length, n_beads, 3])
