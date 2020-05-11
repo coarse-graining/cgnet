@@ -7,7 +7,8 @@ from torch.utils.data import DataLoader, Dataset
 import numpy as np
 import warnings
 
-from cgnet.feature import GeometryFeature, SchnetFeature, FeatureCombiner
+from cgnet.feature import (GeometryFeature, SchnetFeature, FeatureCombiner,
+                           MultiMoleculeDataset)
 
 
 def _schnet_feature_linear_extractor(schnet_feature, return_weight_data_only=False):
@@ -314,8 +315,8 @@ def dataset_loss(model, loader, optimizer=None,
                 "The first batch was not the largest batch, so you cannot use "
                 "dataset loss."
             )
-
-        if loader.dataset.embeddings is not None:
+        if (isinstance(loader.dataset, MultiMoleculeDataset) or
+            loader.dataset.embeddings is not None):
             potential, predicted_force = model.forward(coords,
                                                        embedding_property=embedding_property)
         else:
