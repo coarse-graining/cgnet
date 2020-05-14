@@ -259,7 +259,8 @@ class Simulation():
                 raise ValueError(
                     'mass list length must be number of CG beads'
                 )
-            self.masses = torch.tensor(self.masses, dtype=torch.float32).to(self.device)
+            self.masses = torch.tensor(self.masses, dtype=torch.float32
+                                       ).to(self.device)
 
             self.vscale = np.exp(-self.dt * self.friction)
             self.noisescale = np.sqrt(1 - self.vscale * self.vscale)
@@ -601,7 +602,8 @@ class Simulation():
             v_old = None
         else:
             # initialize velocities at zero
-            v_old = torch.tensor(np.zeros(x_old.shape), dtype=torch.float32).to(self.device)
+            v_old = torch.tensor(np.zeros(x_old.shape),
+                                 dtype=torch.float32).to(self.device)
             # v_old = v_old + torch.randn(size=v_old.size(),
             #                             generator=self.rng).to(self.device)
 
