@@ -398,7 +398,7 @@ class Simulation():
         x_new = x_old + v_new * self.dt / 2.
 
         # O (noise)
-        noise = np.sqrt(1. / self.beta / self.masses[:, None])
+        noise = torch.sqrt(1. / self.beta / self.masses[:, None])
         noise = noise * torch.randn(size=x_new.size(),
                                     generator=self.rng).to(self.device)
         v_new = v_new * self.vscale
