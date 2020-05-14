@@ -249,7 +249,7 @@ class Simulation():
         self._initial_x = self.initial_coordinates.detach().requires_grad_(
             True).to(self.device)
 
-        # set up simulatio parameters
+        # set up simulation parameters
         if self.friction is not None:  # langevin
             if self.masses is None:
                 raise RuntimeError(
@@ -299,7 +299,7 @@ class Simulation():
 
         # saving numpys
         if self.export_interval is not None:
-            if self.export_interval >= 1000:
+            if self.length // self.export_interval >= 1000:
                 raise ValueError(
                     "Simulation saving is not implemented if more than 1000 files will be generated"
                 )
