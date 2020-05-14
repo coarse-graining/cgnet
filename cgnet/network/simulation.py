@@ -601,7 +601,7 @@ class Simulation():
             v_old = None
         else:
             # initialize velocities at zero
-            v_old = torch.tensor(np.zeros(x_old.shape), dtype=torch.float32)
+            v_old = torch.tensor(np.zeros(x_old.shape), dtype=torch.float32).to(self.device)
             # v_old = v_old + torch.randn(size=v_old.size(),
             #                             generator=self.rng).to(self.device)
 
