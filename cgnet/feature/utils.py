@@ -122,6 +122,76 @@ class RadialBasisFunction(nn.Module):
             gaussian_exp = gaussian_exp * distance_mask[:, :, :, None]
         return gaussian_exp
 
+class RangedRBF(nn.Module):
+    """This represents a series of gaussian radial basis functions that
+       are uniformly spaced between two specified endpoints; unlike
+       RadialBasisFunction, this class allows the specifiecation of a
+       lower bound in the distances
+
+    Parameters
+    ----------
+    low_cutoff : float (default=2.0)
+        Lower bound distance cutoff for the Gaussian function. This cutoff
+        represents the center of the first Gaussian function in the basis.
+    high_cutoff : float (default=5.0)
+        Upper bound distance cutoff for the Gaussian function. This cutoff
+        represents the center of the last gaussian function in basis.
+    n_gaussians : int (default=50)
+        Total number of Gaussian functions to calculate. Number will be used to
+        create a uniform grid from low_cutoff to high_cutoff. The number of
+        Gaussians will also decide the output size of the RBF layer output
+        ([n_examples, n_beads, n_neighbors, n_gauss]). The default number of
+        gaussians is the same as that in SchnetPack (Schutt et al, 2019).
+    variance : float (default=1.0)
+        The variance (standard deviation squared) of the Gaussian functions.
+    normalize_output : bool (default=True)
+        If True, the ouptut tensor of this layer is normalized by
+        sum of outputs of all functions in the basis
+    """
+
+    def __init__(self, low_cutoff=2.0, high_cutoff=5.0, n_gaussians=50,
+                 variance=1.0, normalize_output=True):
+        super(RangedRBF, self).__init__()
+        self.register_buffer('centers', torch.linspace(low_cutoff,
+                             high_cutoff, n_gaussians))
+        self.variance = variance
+        self.normalize_output = normalize_output
+
+    def forward(self, distances, distance_mask=None):
+        """Calculate Gaussian expansion
+
+        Parameters
+        ----------
+        distances : torch.Tensor
+            Interatomic distances of size [n_examples, n_beads, n_neighbors]
+        distance_mask : torch.Tensor
+            Mask of shape [n_examples, n_beads, n_neighbors] to filter out
+            contributions from non-physical beads introduced from padding
+            examples from molecules with varying sizes
+
+        Returns
+        -------
+        gaussian_exp: torch.Tensor
+            Gaussian expansions of size [n_examples, n_beads, n_neighbors,
+            n_gauss]
+        """
+        dist_centered_squared = torch.pow(distances.unsqueeze(dim=3) -
+                                          self.centers, 2)
+        gaussian_exp = torch.exp(-(0.5 / self.variance)
+                                 * dist_centered_squared)
+
+        # Mask the output of the radial distribution with the distance mask
+        if distance_mask is not None:
+            gaussian_exp = gaussian_exp * distance_mask[:, :, :, None]
+        if self.normalize_output:
+            # normalize by the sum over all basis functions
+            return gaussian_exp / torch.sum(guassian_exp, -1)
+        else:
+            return gaussian_exp
+
+
+class LogNormalRBF(nn.Module):
+
 
 class ModulatedRBF(nn.Module):
     r"""Radial basis function (RBF) layer
