@@ -249,7 +249,7 @@ class Simulation():
         self._initial_x = self.initial_coordinates.detach().requires_grad_(
             True).to(self.device)
 
-        # set up simulatio parameters
+        # set up simulation parameters
         if self.friction is not None:  # langevin
             if self.masses is None:
                 raise RuntimeError(
@@ -259,7 +259,8 @@ class Simulation():
                 raise ValueError(
                     'mass list length must be number of CG beads'
                 )
-            self.masses = torch.tensor(self.masses, dtype=torch.float32)
+            self.masses = torch.tensor(self.masses, dtype=torch.float32
+                                       ).to(self.device)
 
             self.vscale = np.exp(-self.dt * self.friction)
             self.noisescale = np.sqrt(1 - self.vscale * self.vscale)
@@ -299,7 +300,7 @@ class Simulation():
 
         # saving numpys
         if self.export_interval is not None:
-            if self.export_interval >= 1000:
+            if self.length // self.export_interval >= 1000:
                 raise ValueError(
                     "Simulation saving is not implemented if more than 1000 files will be generated"
                 )
@@ -398,7 +399,7 @@ class Simulation():
         x_new = x_old + v_new * self.dt / 2.
 
         # O (noise)
-        noise = np.sqrt(1. / self.beta / self.masses[:, None])
+        noise = torch.sqrt(1. / self.beta / self.masses[:, None])
         noise = noise * torch.randn(size=x_new.size(),
                                     generator=self.rng).to(self.device)
         v_new = v_new * self.vscale
@@ -601,7 +602,8 @@ class Simulation():
             v_old = None
         else:
             # initialize velocities at zero
-            v_old = torch.tensor(np.zeros(x_old.shape), dtype=torch.float32)
+            v_old = torch.tensor(np.zeros(x_old.shape),
+                                 dtype=torch.float32).to(self.device)
             # v_old = v_old + torch.randn(size=v_old.size(),
             #                             generator=self.rng).to(self.device)
 
