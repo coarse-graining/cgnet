@@ -291,6 +291,7 @@ class SchnetFeature(nn.Module):
                  calculate_geometry=None,
                  basis_function_type='uniform',
                  neighbor_cutoff=None,
+                 low_cutoff=2.0,
                  rbf_cutoff=5.0,
                  n_gaussians=50,
                  normalization_layer=None,
@@ -311,6 +312,11 @@ class SchnetFeature(nn.Module):
             self.rbf_layer = ModulatedRBF(cutoff=rbf_cutoff,
                                           n_gaussians=n_gaussians,
                                           device=self.device)
+        elif basis_function_type == 'ranged':
+            self.rbf_layer = RangedRBF(low_cutoff=low_cutoff,
+                                       high_cutoff=rbf_cutoff,
+                                       n_gaussians=n_gaussians,
+                                       variance=variance)
         else:
             raise RuntimeError(
                 "Basis function type must be 'uniform' or 'modulated'.")
