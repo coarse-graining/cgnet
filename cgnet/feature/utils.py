@@ -185,12 +185,10 @@ class RangedRBF(nn.Module):
             gaussian_exp = gaussian_exp * distance_mask[:, :, :, None]
         if self.normalize_output:
             # normalize by the sum over all basis functions
-            return gaussian_exp / torch.sum(guassian_exp, -1)
+            normalizations = torch.sum(gaussian_exp, dim=3)
+            return gaussian_exp / normalizations[:, :, :, None]
         else:
             return gaussian_exp
-
-
-class LogNormalRBF(nn.Module):
 
 
 class ModulatedRBF(nn.Module):

@@ -10,7 +10,7 @@ from cgnet.network import (CGnet, ForceLoss, RepulsionLayer,
                            HarmonicLayer, ZscoreLayer, Simulation)
 from cgnet.feature import (GeometryStatistics, GeometryFeature,
                            LinearLayer, FeatureCombiner, SchnetFeature,
-                           CGBeadEmbedding)
+                           CGBeadEmbedding, RadialBasisFunction)
 
 # The following sets up data for linear regession comparison test
 x0 = torch.rand((50, 1), requires_grad=True)  # 50 1D input examples
@@ -377,8 +377,10 @@ def test_bead_energy_masking():
             + LinearLayer(rand, 1, bias=True, activation=nn.Tanh()))
 
     # Next we create a basic SchnetFeature 
+    rbf_layer = RadialBasisFunction()
     feature = SchnetFeature(num_feats,
                             embedding_layer=embedding_layer,
+                            rbf_layer=rbf_layer,
                             n_interaction_blocks=np.random.randint(2, 5),
                             calculate_geometry=True,
                             n_beads=beads)

@@ -4,7 +4,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 from cgnet.feature import (FeatureCombiner, GeometryFeature, GeometryStatistics,
-                           LinearLayer, SchnetFeature, CGBeadEmbedding)
+                           LinearLayer, SchnetFeature, CGBeadEmbedding,
+                           RadialBasisFunction)
 from cgnet.network import (CGnet, ForceLoss, HarmonicLayer, ZscoreLayer,
                            Simulation)
 
@@ -41,8 +42,10 @@ def _get_random_schnet_feature(calculate_geometry=False):
                                        size=(n_frames, n_beads))
     embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
                                       embedding_dim=embedding_dim)
+    rbf_layer = RadialBasisFunction()
     schnet_feature = SchnetFeature(feature_size=feature_size,
                                    embedding_layer=embedding_layer,
+                                   rbf_layer=rbf_layer,
                                    n_interaction_blocks=n_interaction_blocks,
                                    calculate_geometry=calculate_geometry,
                                    n_beads=n_beads,
