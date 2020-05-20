@@ -9,7 +9,7 @@ import torch.nn as nn
 from cgnet.feature import (ContinuousFilterConvolution, InteractionBlock,
                            SchnetFeature, CGBeadEmbedding, GeometryStatistics,
                            Geometry, ShiftedSoftplus, SimpleNormLayer,
-                           NeighborNormLayer, RadialBasisFunction)
+                           NeighborNormLayer, GaussianRBF)
 
 g = Geometry(method='torch')
 
@@ -163,7 +163,7 @@ def test_shared_weights():
     # Tests the weight sharing functionality of the interaction block
     feature_size = np.random.randint(4, 8)
 
-    rbf_layer = RadialBasisFunction()
+    rbf_layer = GaussianRBF()
 
     # Initialize two Schnet networks
     # With and without weight sharing, respectively.
@@ -201,7 +201,7 @@ def test_schnet_feature_geometry():
     # Tests SchnetFeature's calls to the Geometry class for
     # distance calculations
     # First, we instance a SchnetFeature that can call to Geometry
-    rbf_layer = RadialBasisFunction()
+    rbf_layer = GaussianRBF()
     schnet_feature = SchnetFeature(feature_size=n_feats,
                                    embedding_layer=None,
                                    rbf_layer=rbf_layer,
@@ -238,7 +238,7 @@ def test_schnet_feature():
     # Initialize the embedding and SchnetFeature class
     embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
                                       embedding_dim=n_feats)
-    rbf_layer = RadialBasisFunction()
+    rbf_layer = GaussianRBF()
     schnet_feature = SchnetFeature(feature_size=n_feats,
                                    embedding_layer=embedding_layer,
                                    rbf_layer=rbf_layer,
@@ -320,7 +320,7 @@ def test_schnet_activations():
     # Here we instance an random number of interaction blocks
     interaction_blocks = np.random.randint(1, high=5,
                                            size=len(alt_activations))
-    rbf_layer = RadialBasisFunction()
+    rbf_layer = GaussianRBF()
     # Here, we loop through all the activations and make sure that
     # they appear where they should in the model
     for activation, activation_class, iblock in zip(alt_activations,
@@ -348,7 +348,7 @@ def test_schnet_activation_default():
     # is correctly placed in the SchnetFeature
 
     interaction_blocks = np.random.randint(1, high=5)
-    rbf_layer = RadialBasisFunction()
+    rbf_layer = GaussianRBF()
     schnet_feature = SchnetFeature(feature_size=n_feats,
                                    embedding_layer=None,
                                    rbf_layer=rbf_layer,

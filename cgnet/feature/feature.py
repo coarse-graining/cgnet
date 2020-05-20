@@ -7,8 +7,7 @@ import numpy as np
 import warnings
 
 from .geometry import Geometry
-from .utils import (RadialBasisFunction, ModulatedRBF, ShiftedSoftplus,
-                   RangedRBF)
+from .utils import (GaussianRBF, PolynomialCutoffRBF, ShiftedSoftplus)
 from .schnet_utils import InteractionBlock
 
 

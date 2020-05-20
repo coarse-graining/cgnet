@@ -11,7 +11,7 @@ from cgnet.network import (lipschitz_projection, dataset_loss, CGnet,
 from cgnet.network.utils import _schnet_feature_linear_extractor
 from cgnet.feature import (MoleculeDataset, LinearLayer, SchnetFeature,
                            CGBeadEmbedding, GeometryFeature, FeatureCombiner,
-                           GeometryStatistics, RadialBasisFunction)
+                           GeometryStatistics, GaussianRBF)
 from nose.tools import assert_raises
 
 # Here we create testing data from a random linear protein
@@ -62,7 +62,7 @@ neighbor_cutoff = np.random.uniform(0, 1)  # random neighbor cutoff
 # random embedding property
 embedding_layer = CGBeadEmbedding(n_embeddings=num_embeddings,
                                   embedding_dim=feature_size)
-rbf_layer = RadialBasisFunction()
+rbf_layer = GaussianRBF()
 
 # Here we use the above variables to create the SchnetFeature
 schnet_feature = SchnetFeature(feature_size=feature_size,

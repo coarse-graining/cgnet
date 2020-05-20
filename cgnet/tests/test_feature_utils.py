@@ -4,7 +4,7 @@
 import numpy as np
 import torch
 
-from cgnet.feature.utils import (RadialBasisFunction, ModulatedRBF,
+from cgnet.feature.utils import (GaussianRBF, PolynomialCutoffRBF,
                                  ShiftedSoftplus)
 from cgnet.feature.statistics import GeometryStatistics
 from cgnet.feature.feature import GeometryFeature, Geometry
@@ -26,7 +26,7 @@ def test_radial_basis_function():
     cutoff = np.random.uniform(1.0, 5.0)
 
     # Calculate Gaussian expansion using the implemented layer
-    rbf = RadialBasisFunction(cutoff=cutoff, n_gaussians=n_gaussians,
+    rbf = GaussianRBF(cutoff=cutoff, n_gaussians=n_gaussians,
                               variance=variance)
     gauss_layer = rbf.forward(distances)
 
@@ -48,7 +48,7 @@ def test_radial_basis_function():
 
 def test_radial_basis_function_distance_masking():
     # Makes sure that if a distance mask is used, the corresponding
-    # expanded distances returned by RadialBasisFunction are zero
+    # expanded distances returned by GaussianRBF are zero
 
     # Distances need to have shape (n_batch, n_beads, n_neighbors)
     distances = torch.randn((frames, beads, beads - 1))
@@ -60,7 +60,7 @@ def test_radial_basis_function_distance_masking():
     neighbors, neighbor_mask = g.get_neighbors(distances, cutoff=neighbor_cutoff)
 
     # Calculate Gaussian expansion using the implemented layer
-    rbf = RadialBasisFunction(cutoff=cutoff, n_gaussians=n_gaussians,
+    rbf = GaussianRBF(cutoff=cutoff, n_gaussians=n_gaussians,
                               variance=variance)
     gauss_layer = rbf.forward(distances, distance_mask=neighbor_mask)
 
@@ -87,7 +87,7 @@ def test_modulated_rbf():
     cutoff = np.random.uniform(5.0, 10.0)
 
     # Calculate Gaussian expansion using the implemented layer
-    modulated_rbf = ModulatedRBF(cutoff=cutoff,
+    modulated_rbf = PolynomialCutoffRBF(cutoff=cutoff,
                                      n_gaussians=n_gaussians,
                                      tolerance=1e-8)
     modulated_rbf_layer = modulated_rbf.forward(torch.tensor(distances))
@@ -129,7 +129,7 @@ def test_modulated_rbf():
 
 def test_modulated_rbf_distance_masking():
     # Makes sure that if a distance mask is used, the corresponding
-    # expanded distances returned by ModulatedRBF are zero
+    # expanded distances returned by PolynomialCutoffRBF are zero
 
     # Distances need to have shape (n_batch, n_beads, n_neighbors)
     distances = torch.randn((frames, beads, beads - 1))
@@ -140,7 +140,7 @@ def test_modulated_rbf_distance_masking():
     neighbors, neighbor_mask = g.get_neighbors(distances, cutoff=neighbor_cutoff)
 
     # Calculate Gaussian expansion using the implemented layer
-    modulated_rbf = ModulatedRBF(cutoff=cutoff,
+    modulated_rbf = PolynomialCutoffRBF(cutoff=cutoff,
                                      n_gaussians=n_gaussians,
                                      tolerance=1e-8)
     modulated_rbf_layer = modulated_rbf.forward(torch.tensor(distances),
@@ -186,7 +186,7 @@ def test_modulated_rbf_zero_cutoff():
     # First, we generate a modulated RBF layer with a random number
     # of gaussians and a cutoff of zero
     n_gaussians = np.random.randint(5, 10)
-    modulated_rbf = ModulatedRBF(n_gaussians=n_gaussians,
+    modulated_rbf = PolynomialCutoffRBF(n_gaussians=n_gaussians,
                                      cutoff=0.0)
     # First we test to see that \beta is infinite
     np.testing.assert_equal(np.inf, modulated_rbf.beta)

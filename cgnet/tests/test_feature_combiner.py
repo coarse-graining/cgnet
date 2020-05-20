@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from cgnet.feature import (FeatureCombiner, GeometryFeature, GeometryStatistics,
                            LinearLayer, SchnetFeature, CGBeadEmbedding,
-                           RadialBasisFunction)
+                           GaussianRBF)
 from cgnet.network import (CGnet, ForceLoss, HarmonicLayer, ZscoreLayer,
                            Simulation)
 
@@ -42,7 +42,7 @@ def _get_random_schnet_feature(calculate_geometry=False):
                                        size=(n_frames, n_beads))
     embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
                                       embedding_dim=embedding_dim)
-    rbf_layer = RadialBasisFunction()
+    rbf_layer = GaussianRBF()
     schnet_feature = SchnetFeature(feature_size=feature_size,
                                    embedding_layer=embedding_layer,
                                    rbf_layer=rbf_layer,
