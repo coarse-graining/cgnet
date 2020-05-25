@@ -64,7 +64,8 @@ class GaussianRBF(nn.Module):
     with centers mu_k calculated on a uniform grid between
     zero and the distance cutoff and var as the variance.
     The radial basis function has the effect of decorrelating the
-    convolutional filter, which improves the training time.
+    convolutional filter, which improves the training time. All distances are
+    assumed, by default, to have units of Angstroms.
 
     Parameters
     ----------
@@ -151,7 +152,8 @@ class PolynomialCutoffRBF(nn.Module):
         \beta = ((2/n_gaussians) * (1 - exp(-cutoff))^-2
 
     The radial basis function has the effect of decorrelating the
-    convolutional filter, which improves the training time.
+    convolutional filter, which improves the training time. All distances
+    are assumed, by default, to have units of Angstroms.
 
     Parameters
     ----------
