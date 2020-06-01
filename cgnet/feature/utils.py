@@ -92,10 +92,11 @@ class GaussianRBF(nn.Module):
          https://doi.org/10.1021/acs.jctc.8b00908
     """
 
-    def __init__(self, cutoff=5.0, n_gaussians=50, variance=1.0):
+    def __init__(self, high_cutoff=5.0, low_cutoff=0.0, n_gaussians=50,
+                 variance=1.0):
         super(GaussianRBF, self).__init__()
-        self.register_buffer('centers', torch.linspace(0.0,
-                             cutoff, n_gaussians))
+        self.register_buffer('centers', torch.linspace(low_cutoff,
+                             high_cutoff, n_gaussians))
         self.variance = variance
 
     def forward(self, distances, distance_mask=None):
@@ -225,8 +226,9 @@ class PolynomialCutoffRBF(nn.Module):
                              np.exp(-low_cutoff), n_gaussians))
         self.high_cutoff = high_cutoff
         self.low_cutoff = low_cutoff
-        self.outer_decay = np.power(((2/n_gaussians) *
-                                    (1-np.exp(-self.high_cutoff))), -2)
+        self.beta = np.power(((2/n_gaussians) *
+                             (1-np.exp(-self.high_cutoff))), -2)
+        self.alpha = alpha
 
     def modulation(self, distances):
         """PhysNet cutoff modulation function
@@ -279,7 +281,7 @@ class PolynomialCutoffRBF(nn.Module):
         exp(-r_{ij}), not r_{ij}
 
         """
-        dist_centered_squared = torch.pow(self.alpha * torch.exp(
+        dist_centered_squared = torch.pow(torch.exp(self.alpha *
                                           - distances.unsqueeze(dim=3))
                                           - self.centers, 2)
         gaussian_exp = torch.exp(-self.beta
