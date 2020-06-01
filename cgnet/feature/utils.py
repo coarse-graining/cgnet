@@ -133,7 +133,7 @@ class PolynomialCutoffRBF(nn.Module):
     basis functions with the following form:
 
         g_k(r_{ij}) = \phi(r_{ij}, cutoff) *
-        exp(- \beta * (\left \exp(-r_{ij}) - \mu_k\right)^2)
+        exp(- \beta * (\left \exp(\alpha * -r_{ij}) - \mu_k\right)^2)
 
     where \phi(r_{ij}, cutoff) is a piecewise polynomial modulation
     function of the following form,
@@ -147,23 +147,38 @@ class PolynomialCutoffRBF(nn.Module):
                 \
 
     the centers mu_k calculated on a uniform grid between
-    exp(-r_{ij}) and 1.0, and beta as a scaling parameter defined as:
+    exp(-low_cutoff) and exp(-high_cutoff), and beta as a scaling
+    parameter defined as:
 
         \beta = ((2/n_gaussians) * (1 - exp(-cutoff))^-2
 
     The radial basis function has the effect of decorrelating the
     convolutional filter, which improves the training time. All distances
-    are assumed, by default, to have units of Angstroms.
+    are assumed, by default, to have units of Angstroms. Because these
+    basis functions are difficult to mentally visualize, we suggest that
+    users visually inspect their basis before use in order to make sure
+    that they are satisfied with the distribution and cutoffs of the
+    functions.
 
     Parameters
     ----------
-    cutoff : float (default=10.0)
-        Distance cutoff (in angstroms) for the modulation. The decay of the
-        modulation envelope has positive concavity and smoothly approaches
-        zero in the vicinity of the specified cutoff distance. The default
-        value of 10 angstroms is taken from Unke & Meuwly (2019). In principle,
-        the ideal value should be taken as the largest pairwise distance in the
-        system.
+    high_cutoff : float (default=10.0)
+        Distance cutoff (in angstroms) for the modulation. This parameter,
+        along with low_cutoff, determine the distribution of centers of
+        each basis function.
+    low_cutoff : float (default=0.0)
+        Low distance cutoff (in angstroms) for the modulation. This parameter,
+        along with high_cutoff, determine the distribution of the centers of
+        each basis function.
+    alpha : float (default=1.0)
+        This parameter is a prefactor to the following term:
+
+                         alpha * exp(-r_ij)
+
+        Lower values of this parameter results in a slower transition between
+        sharply peaked gaussian functions at smaller distances and broadly peaked
+        gaussian functions at larger distances.
+        with slowly decaying tails.
     n_gaussians : int (default=64)
         Total number of gaussian functions to calculate. Number will be used to
         create a uniform grid from exp(-cutoff) to 1. The number of gaussians
@@ -201,15 +216,17 @@ class PolynomialCutoffRBF(nn.Module):
 
     """
 
-    def __init__(self, cutoff=10.0, n_gaussians=64, tolerance=1e-10,
-                 device=torch.device('cpu')):
+    def __init__(self, high_cutoff=10.0, n_gaussians=64, tolerance=1e-10,
+                 low_cutoff=0.0, alpha=1.0, device=torch.device('cpu')):
         super(PolynomialCutoffRBF, self).__init__()
         self.tolerance = tolerance
         self.device = device
-        self.register_buffer('centers', torch.linspace(np.exp(-cutoff), 1,
-                             n_gaussians))
-        self.cutoff = cutoff
-        self.beta = np.power(((2/n_gaussians)*(1-np.exp(-self.cutoff))), -2)
+        self.register_buffer('centers', torch.linspace(np.exp(-high_cutoff),
+                             np.exp(-low_cutoff), n_gaussians))
+        self.high_cutoff = high_cutoff
+        self.low_cutoff = low_cutoff
+        self.outer_decay = np.power(((2/n_gaussians) *
+                                    (1-np.exp(-self.high_cutoff))), -2)
 
     def modulation(self, distances):
         """PhysNet cutoff modulation function
@@ -227,14 +244,14 @@ class PolynomialCutoffRBF(nn.Module):
 
         """
         zeros = torch.zeros_like(distances).to(self.device)
-        modulation_envelope = torch.where(distances < self.cutoff,
+        modulation_envelope = torch.where(distances < self.high_cutoff,
                                           1 - 6 *
-                                          torch.pow((distances/self.cutoff), 5)
+                                          torch.pow((distances/self.high_cutoff), 5)
                                           + 15 *
-                                          torch.pow((distances/self.cutoff), 4)
+                                          torch.pow((distances/self.high_cutoff), 4)
                                           - 10 *
                                           torch.pow(
-                                              (distances/self.cutoff), 3),
+                                              (distances/self.high_cutoff), 3),
                                           zeros)
         return modulation_envelope
 
@@ -262,7 +279,8 @@ class PolynomialCutoffRBF(nn.Module):
         exp(-r_{ij}), not r_{ij}
 
         """
-        dist_centered_squared = torch.pow(torch.exp(-distances.unsqueeze(dim=3))
+        dist_centered_squared = torch.pow(self.alpha * torch.exp(
+                                          - distances.unsqueeze(dim=3))
                                           - self.centers, 2)
         gaussian_exp = torch.exp(-self.beta
                                  * dist_centered_squared)
