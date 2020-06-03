@@ -92,7 +92,7 @@ class GaussianRBF(nn.Module):
          https://doi.org/10.1021/acs.jctc.8b00908
     """
 
-    def __init__(self, high_cutoff=5.0, low_cutoff=0.0, n_gaussians=50,
+    def __init__(self, low_cutoff=0.0, high_cutoff=5.0, n_gaussians=50,
                  variance=1.0):
         super(GaussianRBF, self).__init__()
         self.register_buffer('centers', torch.linspace(low_cutoff,
@@ -162,13 +162,13 @@ class PolynomialCutoffRBF(nn.Module):
 
     Parameters
     ----------
-    high_cutoff : float (default=10.0)
-        Distance cutoff (in angstroms) for the modulation. This parameter,
-        along with low_cutoff, determine the distribution of centers of
-        each basis function.
     low_cutoff : float (default=0.0)
         Low distance cutoff (in angstroms) for the modulation. This parameter,
         along with high_cutoff, determine the distribution of the centers of
+        each basis function.
+    high_cutoff : float (default=10.0)
+        Distance cutoff (in angstroms) for the modulation. This parameter,
+        along with low_cutoff, determine the distribution of centers of
         each basis function.
     alpha : float (default=1.0)
         This parameter is a prefactor to the following term:
@@ -216,8 +216,8 @@ class PolynomialCutoffRBF(nn.Module):
 
     """
 
-    def __init__(self, high_cutoff=10.0, n_gaussians=64, tolerance=1e-10,
-                 low_cutoff=0.0, alpha=1.0, device=torch.device('cpu')):
+    def __init__(self, low_cutoff=0.0, high_cutoff=10.0, alpha=1.0,
+                 n_gaussians=64, tolerance=1e-10, device=torch.device('cpu')):
         super(PolynomialCutoffRBF, self).__init__()
         self.tolerance = tolerance
         self.device = device
