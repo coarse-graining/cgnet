@@ -155,8 +155,7 @@ class PolynomialCutoffRBF(nn.Module):
 
     The radial basis function has the effect of decorrelating the
     convolutional filter, which improves the training time. All distances
-    are assumed, by default, to have units of Angstroms. Because these
-    basis functions are difficult to mentally visualize, we suggest that
+    are assumed, by default, to have units of Angstroms. we suggest that
     users visually inspect their basis before use in order to make sure
     that they are satisfied with the distribution and cutoffs of the
     functions.
