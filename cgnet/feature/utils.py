@@ -102,6 +102,11 @@ class GaussianRBF(_AbstractRBFLayer):
     variance : float (default=1.0)
         The variance (standard deviation squared) of the Gaussian functions.
 
+    Notes
+    -----
+    The units of the variance and cutoffs are fixed by the units of the
+    input distances.
+
     References
     ----------
     Schutt, K. T., Kessel, P., Gastegger, M., Nicoli, K. A., Tkatchenko, A.,
@@ -181,11 +186,11 @@ class PolynomialCutoffRBF(_AbstractRBFLayer):
     Parameters
     ----------
     low_cutoff : float (default=0.0)
-        Low distance cutoff (in angstroms) for the modulation. This parameter,
+        Low distance cutoff for the modulation. This parameter,
         along with high_cutoff, determine the distribution of the centers of
         each basis function.
     high_cutoff : float (default=10.0)
-        Distance cutoff (in angstroms) for the modulation. This parameter,
+        Distance cutoff for the modulation. This parameter,
         along with low_cutoff, determine the distribution of centers of
         each basis function.
     alpha : float (default=1.0)
@@ -224,6 +229,9 @@ class PolynomialCutoffRBF(_AbstractRBFLayer):
     of basis functions which have high resolution at small distances which
     smoothly morphs to basis functions with lower resolution at larger
     distances.
+
+    The units of the variance, cutoffs, alpha, and beta are fixed by the units
+    of the input distances.
 
     References
     ----------
