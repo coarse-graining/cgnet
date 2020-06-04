@@ -53,7 +53,25 @@ class ShiftedSoftplus(nn.Module):
         return nn.functional.softplus(input_tensor) - np.log(2.0)
 
 
-class GaussianRBF(nn.Module):
+class _AbstractRBFLayer(nn.Module):
+    """Abstract layer for definition of radial basis function layers"""
+
+    def __init__(self, n_guassians):
+        super(_AbstractRBFLayer, self).__init__()
+
+    def forward(self, distances):
+        """Forawd method to compute expansions of distances into basis
+        functions.
+
+        Notes
+        -----
+        This method must be explicitly implemented in a child clase.
+        If not, a NotImplementedError will be raised.
+        """
+        raise NotImplementedError()
+
+
+class GaussianRBF(_AbstractRBFLayer):
     r"""Radial basis function (RBF) layer
 
     This layer serves as a distance expansion using radial basis functions with
@@ -128,7 +146,7 @@ class GaussianRBF(nn.Module):
         return gaussian_exp
 
 
-class PolynomialCutoffRBF(nn.Module):
+class PolynomialCutoffRBF(_AbstractRBFLayer):
     r"""Radial basis function (RBF) layer
     This layer serves as a distance expansion using modulated radial
     basis functions with the following form:
