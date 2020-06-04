@@ -56,7 +56,7 @@ class ShiftedSoftplus(nn.Module):
 class _AbstractRBFLayer(nn.Module):
     """Abstract layer for definition of radial basis function layers"""
 
-    def __init__(self, n_guassians):
+    def __init__(self):
         super(_AbstractRBFLayer, self).__init__()
 
     def forward(self, distances):
