@@ -3,9 +3,10 @@
 
 import numpy as np
 import torch
+from nose.tools import raises
 
 from cgnet.feature.utils import (GaussianRBF, PolynomialCutoffRBF,
-                                 ShiftedSoftplus)
+                                 ShiftedSoftplus, _AbstractRBFLayer)
 from cgnet.feature.statistics import GeometryStatistics
 from cgnet.feature.feature import GeometryFeature, Geometry
 
@@ -14,6 +15,19 @@ from cgnet.feature.feature import GeometryFeature, Geometry
 frames = np.random.randint(10, 30)
 beads = np.random.randint(5, 10)
 g = Geometry(method='torch')
+
+@raises(NotImplementedError)
+def test_radial_basis_function_len():
+    # Make sure that a NotImplementedError is raised if an RBF layer
+    # does not have a __len__() method
+
+    # Here, we use the _AbstractRBFLayer base class as our RBF 
+    abstract_RBF = _AbstractRBFLayer()
+
+    # Next, we check to see if the NotImplementedError is raised
+    # This is done using the decorator above, because we cannot
+    # use nose.tools.assert_raises directly on special methods
+    len(abstract_RBF)
 
 def test_radial_basis_function():
     # Make sure radial basis functions are consistent with manual calculation
