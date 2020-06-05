@@ -339,7 +339,7 @@ class PolynomialCutoffRBF(_AbstractRBFLayer):
                                  expansions,
                                  torch.zeros_like(expansions))
         if distance_mask is not None:
-            expansions = expansions * distance_mask[:, :, :,None]
+            expansions = expansions * distance_mask[:, :, :, None]
         return expansions
 
 
