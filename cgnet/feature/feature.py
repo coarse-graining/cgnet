@@ -421,14 +421,17 @@ class SchnetFeature(nn.Module):
         # so that they do not contain distances evaluated using non-physical
         # atoms introduced by padding.
         # This mask has shape [n_frames, max_n_beads, max_n_neighbors]
-        bead_distances_mask = (bead_mask[:,:,None].repeat(1,1,neighbor_beads)*bead_mask[None,:,1:].view(batches,1,neighbor_beads)).float()
+        bead_distances_mask = (bead_mask[:, :, None].repeat(
+            1, 1, neighbor_beads)*bead_mask[None, :, 1:].view(
+            batches, 1, neighbor_beads)).float()
 
         # In order to prevent backpropagation instabilities associated with
         # evaluating square root derivatives at 0, the masking must be done
         # in the following way. This method also avoids in-place operations
         # that are not compatible with backward gradient flow
         tmp_distances = torch.zeros_like(distances)
-        tmp_distances[bead_distances_mask != 0] = distances[bead_distances_mask != 0]
+        tmp_distances[bead_distances_mask !=
+                      0] = distances[bead_distances_mask != 0]
         distances = tmp_distances * neighbor_mask
 
         features = self.embedding_layer(embedding_property)
