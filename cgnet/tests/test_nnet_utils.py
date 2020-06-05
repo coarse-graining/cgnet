@@ -11,7 +11,7 @@ from cgnet.network import (lipschitz_projection, dataset_loss, CGnet,
 from cgnet.network.utils import _schnet_feature_linear_extractor
 from cgnet.feature import (MoleculeDataset, LinearLayer, SchnetFeature,
                            CGBeadEmbedding, GeometryFeature, FeatureCombiner,
-                           GeometryStatistics)
+                           GeometryStatistics, GaussianRBF)
 from nose.tools import assert_raises
 
 # Here we create testing data from a random linear protein
@@ -62,10 +62,12 @@ neighbor_cutoff = np.random.uniform(0, 1)  # random neighbor cutoff
 # random embedding property
 embedding_layer = CGBeadEmbedding(n_embeddings=num_embeddings,
                                   embedding_dim=feature_size)
+rbf_layer = GaussianRBF()
 
 # Here we use the above variables to create the SchnetFeature
 schnet_feature = SchnetFeature(feature_size=feature_size,
                                embedding_layer=embedding_layer,
+                               rbf_layer=rbf_layer,
                                n_interaction_blocks=n_interaction_blocks,
                                calculate_geometry=True,
                                n_beads=beads,
@@ -193,6 +195,7 @@ def test_lipschitz_schnet_mask():
     # setup at the top of this file with no terminal network
     schnet_feature = SchnetFeature(feature_size=feature_size,
                                    embedding_layer=embedding_layer,
+                                   rbf_layer=rbf_layer,
                                    n_interaction_blocks=10,
                                    calculate_geometry=True,
                                    n_beads=beads,
@@ -256,6 +259,7 @@ def test_lipschitz_full_model_random_mask():
     test_arch += LinearLayer(width, 1, activation=None)
     schnet_feature = SchnetFeature(feature_size=feature_size,
                                    embedding_layer=embedding_layer,
+                                   rbf_layer=rbf_layer,
                                    n_interaction_blocks=10,
                                    n_beads=beads,
                                    neighbor_cutoff=neighbor_cutoff,
@@ -332,6 +336,7 @@ def test_lipschitz_full_model_all_mask():
     test_arch += LinearLayer(width, 1, activation=None)
     schnet_feature = SchnetFeature(feature_size=feature_size,
                                    embedding_layer=embedding_layer,
+                                   rbf_layer=rbf_layer,
                                    n_interaction_blocks=10,
                                    n_beads=beads,
                                    neighbor_cutoff=neighbor_cutoff,

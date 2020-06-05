@@ -7,7 +7,7 @@ import numpy as np
 import warnings
 
 from .geometry import Geometry
-from .utils import RadialBasisFunction, ModulatedRBF, ShiftedSoftplus
+from .utils import (GaussianRBF, PolynomialCutoffRBF, ShiftedSoftplus)
 from .schnet_utils import InteractionBlock
 
 
@@ -192,6 +192,10 @@ class SchnetFeature(nn.Module):
         filters that will be used.
     embedding_layer: torch.nn.Module
         Class that embeds a property into a feature vector.
+    rbf_layer : nn.Module
+        Radial basis function expansions layer. This layer is used
+        to expand pairwise distances in a basis prior to passing
+        through the continuous filter convolution.
     n_beads: int
         Number of coarse grain beads in the model.
     activation: nn.Module (default=ShiftedSoftplus())
@@ -206,20 +210,9 @@ class SchnetFeature(nn.Module):
         preceded by a GeometryFeature instance).
     neighbor_cutoff: float (default=None)
         Cutoff distance in whether beads are considered neighbors or not.
-    basis_function_type: str (default='uniform')
-        Type of basis functions with which distances are expanded in. Can take
-        values 'uniform' or 'modulated'. corresponding to
-        RadialBasisFunction() and ModulatedRBF() respectively.
-    rbf_cutoff: float (default=5.0)
-        Cutoff for the radial basis function.
-    n_gaussians: int (default=50)
-        Number of gaussians for the gaussian expansion in the radial basis
-        function.
     normalization_layer: nn.Module (default=None)
         Normalization layer to be applied to the ouptut of the
         ContinuousFilterConvolution
-    variance: float (default=1.0)
-        The variance (standard deviation squared) of the Gaussian functions.
     n_interaction_blocks: int (default=1)
         Number of interaction blocks.
     share_weights: bool (default=False)
@@ -286,15 +279,12 @@ class SchnetFeature(nn.Module):
     def __init__(self,
                  feature_size,
                  embedding_layer,
+                 rbf_layer,
                  n_beads,
                  activation=ShiftedSoftplus(),
                  calculate_geometry=None,
-                 basis_function_type='uniform',
                  neighbor_cutoff=None,
-                 rbf_cutoff=5.0,
-                 n_gaussians=50,
                  normalization_layer=None,
-                 variance=1.0,
                  n_interaction_blocks=1,
                  share_weights=False,
                  share_batchnorm_parameters=False,
@@ -303,17 +293,8 @@ class SchnetFeature(nn.Module):
         self.device = device
         self.geometry = Geometry(method='torch', device=self.device)
         self.embedding_layer = embedding_layer
-        if basis_function_type == 'uniform':
-            self.rbf_layer = RadialBasisFunction(cutoff=rbf_cutoff,
-                                                 n_gaussians=n_gaussians,
-                                                 variance=variance)
-        elif basis_function_type == 'modulated':
-            self.rbf_layer = ModulatedRBF(cutoff=rbf_cutoff,
-                                          n_gaussians=n_gaussians,
-                                          device=self.device)
-        else:
-            raise RuntimeError(
-                "Basis function type must be 'uniform' or 'modulated'.")
+        self.rbf_layer = rbf_layer
+        basis_size = len(rbf_layer)
 
         if share_weights:
             # Lets the interaction blocks share weight parameters.
@@ -322,7 +303,7 @@ class SchnetFeature(nn.Module):
             if share_batchnorm_parameters:
                 # Batchnorm parameters are the same for all instances
                 self.interaction_blocks = nn.ModuleList(
-                    [InteractionBlock(feature_size, n_gaussians,
+                    [InteractionBlock(feature_size, basis_size,
                                       feature_size, activation=activation,
                                       normalization_layer=normalization_layer)]
                     * n_interaction_blocks
@@ -332,7 +313,7 @@ class SchnetFeature(nn.Module):
                 # shared between the interaction blocks, but the batchnorm
                 # parameters are not shared.
                 self.interaction_blocks = nn.ModuleList(
-                    [InteractionBlock(feature_size, n_gaussians,
+                    [InteractionBlock(feature_size, basis_size,
                                       feature_size, activation=activation,
                                       normalization_layer=normalization_layer)]
                     * n_interaction_blocks
@@ -358,7 +339,7 @@ class SchnetFeature(nn.Module):
         else:
             # Every interaction block has their own weights
             self.interaction_blocks = nn.ModuleList(
-                [InteractionBlock(feature_size, n_gaussians,
+                [InteractionBlock(feature_size, basis_size,
                                   feature_size, activation=activation,
                                   normalization_layer=normalization_layer)
                  for _ in range(n_interaction_blocks)]
@@ -440,14 +421,17 @@ class SchnetFeature(nn.Module):
         # so that they do not contain distances evaluated using non-physical
         # atoms introduced by padding.
         # This mask has shape [n_frames, max_n_beads, max_n_neighbors]
-        bead_distances_mask = (bead_mask[:,:,None].repeat(1,1,neighbor_beads)*bead_mask[None,:,1:].view(batches,1,neighbor_beads)).float()
+        bead_distances_mask = (bead_mask[:, :, None].repeat(
+            1, 1, neighbor_beads)*bead_mask[None, :, 1:].view(
+            batches, 1, neighbor_beads)).float()
 
         # In order to prevent backpropagation instabilities associated with
         # evaluating square root derivatives at 0, the masking must be done
         # in the following way. This method also avoids in-place operations
         # that are not compatible with backward gradient flow
         tmp_distances = torch.zeros_like(distances)
-        tmp_distances[bead_distances_mask != 0] = distances[bead_distances_mask != 0]
+        tmp_distances[bead_distances_mask !=
+                      0] = distances[bead_distances_mask != 0]
         distances = tmp_distances * neighbor_mask
 
         features = self.embedding_layer(embedding_property)

@@ -2,7 +2,7 @@
 
 import torch.nn as nn
 from cgnet.feature import (GeometryFeature, Geometry, SchnetFeature,
-                           RadialBasisFunction)
+                           GaussianRBF)
 import warnings
 g = Geometry(method='torch')
 

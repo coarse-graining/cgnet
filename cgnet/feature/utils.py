@@ -53,24 +53,56 @@ class ShiftedSoftplus(nn.Module):
         return nn.functional.softplus(input_tensor) - np.log(2.0)
 
 
-class RadialBasisFunction(nn.Module):
+class _AbstractRBFLayer(nn.Module):
+    """Abstract layer for definition of radial basis function layers"""
+
+    def __init__(self):
+        super(_AbstractRBFLayer, self).__init__()
+
+    def __len__(self):
+        """Method to get the size of the basis used for distance expansions.
+
+        Notes
+        -----
+        This method must be implemented explicitly in a child class. If not,
+        a NotImplementedError will be raised
+        """
+        raise NotImplementedError()
+
+    def forward(self, distances):
+        """Forward method to compute expansions of distances into basis
+        functions.
+
+        Notes
+        -----
+        This method must be explicitly implemented in a child clase.
+        If not, a NotImplementedError will be raised.
+        """
+        raise NotImplementedError()
+
+
+class GaussianRBF(_AbstractRBFLayer):
     r"""Radial basis function (RBF) layer
 
     This layer serves as a distance expansion using radial basis functions with
     the following form:
 
-        e_k (r_j - r_i) = exp(- \gamma (\left \| r_j - r_i \right \| - \mu_k)^2)
+        e_k (r_j - r_i) = exp(- (\left \| r_j - r_i \right \| - \mu_k)^2 / (2 * var)
 
     with centers mu_k calculated on a uniform grid between
-    zero and the distance cutoff and gamma as a scaling parameter.
+    zero and the distance cutoff and var as the variance.
     The radial basis function has the effect of decorrelating the
-    convolutional filter, which improves the training time.
+    convolutional filter, which improves the training time. All distances are
+    assumed, by default, to have units of Angstroms.
 
     Parameters
     ----------
-    cutoff : float (default=5.0)
-        Distance cutoff for the Gaussian function. The cutoff represents the
-        center of the last gaussian function in basis.
+    low_cuttof : float (default=0.0)
+        Minimum distance cutoff for the Gaussian basis. This cuttoff represents the
+        center of the first basis funciton.
+    high_cutoff : float (default=5.0)
+        Maximum distance cutoff for the Gaussian basis. This cuttoff represents the
+        center of the last basis function.
     n_gaussians : int (default=50)
         Total number of Gaussian functions to calculate. Number will be used to
         create a uniform grid from 0.0 to cutoff. The number of Gaussians will
@@ -80,6 +112,11 @@ class RadialBasisFunction(nn.Module):
     variance : float (default=1.0)
         The variance (standard deviation squared) of the Gaussian functions.
 
+    Notes
+    -----
+    The units of the variance and cutoffs are fixed by the units of the
+    input distances.
+
     References
     ----------
     Schutt, K. T., Kessel, P., Gastegger, M., Nicoli, K. A., Tkatchenko, A.,
@@ -88,11 +125,16 @@ class RadialBasisFunction(nn.Module):
          https://doi.org/10.1021/acs.jctc.8b00908
     """
 
-    def __init__(self, cutoff=5.0, n_gaussians=50, variance=1.0):
-        super(RadialBasisFunction, self).__init__()
-        self.register_buffer('centers', torch.linspace(0.0,
-                             cutoff, n_gaussians))
+    def __init__(self, low_cutoff=0.0, high_cutoff=5.0, n_gaussians=50,
+                 variance=1.0):
+        super(GaussianRBF, self).__init__()
+        self.register_buffer('centers', torch.linspace(low_cutoff,
+                             high_cutoff, n_gaussians))
         self.variance = variance
+
+    def __len__(self):
+        """Method to return basis size"""
+        return len(self.centers)
 
     def forward(self, distances, distance_mask=None):
         """Calculate Gaussian expansion
@@ -123,13 +165,13 @@ class RadialBasisFunction(nn.Module):
         return gaussian_exp
 
 
-class ModulatedRBF(nn.Module):
+class PolynomialCutoffRBF(_AbstractRBFLayer):
     r"""Radial basis function (RBF) layer
     This layer serves as a distance expansion using modulated radial
     basis functions with the following form:
 
         g_k(r_{ij}) = \phi(r_{ij}, cutoff) *
-        exp(- \beta * (\left \exp(-r_{ij}) - \mu_k\right)^2)
+        exp(- \beta * (\left \exp(\alpha * -r_{ij}) - \mu_k\right)^2)
 
     where \phi(r_{ij}, cutoff) is a piecewise polynomial modulation
     function of the following form,
@@ -143,22 +185,37 @@ class ModulatedRBF(nn.Module):
                 \
 
     the centers mu_k calculated on a uniform grid between
-    exp(-r_{ij}) and 1.0, and beta as a scaling parameter defined as:
+    exp(-low_cutoff) and exp(-high_cutoff), and beta as a scaling
+    parameter defined as:
 
         \beta = ((2/n_gaussians) * (1 - exp(-cutoff))^-2
 
     The radial basis function has the effect of decorrelating the
-    convolutional filter, which improves the training time.
+    convolutional filter, which improves the training time. All distances
+    are assumed, by default, to have units of Angstroms. we suggest that
+    users visually inspect their basis before use in order to make sure
+    that they are satisfied with the distribution and cutoffs of the
+    functions.
 
     Parameters
     ----------
-    cutoff : float (default=10.0)
-        Distance cutoff (in angstroms) for the modulation. The decay of the
-        modulation envelope has positive concavity and smoothly approaches
-        zero in the vicinity of the specified cutoff distance. The default
-        value of 10 angstroms is taken from Unke & Meuwly (2019). In principle,
-        the ideal value should be taken as the largest pairwise distance in the
-        system.
+    low_cutoff : float (default=0.0)
+        Low distance cutoff for the modulation. This parameter,
+        along with high_cutoff, determine the distribution of the centers of
+        each basis function.
+    high_cutoff : float (default=10.0)
+        Distance cutoff for the modulation. This parameter,
+        along with low_cutoff, determine the distribution of centers of
+        each basis function.
+    alpha : float (default=1.0)
+        This parameter is a prefactor to the following term:
+
+                         alpha * exp(-r_ij)
+
+        Lower values of this parameter results in a slower transition between
+        sharply peaked gaussian functions at smaller distances and broadly peaked
+        gaussian functions at larger distances.
+        with slowly decaying tails.
     n_gaussians : int (default=64)
         Total number of gaussian functions to calculate. Number will be used to
         create a uniform grid from exp(-cutoff) to 1. The number of gaussians
@@ -187,6 +244,9 @@ class ModulatedRBF(nn.Module):
     smoothly morphs to basis functions with lower resolution at larger
     distances.
 
+    The units of the variance, cutoffs, alpha, and beta are fixed by the units
+    of the input distances.
+
     References
     ----------
     Unke, O. T., & Meuwly, M. (2019). PhysNet: A Neural Network for Predicting
@@ -196,15 +256,22 @@ class ModulatedRBF(nn.Module):
 
     """
 
-    def __init__(self, cutoff=10.0, n_gaussians=64, tolerance=1e-10,
-                 device=torch.device('cpu')):
-        super(ModulatedRBF, self).__init__()
+    def __init__(self, low_cutoff=0.0, high_cutoff=10.0, alpha=1.0,
+                 n_gaussians=64, tolerance=1e-10, device=torch.device('cpu')):
+        super(PolynomialCutoffRBF, self).__init__()
         self.tolerance = tolerance
         self.device = device
-        self.register_buffer('centers', torch.linspace(np.exp(-cutoff), 1,
-                             n_gaussians))
-        self.cutoff = cutoff
-        self.beta = np.power(((2/n_gaussians)*(1-np.exp(-self.cutoff))), -2)
+        self.register_buffer('centers', torch.linspace(np.exp(-high_cutoff),
+                             np.exp(-low_cutoff), n_gaussians))
+        self.high_cutoff = high_cutoff
+        self.low_cutoff = low_cutoff
+        self.beta = np.power(((2/n_gaussians) *
+                             (1-np.exp(-self.high_cutoff))), -2)
+        self.alpha = alpha
+
+    def __len__(self):
+        """Method to return basis size"""
+        return len(self.centers)
 
     def modulation(self, distances):
         """PhysNet cutoff modulation function
@@ -222,14 +289,14 @@ class ModulatedRBF(nn.Module):
 
         """
         zeros = torch.zeros_like(distances).to(self.device)
-        modulation_envelope = torch.where(distances < self.cutoff,
+        modulation_envelope = torch.where(distances < self.high_cutoff,
                                           1 - 6 *
-                                          torch.pow((distances/self.cutoff), 5)
+                                          torch.pow((distances/self.high_cutoff), 5)
                                           + 15 *
-                                          torch.pow((distances/self.cutoff), 4)
+                                          torch.pow((distances/self.high_cutoff), 4)
                                           - 10 *
                                           torch.pow(
-                                              (distances/self.cutoff), 3),
+                                              (distances/self.high_cutoff), 3),
                                           zeros)
         return modulation_envelope
 
@@ -257,7 +324,8 @@ class ModulatedRBF(nn.Module):
         exp(-r_{ij}), not r_{ij}
 
         """
-        dist_centered_squared = torch.pow(torch.exp(-distances.unsqueeze(dim=3))
+        dist_centered_squared = torch.pow(torch.exp(self.alpha *
+                                          - distances.unsqueeze(dim=3))
                                           - self.centers, 2)
         gaussian_exp = torch.exp(-self.beta
                                  * dist_centered_squared)
@@ -271,7 +339,7 @@ class ModulatedRBF(nn.Module):
                                  expansions,
                                  torch.zeros_like(expansions))
         if distance_mask is not None:
-            expansions = expansions * distance_mask[:, :, :,None]
+            expansions = expansions * distance_mask[:, :, :, None]
         return expansions
 
 
