@@ -73,7 +73,8 @@ def test_radial_basis_function_distance_masking():
     low_cutoff = np.random.uniform(0.0, 4.0)
     n_gaussians = np.random.randint(5, 10)
     neighbor_cutoff = np.abs(np.random.rand())
-    neighbors, neighbor_mask = g.get_neighbors(distances, cutoff=neighbor_cutoff)
+    neighbors, neighbor_mask = g.get_neighbors(distances,
+                                               cutoff=neighbor_cutoff)
 
     # Calculate Gaussian expansion using the implemented layer
     rbf = GaussianRBF(high_cutoff=high_cutoff, low_cutoff=low_cutoff,
@@ -87,9 +88,10 @@ def test_radial_basis_function_distance_masking():
     distances = np.expand_dims(distances, axis=3)
     magnitude_squared = (distances - centers)**2
     gauss_manual = torch.tensor(np.exp(gamma * magnitude_squared))
-    gauss_manual = gauss_manual * neighbor_mask[:,:,:,None].double()
+    gauss_manual = gauss_manual * neighbor_mask[:, :, :, None].double()
 
-    np.testing.assert_array_almost_equal(gauss_layer.numpy(), gauss_manual.numpy())
+    np.testing.assert_array_almost_equal(gauss_layer.numpy(),
+                                         gauss_manual.numpy())
 
 
 def test_polynomial_cutoff_rbf():
@@ -102,19 +104,20 @@ def test_polynomial_cutoff_rbf():
     n_gaussians = np.random.randint(5, 10)
     high_cutoff = np.random.uniform(5.0, 10.0)
     low_cutoff = np.random.uniform(0.0, 4.0)
-    alpha = np.random.uniform(0.1,1.0)
+    alpha = np.random.uniform(0.1, 1.0)
 
     # Calculate Gaussian expansion using the implemented layer
     polynomial_cutoff_rbf = PolynomialCutoffRBF(high_cutoff=high_cutoff,
-                                     low_cutoff=low_cutoff,
-                                     n_gaussians=n_gaussians,
-                                     alpha=alpha,
-                                     tolerance=1e-8)
+                                                low_cutoff=low_cutoff,
+                                                n_gaussians=n_gaussians,
+                                                alpha=alpha,
+                                                tolerance=1e-8)
     polynomial_cutoff_rbf_layer = polynomial_cutoff_rbf.forward(torch.tensor(distances))
 
     # Manually calculate expansion with numpy
     # First, we compute the centers and the scaling factors
-    centers = np.linspace(np.exp(-high_cutoff), np.exp(-low_cutoff), n_gaussians)
+    centers = np.linspace(np.exp(-high_cutoff), np.exp(-low_cutoff),
+                          n_gaussians)
     beta = np.power(((2/n_gaussians) * (1-np.exp(-high_cutoff))), -2)
 
     # Next, we compute the gaussian portion
@@ -157,23 +160,26 @@ def test_polynomial_cutoff_rbf_distance_masking():
     n_gaussians = np.random.randint(5, 10)
     high_cutoff = np.random.uniform(5.0, 10.0)
     low_cutoff = np.random.uniform(0.0, 4.0)
-    alpha = np.random.uniform(0.1,1.0)
+    alpha = np.random.uniform(0.1, 1.0)
 
     neighbor_cutoff = np.abs(np.random.rand())
-    neighbors, neighbor_mask = g.get_neighbors(distances, cutoff=neighbor_cutoff)
+    neighbors, neighbor_mask = g.get_neighbors(distances,
+                                               cutoff=neighbor_cutoff)
 
     # Calculate Gaussian expansion using the implemented layer
     polynomial_cutoff_rbf = PolynomialCutoffRBF(high_cutoff=high_cutoff,
-                                     low_cutoff=low_cutoff,
-                                     n_gaussians=n_gaussians,
-                                     alpha=alpha,
-                                     tolerance=1e-8)
-    polynomial_cutoff_rbf_layer = polynomial_cutoff_rbf.forward(torch.tensor(distances),
+                                                low_cutoff=low_cutoff,
+                                                n_gaussians=n_gaussians,
+                                                alpha=alpha,
+                                                tolerance=1e-8)
+    polynomial_cutoff_rbf_layer = polynomial_cutoff_rbf.forward(
+                                                torch.tensor(distances),
                                                 distance_mask=neighbor_mask)
 
     # Manually calculate expansion with numpy
     # First, we compute the centers and the scaling factors
-    centers = np.linspace(np.exp(-high_cutoff), np.exp(-low_cutoff), n_gaussians)
+    centers = np.linspace(np.exp(-high_cutoff), np.exp(-low_cutoff),
+                          n_gaussians)
     beta = np.power(((2/n_gaussians) * (1-np.exp(-high_cutoff))), -2)
 
     # Next, we compute the gaussian portion
@@ -198,7 +204,8 @@ def test_polynomial_cutoff_rbf_distance_masking():
         polynomial_cutoff_rbf_manual,
         np.zeros_like(polynomial_cutoff_rbf_manual)
     )
-    polynomial_cutoff_rbf_manual = torch.tensor(polynomial_cutoff_rbf_manual) * neighbor_mask[:,:,:,None].double()
+    polynomial_cutoff_rbf_manual = torch.tensor(
+        polynomial_cutoff_rbf_manual) * neighbor_mask[:, :, :, None].double()
 
     np.testing.assert_array_almost_equal(polynomial_cutoff_rbf_layer.numpy(),
                                          polynomial_cutoff_rbf_manual.numpy())
@@ -221,7 +228,8 @@ def test_polynomial_cutoff_rbf_zero_cutoff():
     centers = torch.linspace(np.exp(-cutoff), np.exp(-cutoff), n_gaussians)
 
     # Here, we test to see that centers are equal in this corner case
-    np.testing.assert_equal(centers.numpy(), polynomial_cutoff_rbf.centers.numpy())
+    np.testing.assert_equal(centers.numpy(),
+                            polynomial_cutoff_rbf.centers.numpy())
 
 
 def test_shifted_softplus():
