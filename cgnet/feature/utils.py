@@ -59,8 +59,18 @@ class _AbstractRBFLayer(nn.Module):
     def __init__(self):
         super(_AbstractRBFLayer, self).__init__()
 
+    def __len__(self):
+        """Method to get the size of the basis used for distance expansions.
+
+        Notes
+        -----
+        This method must be implemented explicitly in a child class. If not,
+        a NotImplementedError will be raised
+        """
+        raise NotImplementedError()
+
     def forward(self, distances):
-        """Forawd method to compute expansions of distances into basis
+        """Forward method to compute expansions of distances into basis
         functions.
 
         Notes
@@ -121,6 +131,10 @@ class GaussianRBF(_AbstractRBFLayer):
         self.register_buffer('centers', torch.linspace(low_cutoff,
                              high_cutoff, n_gaussians))
         self.variance = variance
+
+    def __len__(self):
+        """Method to return basis size"""
+        return len(self.centers)
 
     def forward(self, distances, distance_mask=None):
         """Calculate Gaussian expansion
@@ -254,6 +268,10 @@ class PolynomialCutoffRBF(_AbstractRBFLayer):
         self.beta = np.power(((2/n_gaussians) *
                              (1-np.exp(-self.high_cutoff))), -2)
         self.alpha = alpha
+
+    def __len__(self):
+        """Method to return basis size"""
+        return len(self.centers)
 
     def modulation(self, distances):
         """PhysNet cutoff modulation function

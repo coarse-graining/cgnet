@@ -294,7 +294,7 @@ class SchnetFeature(nn.Module):
         self.geometry = Geometry(method='torch', device=self.device)
         self.embedding_layer = embedding_layer
         self.rbf_layer = rbf_layer
-        basis_size = len(rbf_layer.centers)
+        basis_size = len(rbf_layer)
 
         if share_weights:
             # Lets the interaction blocks share weight parameters.
