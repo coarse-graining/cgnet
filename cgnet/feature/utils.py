@@ -165,8 +165,8 @@ class GaussianRBF(_AbstractRBFLayer):
 
         # If specified, normalize output by sum over all basis function outputs
         if self.normalize_output:
-            basis_sum = torch.sum(expansions, dim=3)
-            expansions = expansions / basis_sum[:, :, :, None]
+            basis_sum = torch.sum(gaussian_exp, dim=3)
+            gaussian_exp = gaussian_exp / basis_sum[:, :, :, None]
 
         # Mask the output of the radial distribution with the distance mask
         if distance_mask is not None:
