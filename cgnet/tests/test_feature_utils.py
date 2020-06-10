@@ -124,7 +124,7 @@ def test_radial_basis_function_normalize():
     gauss_manual = np.exp(gamma * magnitude_squared)
 
     # manual output normalization
-    gauss_manual = gauss_manual / torch.sum(gauss_manual, dim=3)[:, :, :, None]
+    gauss_manual = gauss_manual / np.sum(gauss_manual, axis=3)[:, :, :, None]
 
     # Shapes and values need to be the same
     np.testing.assert_equal(centers.shape, rbf.centers.shape)
@@ -297,9 +297,8 @@ def test_polynomial_cutoff_rbf_normalize():
     )
 
     # manually normalize the output
-    polynomial_cutoff_rbf_manual = polynomial_cutoff_rbf_manual /
-                                   torch.sum(polynomial_cutoff_rbf_manual,
-                                             dim=3)[:, :, :, None]
+    polynomial_cutoff_rbf_manual /= np.sum(polynomial_cutoff_rbf_manual,
+                                           axis=3)[:, :, :, None]
 
     # centers and output values need to be the same
     np.testing.assert_allclose(centers,
