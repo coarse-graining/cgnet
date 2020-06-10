@@ -305,9 +305,11 @@ class PolynomialCutoffRBF(_AbstractRBFLayer):
         zeros = torch.zeros_like(distances).to(self.device)
         modulation_envelope = torch.where(distances < self.high_cutoff,
                                           1 - 6 *
-                                          torch.pow((distances/self.high_cutoff), 5)
+                                          torch.pow((distances/self.high_cutoff),
+                                                    5)
                                           + 15 *
-                                          torch.pow((distances/self.high_cutoff), 4)
+                                          torch.pow((distances/self.high_cutoff),
+                                                     4)
                                           - 10 *
                                           torch.pow(
                                               (distances/self.high_cutoff), 3),
