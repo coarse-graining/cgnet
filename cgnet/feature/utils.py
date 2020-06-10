@@ -111,6 +111,9 @@ class GaussianRBF(_AbstractRBFLayer):
         gaussians is the same as that in SchnetPack (Schutt et al, 2019).
     variance : float (default=1.0)
         The variance (standard deviation squared) of the Gaussian functions.
+    normalize_output : bool (default=False)
+        If True, the output of the GaussianRBF layer will be normalized by the sum
+        over the outputs from every basis function.
 
     Notes
     -----
@@ -126,11 +129,12 @@ class GaussianRBF(_AbstractRBFLayer):
     """
 
     def __init__(self, low_cutoff=0.0, high_cutoff=5.0, n_gaussians=50,
-                 variance=1.0):
+                 variance=1.0, normalize_output=False):
         super(GaussianRBF, self).__init__()
         self.register_buffer('centers', torch.linspace(low_cutoff,
                              high_cutoff, n_gaussians))
         self.variance = variance
+        self.normalize_output = normalize_output
 
     def __len__(self):
         """Method to return basis size"""
@@ -158,6 +162,11 @@ class GaussianRBF(_AbstractRBFLayer):
                                           self.centers, 2)
         gaussian_exp = torch.exp(-(0.5 / self.variance)
                                  * dist_centered_squared)
+
+        # If specified, normalize output by sum over all basis function outputs
+        if self.normalize_output:
+            basis_sum = torch.sum(expansions, dim=3)
+            expansions = expansions / basis_sum[:, :, :, None]
 
         # Mask the output of the radial distribution with the distance mask
         if distance_mask is not None:
@@ -222,6 +231,9 @@ class PolynomialCutoffRBF(_AbstractRBFLayer):
         will also decide the output size of the RBF layer output
         ([n_examples, n_beads, n_neighbors, n_gauss]). The default value of
         64 gaussians is taken from Unke & Meuwly (2019).
+    normalize_output : bool (default=False)
+        If True, the output of the PolynomialCutoffRBF layer will be normalized
+        by the sum over the outputs from every basis function.
     tolerance : float (default=1e-10)
         When expanding the modulated gaussians, values below the tolerance
         will be set to zero.
@@ -257,7 +269,8 @@ class PolynomialCutoffRBF(_AbstractRBFLayer):
     """
 
     def __init__(self, low_cutoff=0.0, high_cutoff=10.0, alpha=1.0,
-                 n_gaussians=64, tolerance=1e-10, device=torch.device('cpu')):
+                 n_gaussians=64, normalize_output=False, tolerance=1e-10,
+                 device=torch.device('cpu')):
         super(PolynomialCutoffRBF, self).__init__()
         self.tolerance = tolerance
         self.device = device
@@ -268,6 +281,7 @@ class PolynomialCutoffRBF(_AbstractRBFLayer):
         self.beta = np.power(((2/n_gaussians) *
                              (1-np.exp(-self.high_cutoff))), -2)
         self.alpha = alpha
+        self.normalize_output = normalize_output
 
     def __len__(self):
         """Method to return basis size"""
@@ -338,6 +352,12 @@ class PolynomialCutoffRBF(_AbstractRBFLayer):
         expansions = torch.where(torch.abs(expansions) > self.tolerance,
                                  expansions,
                                  torch.zeros_like(expansions))
+
+        # If specified, normalize output by sum over all basis function outputs
+        if self.normalize_output:
+            basis_sum = torch.sum(expansions, dim=3)
+            expansions = expansions / basis_sum[:, :, :, None]
+
         if distance_mask is not None:
             expansions = expansions * distance_mask[:, :, :, None]
         return expansions
