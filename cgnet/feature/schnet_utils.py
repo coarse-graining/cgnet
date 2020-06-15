@@ -73,9 +73,22 @@ class CGBeadEmbedding(nn.Module):
     ----------
     n_embeddings: int
         Maximum number of different properties/amino_acids/elements,
-        basically the dictionary size.
+        basically the dictionary size. Note: when specifying
+        n_embeddings, you must input the total number of physical
+        embeddings + 1. This is because the 0 embedding used for padding
+        is included by default. See example below for more information.
     embedding_dim: int
         Size of the embedding vector.
+
+    Example
+    -------
+    If you wish to specify embeddings for 10 unique amino acids, using
+    labels 1-10 inclusive, with an output dimension of 128, and a padding
+    idx of 0, you would instance CGBeadEmbedding in the following way:
+
+        n_embeddings = 11     # (10 + 1)
+        embedding_dim = 128
+        my_embedding_layer = CGBeadEmbedding(n_embeddings, embedding_dim)
     """
 
     def __init__(self, n_embeddings, embedding_dim):
