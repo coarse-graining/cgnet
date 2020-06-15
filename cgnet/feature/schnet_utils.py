@@ -73,18 +73,19 @@ class CGBeadEmbedding(nn.Module):
     ----------
     n_embeddings: int
         Maximum number of different properties/amino_acids/elements,
-        basically the dictionary size. Note: when specifying
+        i.e., the dictionary size. Note: when specifying
         n_embeddings, you must input the total number of physical
         embeddings + 1. This is because the 0 embedding used for padding
-        is included by default. See example below for more information.
+        is included by default (see example below).
     embedding_dim: int
         Size of the embedding vector.
 
     Example
     -------
-    If you wish to specify embeddings for 10 unique amino acids, using
-    labels 1-10 inclusive, with an output dimension of 128, and a padding
-    idx of 0, you would instance CGBeadEmbedding in the following way:
+    If you have 10 unique beads, their labels will be 1, 2, ..., 10 inclusive,
+    because the 0 index is reserved for padding. Therefore, to specify 
+    embeddings with an output dimension of 128, you would instance
+    CGBeadEmbedding as follows:
 
         n_embeddings = 11     # (10 + 1)
         embedding_dim = 128
