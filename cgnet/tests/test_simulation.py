@@ -8,7 +8,8 @@ import torch
 import torch.nn as nn
 
 from cgnet.feature import MoleculeDataset, LinearLayer
-from cgnet.network import CGnet, ForceLoss, Simulation
+from cgnet.network import (CGnet, ForceLoss, Simulation,
+                           MultiModelSimulation)
 from nose.tools import assert_raises
 
 # Here we create testing data from a random linear protein
@@ -341,8 +342,7 @@ class HarmonicPotential():
     def __call__(self, positions, embeddings=None):
         """in kilojoule/mole/nm"""
         forces = -self.k * positions
-        # dont need meaningful values here
-        potential = torch.zeros(*forces.shape)
+        potential = (1.0/self.k) * torch.sum(positions**2, dim=1)
         return potential, forces
 
 
@@ -650,3 +650,55 @@ def test_log_file_basics():
     # We expect the log file to contain the expected number of logs, plus two
     # extra lines: one at the start and one at the end.
     assert len(line_list) == n_expected_logs + 2
+
+
+def test_multi_model_simulation():
+    # Tests to make sure that forces and potentials are accurately averaged
+    # when more than one model is used for a simulation
+
+    # We make 3 to ten random harmonic trap models with randomly chosen 
+    # curvature constants
+    num_models = np.random.randint(low=3, high=11)
+    constants = np.random.uniform(low=1, high=11, size=5)
+
+    # We use the same, random number of sims/particles for all models
+    n_sims = np.random.randint(low=10, high=101)
+    n_particles = np.random.randint(low=10, high=101)
+    masses = n_particles * [np.random.randint(low=1,high=5)]
+
+    models = [HarmonicPotential(k=k, T=300, n_particles=n_particles,
+                              dt=0.001, friction=10,
+                              n_sims=n_sims, sim_length=10)
+             for k in constants]
+
+    # Here we generate random initial coordinates
+    initial_coordinates = torch.randn((n_sims, n_particles, 3))
+
+    my_sim = MultiModelSimulation(models, initial_coordinates,
+                                  embeddings=None, length=10,
+                                  save_interval=1, masses=masses,
+                                  friction=10, dt=0.001)
+
+    # Here we use the 'calculate_potential_and_forces' method from
+    # MultiModelSimulation
+    avg_potential, avg_forces = my_sim.calculate_potential_and_forces(initial_coordinates)
+
+    # Next, we compute the average potential and forces manually
+
+    manual_avg_potential = []
+    manual_avg_forces = []
+    for model in models:
+        potential, forces = model(initial_coordinates)
+        manual_avg_potential.append(potential)
+        manual_avg_forces.append(forces)
+
+    manual_avg_potential = torch.mean(torch.stack(manual_avg_potential), dim=1)
+    manual_avg_forces = torch.mean(torch.stack(manual_avg_forces), dim=1)
+
+    # Test to see if the averages calulated by MultiModelSimulation
+    # match the averages calculate manually
+
+    np.testing.assert_array_equal(manual_avg_potential.numpy(),
+                                  avg_potential.numpy())
+    np.testing.assert_array_equal(manual_avg_forces.numpy(),
+                                  avg_forces.numpy())

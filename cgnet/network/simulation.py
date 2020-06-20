@@ -11,7 +11,61 @@ import warnings
 from cgnet.feature import SchnetFeature
 
 
-class Simulation():
+class _AbstractSimulator():
+
+    def __init__(self, model, initial_coordinates, embeddings=None, dt=5e-4,
+                 beta=1.0, friction=None, masses=None, diffusion=1.0,
+                 save_forces=False, save_potential=False, length=100,
+                 save_interval=10, random_seed=None,
+                 device=torch.device('cpu'),
+                 export_interval=None, log_interval=None,
+                 log_type='write', filename=None):
+
+        self.model = model
+
+        self.initial_coordinates = initial_coordinates
+        self.embeddings = embeddings
+        self.friction = friction
+        self.masses = masses
+
+        self.n_sims = self.initial_coordinates.shape[0]
+        self.n_beads = self.initial_coordinates.shape[1]
+        self.n_dims = self.initial_coordinates.shape[2]
+
+        self.save_forces = save_forces
+        self.save_potential = save_potential
+        self.length = length
+        self.save_interval = save_interval
+
+        self.dt = dt
+        self.diffusion = diffusion
+        self.beta = beta
+
+        self.device = device
+        self.export_interval = export_interval
+        self.log_interval = log_interval
+
+        if log_type not in ['print', 'write']:
+            raise ValueError(
+                "log_type can be either 'print' or 'write'"
+            )
+        self.log_type = log_type
+        self.filename = filename
+
+        if random_seed is None:
+            self.rng = torch.default_generator
+        else:
+            self.rng = torch.Generator().manual_seed(random_seed)
+        self.random_seed = random_seed
+
+        self._simulated = False
+
+
+    def simulate():
+        raise NotImplementedError()
+
+
+class Simulation(_AbstractSimulator):
     """Simulate an artificial trajectory from a CGnet.
 
     If friction and masses are provided, Langevin dynamics are used (see also
@@ -147,10 +201,13 @@ class Simulation():
                  device=torch.device('cpu'),
                  export_interval=None, log_interval=None,
                  log_type='write', filename=None):
-        self.model = model
 
         self.initial_coordinates = initial_coordinates
         self.embeddings = embeddings
+
+        self._input_model_check(model)
+        self.model = model
+
         self.friction = friction
         self.masses = masses
 
@@ -178,7 +235,7 @@ class Simulation():
         self.log_type = log_type
         self.filename = filename
 
-        self._input_checks()
+        self._input_option_checks()
 
         if random_seed is None:
             self.rng = torch.default_generator
@@ -188,44 +245,40 @@ class Simulation():
 
         self._simulated = False
 
-    def _input_checks(self):
-        """Method to catch any problems before starting a simulation:
-        - Warns if model is not in eval mode
-        - Make sure the save_interval evenly divides the simulation length
-        - Make sure if the network has SchnetFeatures, there are embeddings
-          provided
-        - Checks shapes of starting coordinates and embeddings
-        - Ensures masses are provided if friction is not None
-        - Warns if diffusion is specified but won't be used
-        - Checks compatibility of arguments to save and log
-        - Sets up saving parameters for numpy and log files, if relevant
-        """
 
-        # warn if model is in train mode, but don't prevent
-        if self.model.training:
+    def _input_model_check(self, model):
+        """Method to warn if the model is in 'train' mode. This
+        does not prevent the simulation from running.
+        """
+        if model.training:
             warnings.warn('model is in training mode, and certain PyTorch '
                           'layers, such as BatchNorm1d, behave differently '
                           'in training mode in ways that can negatively bias '
                           'simulations. We recommend that you put the model '
                           'into inference mode by calling `model.eval()`.')
 
-        # make sure save interval is a factor of total length
-        if self.length % self.save_interval != 0:
-            raise ValueError(
-                'The save_interval must be a factor of the simulation length'
-            )
-
         # make sure embeddings are provided if necessary
         if self.embeddings is None:
             try:
-                if np.any([type(self.model.feature.layer_list[i]) == SchnetFeature
-                           for i in range(len(self.model.feature.layer_list))]):
+                if np.any([type(model.feature.layer_list[i]) == SchnetFeature
+                           for i in range(len(model.feature.layer_list))]):
                     raise RuntimeError('Since you have a SchnetFeature, you must '
                                        'provide an embeddings array')
             except:
-                if type(self.model.feature) == SchnetFeature:
+                if type(model.feature) == SchnetFeature:
                     raise RuntimeError('Since you have a SchnetFeature, you must '
                                        'provide an embeddings array')
+
+
+    def _input_option_checks(self):
+        """Method to catch any problems before starting a simulation:
+        - Make sure the save_interval evenly divides the simulation length
+        - Checks shapes of starting coordinates and embeddings
+        - Ensures masses are provided if friction is not None
+        - Warns if diffusion is specified but won't be used
+        - Checks compatibility of arguments to save and log
+        - Sets up saving parameters for numpy and log files, if relevant
+        """
 
         # if there are embeddings, make sure their shape is correct
         if self.embeddings is not None:
@@ -235,6 +288,13 @@ class Simulation():
             if self.initial_coordinates.shape[:2] != self.embeddings.shape:
                 raise ValueError('initial_coordinates and embeddings '
                                  'must have the same first two dimensions')
+
+        # make sure save interval is a factor of total length
+        if self.length % self.save_interval != 0:
+            raise ValueError(
+                'The save_interval must be a factor of the simulation length'
+            )
+
 
         # make sure initial coordinates are in the proper format
         if len(self.initial_coordinates.shape) != 3:
@@ -550,6 +610,28 @@ class Simulation():
         swapped_data = data.permute(*axes)
         return swapped_data.cpu().detach().numpy()
 
+
+    def calculate_potential_and_forces(self, x_old):
+        """Method to calculated predicted forces by
+        forwarding the current coordinates through
+        self.model.
+
+        Parameters
+        ----------
+        x_old : torch.Tensor
+            coordinates from the previous timestep
+
+        Returns
+        -------
+        potential : torch.Tensor
+            scalar potential predicted by the model
+        forces : torch.Tensor
+            vector forces predicted by teh model
+        """
+        potential, forces = self.model(x_old, self.embeddings)
+        return potential, forces
+
+
     def simulate(self, overwrite=False):
         """Generates independent simulations.
 
@@ -609,7 +691,7 @@ class Simulation():
 
         for t in range(self.length):
             # produce potential and forces from model
-            potential, forces = self.model(x_old, self.embeddings)
+            potential, forces = self.calculate_potential_and_forces(x_old)
             potential = potential.detach()
             forces = forces.detach()
 
@@ -671,3 +753,78 @@ class Simulation():
         self._simulated = True
 
         return self.simulated_coords
+
+
+class MultiModelSimulation(Simulation):
+    """Simulation that integrates CG coordinates forward in time using
+    the average forces predicted from more than one CGnet model
+
+    Parameters
+    ----------
+    See Simulation() class parameter list
+
+    models: list of cgnet.network.CGNet() instances
+        The list of models from which predicted forces will be averaged over.
+    """
+
+    def __init__(self, models, initial_coordinates, **kwargs):
+
+        super(MultiModelSimulation, self).__init__(models, initial_coordinates,
+                                                   **kwargs)
+        self.models = models
+
+
+    def _input_model_check(self, models):
+        """Method to  perform the following checks:
+        - warn if any of the input models are in 'train' mode.
+          This does not prevent the simulation from running.
+        - Checks to see if the models have architectures that can
+          handle embeddings, if specified
+        """
+        for num, model in enumerate(models):
+            if model.training:
+                warnings.warn('model {} is in training mode, and certain '
+                              'PyTorch layers, such as BatchNorm1d, behave '
+                              'differently in training mode in ways that can '
+                              'negatively bias simulations. We recommend that '
+                              'you put the model into inference mode by '
+                              'calling `model.eval()`.'.format(num))
+
+            # make sure embeddings are provided if necessary
+            if self.embeddings is None:
+                try:
+                    if np.any([type(model.feature.layer_list[i]) == SchnetFeature
+                               for i in range(len(model.feature.layer_list))]):
+                        raise RuntimeError('Since you have a SchnetFeature, you must '
+                                           'provide an embeddings array')
+                except:
+                    if type(model.feature) == SchnetFeature:
+                        raise RuntimeError('Since you have a SchnetFeature, you must '
+                                           'provide an embeddings array')
+
+
+    def calculate_potential_and_forces(self, x_old):
+        """Method to calculate average predicted potentials and forces from
+        forwarding the x_old through each of the models in self.models
+
+        Parameters
+        ----------
+        x_old : torch.Tensor
+            coordinates from the previous timestep
+
+        Returns
+        -------
+        potential : torch.Tensor
+            scalar potential averaged over all the models in self.models
+        forces : torch.Tensor
+            vector forces averaged over all the models in self.models
+        """
+        potential_list = []
+        forces_list = []
+        for model in self.models:
+            potential, forces = model(x_old, self.embeddings)
+            potential_list.append(potential)
+            forces_list.append(forces)
+        mean_potential =  torch.mean(torch.stack(potential_list),dim=1)
+        mean_forces =  torch.mean(torch.stack(forces_list),dim=1)
+        return mean_potential, mean_forces
