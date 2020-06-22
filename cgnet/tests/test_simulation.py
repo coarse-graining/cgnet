@@ -342,7 +342,6 @@ class HarmonicPotential():
     def __call__(self, positions, embeddings=None):
         """in kilojoule/mole/nm"""
         forces = -self.k * positions
-        #potential = torch.zeros(*forces.shape)
         potential = (1.0/self.k) * positions**2
         return potential, forces
 
