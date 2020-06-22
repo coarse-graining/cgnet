@@ -589,7 +589,6 @@ def test_saving_all_quantities():
             for i in range(len(obs_file_list)):
                 temp_traj = np.load(tmp+'/'+obs_file_list[i])
                 # Test (ii)
-                print(j)
                 if j < 3:
                     np.testing.assert_array_equal(temp_traj.shape,
                                                   [n_sims, expected_chunk_length, model.n_particles, 3])
