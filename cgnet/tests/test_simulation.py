@@ -342,7 +342,8 @@ class HarmonicPotential():
     def __call__(self, positions, embeddings=None):
         """in kilojoule/mole/nm"""
         forces = -self.k * positions
-        potential = (1.0/self.k) * torch.sum(positions**2, dim=1)
+        #potential = torch.zeros(*forces.shape)
+        potential = (1.0/self.k) * positions**2
         return potential, forces
 
 
@@ -589,6 +590,7 @@ def test_saving_all_quantities():
             for i in range(len(obs_file_list)):
                 temp_traj = np.load(tmp+'/'+obs_file_list[i])
                 # Test (ii)
+                print(j)
                 if j < 3:
                     np.testing.assert_array_equal(temp_traj.shape,
                                                   [n_sims, expected_chunk_length, model.n_particles, 3])
