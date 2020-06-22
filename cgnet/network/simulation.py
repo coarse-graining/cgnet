@@ -705,14 +705,26 @@ class Simulation():
 
 class MultiModelSimulation(Simulation):
     """Simulation that integrates CG coordinates forward in time using
-    the average forces predicted from more than one CGnet model
+    the average forces predicted from more than one CGnet model.
 
     Parameters
     ----------
-    See Simulation() class parameter list
-
     models: list of cgnet.network.CGNet() instances
         The list of models from which predicted forces will be averaged over.
+    initial_coordinates : np.ndarray or torch.Tensor
+        Coordinate data of dimension [n_simulations, n_atoms, n_dimensions].
+        Each entry in the first dimension represents the first frame of an
+        independent simulation.
+    kwargs: see cgnet.network.Simulation kwargs for an exhaustive list of
+        simulation options.
+
+    Notes
+    -----
+    This class inherits from cgnet.network.Simulation. The same checks for
+    model mode ('train' vs. 'eval'), embedding/model compatibility for each input
+    model. The checks concerning simulation options are handled through superclassed
+    __init__(). For a full list of these checks, see
+    cgnet.network.Simulation._input_option_checks
     """
 
     def __init__(self, models, initial_coordinates, **kwargs):
