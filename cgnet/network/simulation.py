@@ -571,7 +571,7 @@ class Simulation():
         potential : torch.Tensor
             scalar potential predicted by the model
         forces : torch.Tensor
-            vector forces predicted by teh model
+            vector forces predicted by the model
         """
         potential, forces = self.model(x_old, self.embeddings)
         return potential, forces
