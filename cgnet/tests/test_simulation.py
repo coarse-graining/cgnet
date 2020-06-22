@@ -666,12 +666,11 @@ def test_multi_model_simulation():
     # We use the same, random number of sims/particles for all models
     n_sims = np.random.randint(low=10, high=101)
     n_particles = np.random.randint(low=10, high=101)
-    masses = n_particles * [np.random.randint(low=1,high=5)]
+    masses = n_particles * [np.random.randint(low=1, high=5)]
 
     models = [HarmonicPotential(k=k, T=300, n_particles=n_particles,
-                              dt=0.001, friction=10,
-                              n_sims=n_sims, sim_length=10)
-             for k in constants]
+                              dt=0.001, friction=10, n_sims=n_sims,
+                              sim_length=10) for k in constants]
 
     # Here we generate random initial coordinates
     initial_coordinates = torch.randn((n_sims, n_particles, 3))
@@ -683,7 +682,8 @@ def test_multi_model_simulation():
 
     # Here we use the 'calculate_potential_and_forces' method from
     # MultiModelSimulation
-    avg_potential, avg_forces = my_sim.calculate_potential_and_forces(initial_coordinates)
+    avg_potential, avg_forces = my_sim.calculate_potential_and_forces(
+                                    initial_coordinates)
 
     # Next, we compute the average potential and forces manually
 
