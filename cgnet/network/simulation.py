@@ -10,62 +10,7 @@ import warnings
 
 from cgnet.feature import SchnetFeature
 
-
-class _AbstractSimulator():
-
-    def __init__(self, model, initial_coordinates, embeddings=None, dt=5e-4,
-                 beta=1.0, friction=None, masses=None, diffusion=1.0,
-                 save_forces=False, save_potential=False, length=100,
-                 save_interval=10, random_seed=None,
-                 device=torch.device('cpu'),
-                 export_interval=None, log_interval=None,
-                 log_type='write', filename=None):
-
-        self.model = model
-
-        self.initial_coordinates = initial_coordinates
-        self.embeddings = embeddings
-        self.friction = friction
-        self.masses = masses
-
-        self.n_sims = self.initial_coordinates.shape[0]
-        self.n_beads = self.initial_coordinates.shape[1]
-        self.n_dims = self.initial_coordinates.shape[2]
-
-        self.save_forces = save_forces
-        self.save_potential = save_potential
-        self.length = length
-        self.save_interval = save_interval
-
-        self.dt = dt
-        self.diffusion = diffusion
-        self.beta = beta
-
-        self.device = device
-        self.export_interval = export_interval
-        self.log_interval = log_interval
-
-        if log_type not in ['print', 'write']:
-            raise ValueError(
-                "log_type can be either 'print' or 'write'"
-            )
-        self.log_type = log_type
-        self.filename = filename
-
-        if random_seed is None:
-            self.rng = torch.default_generator
-        else:
-            self.rng = torch.Generator().manual_seed(random_seed)
-        self.random_seed = random_seed
-
-        self._simulated = False
-
-
-    def simulate():
-        raise NotImplementedError()
-
-
-class Simulation(_AbstractSimulator):
+class Simulation():
     """Simulate an artificial trajectory from a CGnet.
 
     If friction and masses are provided, Langevin dynamics are used (see also
