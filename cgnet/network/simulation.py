@@ -192,8 +192,11 @@ class Simulation():
 
 
     def _input_model_check(self, model):
-        """Method to warn if the model is in 'train' mode. This
-        does not prevent the simulation from running.
+        """Method to  perform the following checks:
+        - warn if the input model is in 'train' mode.
+          This does not prevent the simulation from running.
+        - Checks to see if model has a SchnetFeature if if no
+          embeddings are specified
         """
         if model.training:
             warnings.warn('model is in training mode, and certain PyTorch '
@@ -723,8 +726,8 @@ class MultiModelSimulation(Simulation):
         """Method to  perform the following checks:
         - warn if any of the input models are in 'train' mode.
           This does not prevent the simulation from running.
-        - Checks to see if the models have architectures that can
-          handle embeddings, if specified
+        - Checks to see if any of the input models have a
+          SchnetFeature if if no embeddings are specified
         """
         for num, model in enumerate(models):
             if model.training:
