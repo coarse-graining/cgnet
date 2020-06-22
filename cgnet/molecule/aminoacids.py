@@ -110,7 +110,7 @@ def calculate_hard_sphere_minima(bead_pairs, cgmolecule, units='Angstroms',
 
     resmap = cgmolecule.resmap
     resseq = cgmolecule.resseq
-    if units == 'Angstroms':
+    if units.lower() == 'angstroms':
         residue_radii = {k : 10*v for k, v in RESIDUE_RADII.items()}
     else:
         residue_radii = RESIDUE_RADII

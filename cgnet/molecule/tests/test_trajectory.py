@@ -240,7 +240,7 @@ def test_equality_with_cgnet_distances():
     np.testing.assert_allclose(mdtraj_CA_dists, cgnet_CA_dists, rtol=1e-6)
 
 
-def test_equality_with_cnget_angles():
+def test_equality_with_cgnet_angles():
     # Make sure CA distances caluclated internally are consistent with mdtraj.
     # This test appears here because it requires an mdtraj dependency.
     molecule = CGMolecule(names=names, resseq=resseq, resmap=resmap)
