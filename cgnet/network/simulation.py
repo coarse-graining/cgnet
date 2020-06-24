@@ -153,7 +153,7 @@ class Simulation():
         # Here, we check the model mode ('train' vs 'eval') and
         # check that the model has a SchnetFeature if embeddings are
         # specified:
-        self._input_model_check(model)
+        self._input_model_checks(model)
         self.model = model
 
         self.friction = friction
@@ -196,7 +196,7 @@ class Simulation():
         self._simulated = False
 
 
-    def _input_model_check(self, model):
+    def _input_model_checks(self, model):
         """Method to  perform the following checks:
         - warn if the input model is in 'train' mode.
           This does not prevent the simulation from running.
@@ -246,7 +246,7 @@ class Simulation():
         options pertaining to simulation details, saving/output settings,
         and/or log settings. For checks related to model structures/architectures
         and input compatibilities (such as using embeddings in models
-        with SchnetFeatures), see the _input_model_check() method.
+        with SchnetFeatures), see the _input_model_checks() method.
 
         """
 
@@ -822,7 +822,7 @@ class MultiModelSimulation(Simulation):
         self.models = models
 
 
-    def _input_model_check(self, models):
+    def _input_model_checks(self, models):
         """Method to  perform the following checks:
         - warn if any of the input models are in 'train' mode.
           This does not prevent the simulation from running.
