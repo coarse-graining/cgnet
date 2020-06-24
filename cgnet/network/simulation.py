@@ -150,6 +150,9 @@ class Simulation():
         self.initial_coordinates = initial_coordinates
         self.embeddings = embeddings
 
+        # Here, we check the model mode ('train' vs 'eval') and
+        # check that the model has a SchnetFeature if embeddings are
+        # specified:
         self._input_model_check(model)
         self.model = model
 
@@ -180,6 +183,8 @@ class Simulation():
         self.log_type = log_type
         self.filename = filename
 
+        # Here, we check to make sure input options for the simulation 
+        # are acceptable
         self._input_option_checks()
 
         if random_seed is None:
@@ -707,7 +712,7 @@ class MultiModelSimulation(Simulation):
     """Simulation that integrates CG coordinates forward in time using
     the average forces predicted from more than one CGnet model. For
     thoeretical details on (overdamped) Langevin integration schemes,
-    see help(cgnet.network.Simulation).
+    see help(cgnet.network.Simulation)
 
     Parameters
     ----------
