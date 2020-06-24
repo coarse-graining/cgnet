@@ -202,6 +202,14 @@ class Simulation():
           This does not prevent the simulation from running.
         - Checks to see if model has a SchnetFeature if if no
           embeddings are specified
+
+        Notes
+        -----
+        This method is meant to check options only related to model settings
+        (such as being in 'train' or 'eval' mode) and/or model architectures
+        (such as the presence or absence of certain layers). For checking
+        options pertaining to simulation details, saving/output settings,
+        and/or log settings, see the _input_option_checks() method.
         """
         if model.training:
             warnings.warn('model is in training mode, and certain PyTorch '
@@ -231,6 +239,15 @@ class Simulation():
         - Warns if diffusion is specified but won't be used
         - Checks compatibility of arguments to save and log
         - Sets up saving parameters for numpy and log files, if relevant
+
+        Notes
+        -----
+        This method is meant to check the acceptability/compatibility of
+        options pertaining to simulation details, saving/output settings,
+        and/or log settings. For checks related to model structures/architectures
+        and input compatibilities (such as using embeddings in models
+        with SchnetFeatures), see the _input_model_check() method.
+
         """
 
         # if there are embeddings, make sure their shape is correct
