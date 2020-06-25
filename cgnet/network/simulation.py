@@ -176,7 +176,7 @@ class Simulation():
         # check that the model has a SchnetFeature if embeddings are
         # specified. Note that these checks are separated from the
         # input option checks in _input_option_checks() for ease in
-        # subclassing. See class notes for more information:
+        # subclassing. See class notes for more information.
         self._input_model_checks(model)
         self.model = model
 
@@ -210,7 +210,7 @@ class Simulation():
         # Here, we check to make sure input options for the simulation 
         # are acceptable. Note that these checks are separated from
         # the input model checks in _input_model_checks() for ease in
-        # subclassing. See class notes for more information:
+        # subclassing. See class notes for more information.
         self._input_option_checks()
 
         if random_seed is None:
