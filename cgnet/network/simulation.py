@@ -608,9 +608,8 @@ class Simulation():
 
 
     def calculate_potential_and_forces(self, x_old):
-        """Method to calculated predicted forces by
-        forwarding the current coordinates through
-        self.model.
+        """Method to calculated predicted forces by forwarding the current
+        coordinates through self.model.
 
         Parameters
         ----------
@@ -623,6 +622,14 @@ class Simulation():
             scalar potential predicted by the model
         forces : torch.Tensor
             vector forces predicted by the model
+
+        Notes
+        -----
+        This method has been isolated from the main simulation update scheme
+        for ease in overriding in a subclass that may preprocess or modify the
+        forces or potential returned from a model. For example, see
+        cgnet.network.MultiModelSimulation, where this method is overridden
+        in order to average forces and potentials over more than one model.
         """
         potential, forces = self.model(x_old, self.embeddings)
         return potential, forces
