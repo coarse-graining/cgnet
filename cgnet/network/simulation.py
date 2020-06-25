@@ -137,6 +137,28 @@ class Simulation():
 
     Langevin dynamics code based on:
     https://github.com/choderalab/openmmtools/blob/master/openmmtools/integrators.py
+
+    Checks are broken into two methods: one (_input_model_checks()) that deals
+    with checking components of the input models and their architectures and another
+    (_input_option_checks()) that deals with checking options pertaining to the
+    simulation, such as logging or saving/exporting options. This is done for the
+    following reasons:
+
+		1) If cgnet.network.Simluation is subclassed for multiple or specific
+        model types, the _input_model_checks() method can be overridden without
+        repeating a lot of code. As an example, see
+        cgnet.network.MultiModelSimulation, which uses all of the same
+        simulation options as cgnet.network.Simulation, but overides
+        _input_model_checks() in order to perform the same model checks as
+        cgnet.network.Simulation but for more than one input model.
+
+		2) If cgnet.network.Simulation is subclassed for different simulation
+        schemes with possibly different/additional simulation
+        parameters/options, the _input_option_checks() method can be overriden
+        without repeating code related to model checks. For example, one might
+        need a simulation scheme that includes an external force that is
+        decoupled from the forces predicted by the model.
+
     """
 
     def __init__(self, model, initial_coordinates, embeddings=None, dt=5e-4,
@@ -152,7 +174,9 @@ class Simulation():
 
         # Here, we check the model mode ('train' vs 'eval') and
         # check that the model has a SchnetFeature if embeddings are
-        # specified:
+        # specified. Note that these checks are separated from the
+        # input option checks in _input_option_checks() for ease in
+        # subclassing. See class notes for more information:
         self._input_model_checks(model)
         self.model = model
 
@@ -184,7 +208,9 @@ class Simulation():
         self.filename = filename
 
         # Here, we check to make sure input options for the simulation 
-        # are acceptable
+        # are acceptable. Note that these checks are separated from
+        # the input model checks in _input_model_checks() for ease in
+        # subclassing. See class notes for more information:
         self._input_option_checks()
 
         if random_seed is None:
