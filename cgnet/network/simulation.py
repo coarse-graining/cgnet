@@ -241,7 +241,8 @@ class Simulation():
         # This condition accounts for MultiModelSimulation iterating through
         # _input_model_checks instead of running it directly. It's placed
         # here to avoid repeating code, but if the simulation utilities
-        # are expanded it might make sense to take it out again
+        # are expanded it might make sense to remove this condition
+        # and rewrite _input_model_checks for each class
         if type(model) is list:
             pass
 
