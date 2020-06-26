@@ -714,6 +714,7 @@ def test_single_model_simulation():
     seed = np.random.randint(0, 1e6)
 
     # Next, we set up a model and produce a deep copy
+    save_interval=1
     dt = 0.001
     friction = 10
     k = np.random.randint(1,6)
@@ -724,20 +725,23 @@ def test_single_model_simulation():
     sim_length = np.random.randint(2,11)
     model = HarmonicPotential(k=k, T=300, n_particles=n_particles,
                               dt=dt, friction=friction, n_sims=n_sims,
-                              sim_length=sim_length)
+                              sim_length=sim_length,
+                              save_interval=save_interval)
     model_copy = copy.deepcopy(model)
     # Next, we simulate both models. We wrap both of the simulations in
     # a temporary directory as to not generate permanent simulation files
     with tempfile.TemporaryDirectory() as tmp:
         sim = Simulation(model, initial_coordinates, embeddings=None,
-                         length=sim_length, save_interval=1, masses=masses,
-                         dt=dt, save_forces=True,
+                         length=sim_length, save_interval=save_interval,
+                         masses=masses, dt=dt, save_forces=True,
+                         save_potential=True,
                          friction=friction, random_seed=seed,
                          filename=tmp+'/test')
         multi_sim = MultiModelSimulation([model_copy], initial_coordinates,
-                         embeddings=None, length=sim_length, save_interval=1,
+                         embeddings=None, length=sim_length,
+                         save_interval=save_interval,
                          masses=masses, dt=dt, save_forces=True,
-                         friction=friction,
+                         save_potential=True, friction=friction,
                          random_seed=seed, filename=tmp+'/test_copy')
         trajectory = sim.simulate()
         trajectory_copy = multi_sim.simulate()
