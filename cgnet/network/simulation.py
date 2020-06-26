@@ -524,8 +524,6 @@ class Simulation():
             # structures, so determine its dimensionality at the first
             # timepoint (as opposed to in self._set_up_simulation)
             if self.simulated_potential is None:
-                #print(self.n_sims)
-                #print(potential.shape)
                 assert potential.shape[0] == self.n_sims
                 potential_dims = ([self._save_size, self.n_sims] +
                                   [potential.shape[j]
