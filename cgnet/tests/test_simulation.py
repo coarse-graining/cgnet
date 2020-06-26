@@ -725,7 +725,7 @@ def test_single_model_simulation():
     model = HarmonicPotential(k=k, T=300, n_particles=n_particles,
                               dt=dt, friction=friction, n_sims=n_sims,
                               sim_length=sim_length)
-    model_copy = copy.copy(model)
+    model_copy = copy.deepcopy(model)
     # Next, we simulate both models. We wrap both of the simulations in
     # a temporary directory as to not generate permanent simulation files
     with tempfile.TemporaryDirectory() as tmp:
