@@ -699,8 +699,8 @@ def test_multi_model_simulation_averaging():
     masses = n_particles * [np.random.randint(low=1, high=5)]
 
     models = [HarmonicPotential(k=k, T=300, n_particles=n_particles,
-                              dt=0.001, friction=10, n_sims=n_sims,
-                              sim_length=10) for k in constants]
+                                dt=0.001, friction=10, n_sims=n_sims,
+                                sim_length=10) for k in constants]
 
     # Here we generate random initial coordinates
     initial_coordinates = torch.randn((n_sims, n_particles, 3))
@@ -745,9 +745,9 @@ def test_single_model_simulation_vs_multimodelsimulation():
     seed = np.random.randint(0, 1e6)
 
     # Next, we set up a model and produce a deep copy
-    save_interval=1
+    save_interval = 1
     dt = 0.001 * np.random.randint(1, 11)
-    friction = 10 * np.random.randint(1,11)
+    friction = 10 * np.random.randint(1, 11)
     k = np.random.randint(1, 6)
     n_particles = np.random.randint(1, 101)
     n_sims = np.random.randint(1, 11)
@@ -770,11 +770,12 @@ def test_single_model_simulation_vs_multimodelsimulation():
                          friction=friction, random_seed=seed,
                          filename=tmp+'/test')
         multi_sim = MultiModelSimulation([model], initial_coordinates,
-                         embeddings=None, length=sim_length,
-                         save_interval=save_interval,
-                         masses=masses, dt=dt, save_forces=True,
-                         save_potential=True, friction=friction,
-                         random_seed=seed, filename=tmp+'/test_copy')
+                                         embeddings=None, length=sim_length,
+                                         save_interval=save_interval,
+                                         masses=masses, dt=dt, save_forces=True,
+                                         save_potential=True, friction=friction,
+                                         random_seed=seed,
+                                         filename=tmp+'/test_copy')
 
         trajectory = sim.simulate()
         trajectory_copy = multi_sim.simulate()
