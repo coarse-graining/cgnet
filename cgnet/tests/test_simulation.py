@@ -778,16 +778,16 @@ def test_single_model_simulation_vs_multimodelsimulation():
                                          filename=tmp+'/test_copy')
 
         trajectory = sim.simulate()
-        trajectory_copy = multi_sim.simulate()
+        trajectory_from_multi = multi_sim.simulate()
 
         # Here, we test the equality of the two simulation results
 
-        assert trajectory.shape == trajectory_copy.shape
+        assert trajectory.shape == trajectory_from_multi.shape
         assert sim.simulated_forces.shape == multi_sim.simulated_forces.shape
         assert sim.simulated_potential.shape == multi_sim.simulated_potential.shape
         assert sim.kinetic_energies.shape == multi_sim.kinetic_energies.shape
 
-        np.testing.assert_array_equal(trajectory, trajectory_copy)
+        np.testing.assert_array_equal(trajectory, trajectory_from_multi)
         np.testing.assert_array_equal(sim.simulated_potential,
                                       multi_sim.simulated_potential)
         np.testing.assert_array_equal(sim.simulated_forces,
