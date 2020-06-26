@@ -257,12 +257,12 @@ class Simulation():
 
             # make sure embeddings are provided if necessary
             if self.embeddings is None:
-                try:
+                if hasattr(model.feature, 'layer_list'):
                     if np.any([type(model.feature.layer_list[i]) == SchnetFeature
                                for i in range(len(model.feature.layer_list))]):
                         raise RuntimeError('Since you have a SchnetFeature, you must '
                                            'provide an embeddings array')
-                except:
+                else:
                     if type(model.feature) == SchnetFeature:
                         raise RuntimeError('Since you have a SchnetFeature, you must '
                                            'provide an embeddings array')
@@ -865,6 +865,8 @@ class MultiModelSimulation(Simulation):
 
         super(MultiModelSimulation, self).__init__(models, initial_coordinates,
                                                    **kwargs)
+
+        self._input_model_list_check(models)
         self.models = models
 
     def _input_model_list_check(self, models):

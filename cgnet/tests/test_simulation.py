@@ -1,4 +1,4 @@
-# Authors: Brooke Husic
+# Authors: Brooke Husic, Nick Charron
 # Contributors: Andreas Kraemer
 
 import numpy as np
@@ -8,9 +8,10 @@ import torch
 import torch.nn as nn
 import copy
 
-from cgnet.feature import MoleculeDataset, LinearLayer
+from cgnet.feature import (MoleculeDataset, LinearLayer,
+                           CGBeadEmbedding, GaussianRBF)
 from cgnet.network import (CGnet, ForceLoss, Simulation,
-                           MultiModelSimulation)
+                           MultiModelSimulation, SchnetFeature)
 from nose.tools import assert_raises
 
 # Here we create testing data from a random linear protein
@@ -46,6 +47,24 @@ initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
 masses = np.ones(beads)
 friction = np.random.randint(10, 20)
 
+# SchNet model
+feature_size = np.random.randint(5, 10)  # random feature size
+embedding_dim = 10  # embedding property size
+n_interaction_blocks = np.random.randint(1, 3)  # random number of interactions
+neighbor_cutoff = np.random.uniform(0, 1)  # random neighbor cutoff
+embedding_layer = CGBeadEmbedding(n_embeddings=embedding_dim,
+                                  embedding_dim=feature_size)
+rbf_layer = GaussianRBF()
+
+# Here we use the above variables to create the SchnetFeature
+schnet_feature = SchnetFeature(feature_size=feature_size,
+                               embedding_layer=embedding_layer,
+                               rbf_layer=rbf_layer,
+                               n_interaction_blocks=n_interaction_blocks,
+                               calculate_geometry=True,
+                               n_beads=beads,
+                               neighbor_cutoff=neighbor_cutoff)
+schnet_model = CGnet(arch, ForceLoss(), feature=schnet_feature).eval()
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # The following tests probe basic shapes/functionalities of the simulation  #
@@ -238,6 +257,14 @@ def test_langevin_simulation_seeding():
     np.testing.assert_array_equal(sim1.simulated_potential,
                                   sim2.simulated_potential)
     np.testing.assert_array_equal(sim1.kinetic_energies, sim2.kinetic_energies)
+
+
+def test_schnet_simulation_safety():
+    # This test confirms that a simulation cannot be instantiated if
+    # schnet features but no embeddings are provided
+    with assert_raises(RuntimeError):
+        Simulation(schnet_model, initial_coordinates, length=sim_length,
+                   save_interval=save_interval)
 
 
 def test_brownian_simulation_safety():
@@ -652,6 +679,10 @@ def test_log_file_basics():
     # extra lines: one at the start and one at the end.
     assert len(line_list) == n_expected_logs + 2
 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# The following tests are for the MultiModelSimulation class  #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 
 def test_multi_model_simulation():
     # Tests to make sure that forces and potentials are accurately averaged
@@ -749,8 +780,8 @@ def test_single_model_simulation():
         trajectory_copy = multi_sim.simulate()
 
         # Here, we test the equality of the two simulation results
-        np.save("trajectory.npy", trajectory),
-        np.save("trajectory_copy.npy", trajectory_copy)
+        #np.save("trajectory.npy", trajectory),
+        #np.save("trajectory_copy.npy", trajectory_copy)
         #assert trajectory.shape == trajectory_copy.shape
         #print(sim.simulated_potential.shape, multi_sim.simulated_potential.shape)
         #assert sim.simulated_forces.shape == multi_sim.simulated_forces.shape
@@ -767,3 +798,11 @@ def test_single_model_simulation():
         np.testing.assert_array_equal(sim.kinetic_energies,
                                       multi_sim.kinetic_energies)
 
+
+def test_schnet_simulation_safety_multiple_models():
+    # This test confirms that a multi model simulation cannot be instantiated
+    # if schnet features but no embeddings are provided
+    schnet_model_list = [schnet_model, schnet_model]
+    with assert_raises(RuntimeError):
+        MultiModelSimulation(schnet_model_list, initial_coordinates,
+                             length=sim_length, save_interval=save_interval)
