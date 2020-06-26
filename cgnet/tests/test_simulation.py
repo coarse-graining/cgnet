@@ -736,7 +736,7 @@ def test_multi_model_simulation_averaging():
                                   avg_forces.numpy())
 
 
-def test_single_model_simulation():
+def test_single_model_simulation_vs_multimodelsimulation():
     # Tests to make sure that Simulation and MultiModelSimulation return
     # the same simulation results (coordinates, forces, potential energy,
     # and kinetic energies) if a single model is used in both cases.
