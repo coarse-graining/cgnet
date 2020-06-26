@@ -512,6 +512,8 @@ class Simulation():
             # structures, so determine its dimensionality at the first
             # timepoint (as opposed to in self._set_up_simulation)
             if self.simulated_potential is None:
+                #print(self.n_sims)
+                #print(potential.shape)
                 assert potential.shape[0] == self.n_sims
                 potential_dims = ([self._save_size, self.n_sims] +
                                   [potential.shape[j]
@@ -854,7 +856,6 @@ class MultiModelSimulation(Simulation):
                                                    **kwargs)
         self.models = models
 
-
     def _input_model_checks(self, models):
         """Method to  perform the following checks:
         - warn if any of the input models are in 'train' mode.
@@ -906,6 +907,6 @@ class MultiModelSimulation(Simulation):
             potential, forces = model(x_old, self.embeddings)
             potential_list.append(potential)
             forces_list.append(forces)
-        mean_potential =  torch.mean(torch.stack(potential_list), dim=1)
-        mean_forces =  torch.mean(torch.stack(forces_list), dim=1)
+        mean_potential =  torch.mean(torch.stack(potential_list), dim=0)
+        mean_forces =  torch.mean(torch.stack(forces_list), dim=0)
         return mean_potential, mean_forces

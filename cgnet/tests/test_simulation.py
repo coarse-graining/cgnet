@@ -693,8 +693,8 @@ def test_multi_model_simulation():
         manual_avg_potential.append(potential)
         manual_avg_forces.append(forces)
 
-    manual_avg_potential = torch.mean(torch.stack(manual_avg_potential), dim=1)
-    manual_avg_forces = torch.mean(torch.stack(manual_avg_forces), dim=1)
+    manual_avg_potential = torch.mean(torch.stack(manual_avg_potential), dim=0)
+    manual_avg_forces = torch.mean(torch.stack(manual_avg_forces), dim=0)
 
     # Test to see if the averages calulated by MultiModelSimulation
     # match the averages calculate manually
@@ -723,11 +723,12 @@ def test_single_model_simulation():
     initial_coordinates = torch.randn((n_sims, n_particles, 3))
     masses = n_particles * [np.random.randint(low=1, high=5)]
     sim_length = np.random.randint(2,11)
+
     model = HarmonicPotential(k=k, T=300, n_particles=n_particles,
                               dt=dt, friction=friction, n_sims=n_sims,
                               sim_length=sim_length,
                               save_interval=save_interval)
-    model_copy = copy.deepcopy(model)
+    #model_copy = copy.deepcopy(model)
     # Next, we simulate both models. We wrap both of the simulations in
     # a temporary directory as to not generate permanent simulation files
     with tempfile.TemporaryDirectory() as tmp:
@@ -737,18 +738,17 @@ def test_single_model_simulation():
                          save_potential=True,
                          friction=friction, random_seed=seed,
                          filename=tmp+'/test')
-        multi_sim = MultiModelSimulation([model_copy], initial_coordinates,
+        multi_sim = MultiModelSimulation([model], initial_coordinates,
                          embeddings=None, length=sim_length,
                          save_interval=save_interval,
                          masses=masses, dt=dt, save_forces=True,
                          save_potential=True, friction=friction,
                          random_seed=seed, filename=tmp+'/test_copy')
+
         trajectory = sim.simulate()
         trajectory_copy = multi_sim.simulate()
 
         # Here, we test the equality of the two simulation results
-        print(seed)
-        print(trajectory.shape, trajectory_copy.shape)
         np.save("trajectory.npy", trajectory),
         np.save("trajectory_copy.npy", trajectory_copy)
         #assert trajectory.shape == trajectory_copy.shape
