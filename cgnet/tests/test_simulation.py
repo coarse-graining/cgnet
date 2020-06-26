@@ -744,7 +744,7 @@ def test_single_model_simulation_vs_multimodelsimulation():
     # First, we generate a random integer seed
     seed = np.random.randint(0, 1e6)
 
-    # Next, we set up a model and produce a deep copy
+    # Next, we set up a model
     save_interval = 1
     dt = 0.001 * np.random.randint(1, 11)
     friction = 10 * np.random.randint(1, 11)
@@ -759,7 +759,7 @@ def test_single_model_simulation_vs_multimodelsimulation():
                               dt=dt, friction=friction, n_sims=n_sims,
                               sim_length=sim_length,
                               save_interval=save_interval)
-    #model_copy = copy.deepcopy(model)
+
     # Next, we simulate both models. We wrap both of the simulations in
     # a temporary directory as to not generate permanent simulation files
     with tempfile.TemporaryDirectory() as tmp:
