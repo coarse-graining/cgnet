@@ -746,14 +746,14 @@ def test_single_model_simulation():
 
     # Next, we set up a model and produce a deep copy
     save_interval=1
-    dt = 0.001
+    dt = 0.001 * np.random.randint(1, 11)
     friction = 10
-    k = np.random.randint(1,6)
-    n_particles = np.random.randint(1,101)
-    n_sims = np.random.randint(1,11)
+    k = np.random.randint(1, 6)
+    n_particles = np.random.randint(1, 101)
+    n_sims = np.random.randint(1, 11)
     initial_coordinates = torch.randn((n_sims, n_particles, 3))
     masses = n_particles * [np.random.randint(low=1, high=5)]
-    sim_length = np.random.randint(2,11)
+    sim_length = np.random.randint(2, 11)
 
     model = HarmonicPotential(k=k, T=300, n_particles=n_particles,
                               dt=dt, friction=friction, n_sims=n_sims,
@@ -780,15 +780,11 @@ def test_single_model_simulation():
         trajectory_copy = multi_sim.simulate()
 
         # Here, we test the equality of the two simulation results
-        #np.save("trajectory.npy", trajectory),
-        #np.save("trajectory_copy.npy", trajectory_copy)
-        #assert trajectory.shape == trajectory_copy.shape
-        #print(sim.simulated_potential.shape, multi_sim.simulated_potential.shape)
-        #assert sim.simulated_forces.shape == multi_sim.simulated_forces.shape
-        print(sim.simulated_forces.shape, multi_sim.simulated_forces.shape)
-        #assert sim.simulated_potential.shape == multi_sim.simulated_potential.shape
-        print(sim.kinetic_energies.shape, multi_sim.kinetic_energies.shape)
-        #assert sim.kinetic_energies.shape == multi_sim.kinetic_energies.shape
+
+        assert trajectory.shape == trajectory_copy.shape
+        assert sim.simulated_forces.shape == multi_sim.simulated_forces.shape
+        assert sim.simulated_potential.shape == multi_sim.simulated_potential.shape
+        assert sim.kinetic_energies.shape == multi_sim.kinetic_energies.shape
 
         np.testing.assert_array_equal(trajectory, trajectory_copy)
         np.testing.assert_array_equal(sim.simulated_potential,
