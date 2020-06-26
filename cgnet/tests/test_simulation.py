@@ -716,7 +716,7 @@ def test_single_model_simulation():
     # Next, we set up a model and produce a deep copy
     save_interval=1
     dt = 0.001 * np.random.randint(1, 11)
-    friction = 10
+    friction = 10 * np.random.randint(1,11)
     k = np.random.randint(1, 6)
     n_particles = np.random.randint(1, 101)
     n_sims = np.random.randint(1, 11)
