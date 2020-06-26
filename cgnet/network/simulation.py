@@ -222,7 +222,7 @@ class Simulation():
         self._simulated = False
 
 
-    def _input_model_checks(self, model):
+    def _input_model_checks(self, model, idx=None):
         """Method to  perform the following checks:
         - warn if the input model is in 'train' mode.
           This does not prevent the simulation from running.
@@ -237,24 +237,36 @@ class Simulation():
         options pertaining to simulation details, saving/output settings,
         and/or log settings, see the _input_option_checks() method.
         """
-        if model.training:
-            warnings.warn('model is in training mode, and certain PyTorch '
-                          'layers, such as BatchNorm1d, behave differently '
-                          'in training mode in ways that can negatively bias '
-                          'simulations. We recommend that you put the model '
-                          'into inference mode by calling `model.eval()`.')
 
-        # make sure embeddings are provided if necessary
-        if self.embeddings is None:
-            try:
-                if np.any([type(model.feature.layer_list[i]) == SchnetFeature
-                           for i in range(len(model.feature.layer_list))]):
-                    raise RuntimeError('Since you have a SchnetFeature, you must '
-                                       'provide an embeddings array')
-            except:
-                if type(model.feature) == SchnetFeature:
-                    raise RuntimeError('Since you have a SchnetFeature, you must '
-                                       'provide an embeddings array')
+        # This condition accounts for MultiModelSimulation iterating through
+        # _input_model_checks instead of running it directly. It's placed
+        # here to avoid repeating code, but if the simulation utilities
+        # are expanded it might make sense to remove this condition
+        # and rewrite _input_model_checks for each class
+        if type(model) is list:
+            pass
+
+        else:
+            idx = '' # just for ease of printing
+            if model.training:
+                warnings.warn('model {} is in training mode, and certain '
+                              'PyTorch layers, such as BatchNorm1d, behave '
+                              'differently in training mode in ways that can '
+                              'negatively bias simulations. We recommend that '
+                              'you put the model into inference mode by '
+                              'calling `model.eval()`.'.format(idx))
+
+            # make sure embeddings are provided if necessary
+            if self.embeddings is None:
+                if hasattr(model.feature, 'layer_list'):
+                    if np.any([type(model.feature.layer_list[i]) == SchnetFeature
+                               for i in range(len(model.feature.layer_list))]):
+                        raise RuntimeError('Since you have a SchnetFeature, you must '
+                                           'provide an embeddings array')
+                else:
+                    if type(model.feature) == SchnetFeature:
+                        raise RuntimeError('Since you have a SchnetFeature, you must '
+                                           'provide an embeddings array')
 
 
     def _input_option_checks(self):
@@ -854,36 +866,13 @@ class MultiModelSimulation(Simulation):
 
         super(MultiModelSimulation, self).__init__(models, initial_coordinates,
                                                    **kwargs)
+
+        self._input_model_list_check(models)
         self.models = models
 
-    def _input_model_checks(self, models):
-        """Method to  perform the following checks:
-        - warn if any of the input models are in 'train' mode.
-          This does not prevent the simulation from running.
-        - Checks to see if any of the input models have a
-          SchnetFeature if if no embeddings are specified
-        """
-        for num, model in enumerate(models):
-            if model.training:
-                warnings.warn('model {} is in training mode, and certain '
-                              'PyTorch layers, such as BatchNorm1d, behave '
-                              'differently in training mode in ways that can '
-                              'negatively bias simulations. We recommend that '
-                              'you put the model into inference mode by '
-                              'calling `model.eval()`.'.format(num))
-
-            # make sure embeddings are provided if necessary
-            if self.embeddings is None:
-                try:
-                    if np.any([type(model.feature.layer_list[i]) == SchnetFeature
-                               for i in range(len(model.feature.layer_list))]):
-                        raise RuntimeError('Since you have a SchnetFeature, you must '
-                                           'provide an embeddings array')
-                except:
-                    if type(model.feature) == SchnetFeature:
-                        raise RuntimeError('Since you have a SchnetFeature, you must '
-                                           'provide an embeddings array')
-
+    def _input_model_list_check(self, models):
+        for idx, individual_model in enumerate(models):
+            self._input_model_checks(individual_model, idx=idx)
 
     def calculate_potential_and_forces(self, x_old):
         """Method to calculate average predicted potentials and forces from
