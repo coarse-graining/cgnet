@@ -715,14 +715,14 @@ def test_single_model_simulation():
 
     # Next, we set up a model and produce a deep copy
     save_interval=1
-    dt = 0.001
+    dt = 0.001 * np.random.randint(1, 11)
     friction = 10
-    k = np.random.randint(1,6)
-    n_particles = np.random.randint(1,101)
-    n_sims = np.random.randint(1,11)
+    k = np.random.randint(1, 6)
+    n_particles = np.random.randint(1, 101)
+    n_sims = np.random.randint(1, 11)
     initial_coordinates = torch.randn((n_sims, n_particles, 3))
     masses = n_particles * [np.random.randint(low=1, high=5)]
-    sim_length = np.random.randint(2,11)
+    sim_length = np.random.randint(2, 11)
 
     model = HarmonicPotential(k=k, T=300, n_particles=n_particles,
                               dt=dt, friction=friction, n_sims=n_sims,
