@@ -894,8 +894,8 @@ class MultiModelSimulation(Simulation):
             potential, forces = model(x_old, self.embeddings)
             potential_list.append(potential)
             forces_list.append(forces)
-        mean_potential =  torch.mean(torch.stack(potential_list), dim=0)
-        mean_forces =  torch.mean(torch.stack(forces_list), dim=0)
+        mean_potential =  sum(potential_list) / len(potential_list)
+        mean_forces =  sum(forces_list) / len(forces_list)
 
         # make sure the mean did not alter the shapes of potential/forces
         # using the last potential/force
