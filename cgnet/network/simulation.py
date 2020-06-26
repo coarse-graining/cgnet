@@ -896,4 +896,10 @@ class MultiModelSimulation(Simulation):
             forces_list.append(forces)
         mean_potential =  torch.mean(torch.stack(potential_list), dim=0)
         mean_forces =  torch.mean(torch.stack(forces_list), dim=0)
+
+        # make sure the mean did not alter the shapes of potential/forces
+        # using the last potential/force
+        assert mean_potential.size() == potential.size()
+        assert mean_forces.size() == forces.size()
+
         return mean_potential, mean_forces
