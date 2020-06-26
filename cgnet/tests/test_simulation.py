@@ -6,6 +6,7 @@ import os
 import tempfile
 import torch
 import torch.nn as nn
+import copy
 
 from cgnet.feature import MoleculeDataset, LinearLayer
 from cgnet.network import (CGnet, ForceLoss, Simulation,
@@ -702,3 +703,63 @@ def test_multi_model_simulation():
                                   avg_potential.numpy())
     np.testing.assert_array_equal(manual_avg_forces.numpy(),
                                   avg_forces.numpy())
+
+
+def test_single_model_simulation():
+    # Tests to make sure that Simulation and MultiModelSimulation return
+    # the same simulation results (coordinates, forces, potential energy,
+    # and kinetic energies) if a single model is used in both cases.
+
+    # First, we generate a random integer seed
+    seed = np.random.randint(0, 1e6)
+
+    # Next, we set up a model and produce a deep copy
+    dt = 0.001
+    friction = 10
+    k = np.random.randint(1,6)
+    n_particles = np.random.randint(1,101)
+    n_sims = np.random.randint(1,11)
+    initial_coordinates = torch.randn((n_sims, n_particles, 3))
+    masses = n_particles * [np.random.randint(low=1, high=5)]
+    sim_length = np.random.randint(2,11)
+    model = HarmonicPotential(k=k, T=300, n_particles=n_particles,
+                              dt=dt, friction=friction, n_sims=n_sims,
+                              sim_length=sim_length)
+    model_copy = copy.copy(model)
+    # Next, we simulate both models. We wrap both of the simulations in
+    # a temporary directory as to not generate permanent simulation files
+    with tempfile.TemporaryDirectory() as tmp:
+        sim = Simulation(model, initial_coordinates, embeddings=None,
+                         length=sim_length, save_interval=1, masses=masses,
+                         dt=dt, save_forces=True,
+                         friction=friction, random_seed=seed,
+                         filename=tmp+'/test')
+        multi_sim = MultiModelSimulation([model_copy], initial_coordinates,
+                         embeddings=None, length=sim_length, save_interval=1,
+                         masses=masses, dt=dt, save_forces=True,
+                         friction=friction,
+                         random_seed=seed, filename=tmp+'/test_copy')
+        trajectory = sim.simulate()
+        trajectory_copy = multi_sim.simulate()
+
+        # Here, we test the equality of the two simulation results
+        print(seed)
+        print(trajectory.shape, trajectory_copy.shape)
+        np.save("trajectory.npy", trajectory),
+        np.save("trajectory_copy.npy", trajectory_copy)
+        #assert trajectory.shape == trajectory_copy.shape
+        #print(sim.simulated_potential.shape, multi_sim.simulated_potential.shape)
+        #assert sim.simulated_forces.shape == multi_sim.simulated_forces.shape
+        print(sim.simulated_forces.shape, multi_sim.simulated_forces.shape)
+        #assert sim.simulated_potential.shape == multi_sim.simulated_potential.shape
+        print(sim.kinetic_energies.shape, multi_sim.kinetic_energies.shape)
+        #assert sim.kinetic_energies.shape == multi_sim.kinetic_energies.shape
+
+        np.testing.assert_array_equal(trajectory, trajectory_copy)
+        np.testing.assert_array_equal(sim.simulated_potential,
+                                      multi_sim.simulated_potential)
+        np.testing.assert_array_equal(sim.simulated_forces,
+                                      multi_sim.simulated_forces)
+        np.testing.assert_array_equal(sim.kinetic_energies,
+                                      multi_sim.kinetic_energies)
+
