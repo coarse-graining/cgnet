@@ -749,15 +749,10 @@ def test_single_model_simulation():
         trajectory_copy = multi_sim.simulate()
 
         # Here, we test the equality of the two simulation results
-        np.save("trajectory.npy", trajectory),
-        np.save("trajectory_copy.npy", trajectory_copy)
-        #assert trajectory.shape == trajectory_copy.shape
-        #print(sim.simulated_potential.shape, multi_sim.simulated_potential.shape)
-        #assert sim.simulated_forces.shape == multi_sim.simulated_forces.shape
-        print(sim.simulated_forces.shape, multi_sim.simulated_forces.shape)
-        #assert sim.simulated_potential.shape == multi_sim.simulated_potential.shape
-        print(sim.kinetic_energies.shape, multi_sim.kinetic_energies.shape)
-        #assert sim.kinetic_energies.shape == multi_sim.kinetic_energies.shape
+        assert trajectory.shape == trajectory_copy.shape
+        assert sim.simulated_forces.shape == multi_sim.simulated_forces.shape
+        assert sim.simulated_potential.shape == multi_sim.simulated_potential.shape
+        assert sim.kinetic_energies.shape == multi_sim.kinetic_energies.shape
 
         np.testing.assert_array_equal(trajectory, trajectory_copy)
         np.testing.assert_array_equal(sim.simulated_potential,
