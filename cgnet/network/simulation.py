@@ -10,7 +10,6 @@ import warnings
 
 from cgnet.feature import SchnetFeature
 
-
 class Simulation():
     """Simulate an artificial trajectory from a CGnet.
 
@@ -138,6 +137,28 @@ class Simulation():
 
     Langevin dynamics code based on:
     https://github.com/choderalab/openmmtools/blob/master/openmmtools/integrators.py
+
+    Checks are broken into two methods: one (_input_model_checks()) that deals
+    with checking components of the input models and their architectures and another
+    (_input_option_checks()) that deals with checking options pertaining to the
+    simulation, such as logging or saving/exporting options. This is done for the
+    following reasons:
+
+		1) If cgnet.network.Simluation is subclassed for multiple or specific
+        model types, the _input_model_checks() method can be overridden without
+        repeating a lot of code. As an example, see
+        cgnet.network.MultiModelSimulation, which uses all of the same
+        simulation options as cgnet.network.Simulation, but overides
+        _input_model_checks() in order to perform the same model checks as
+        cgnet.network.Simulation but for more than one input model.
+
+		2) If cgnet.network.Simulation is subclassed for different simulation
+        schemes with possibly different/additional simulation
+        parameters/options, the _input_option_checks() method can be overriden
+        without repeating code related to model checks. For example, one might
+        need a simulation scheme that includes an external force that is
+        decoupled from the forces predicted by the model.
+
     """
 
     def __init__(self, model, initial_coordinates, embeddings=None, dt=5e-4,
@@ -147,10 +168,18 @@ class Simulation():
                  device=torch.device('cpu'),
                  export_interval=None, log_interval=None,
                  log_type='write', filename=None):
-        self.model = model
 
         self.initial_coordinates = initial_coordinates
         self.embeddings = embeddings
+
+        # Here, we check the model mode ('train' vs 'eval') and
+        # check that the model has a SchnetFeature if embeddings are
+        # specified. Note that these checks are separated from the
+        # input option checks in _input_option_checks() for ease in
+        # subclassing. See class notes for more information.
+        self._input_model_checks(model)
+        self.model = model
+
         self.friction = friction
         self.masses = masses
 
@@ -178,7 +207,11 @@ class Simulation():
         self.log_type = log_type
         self.filename = filename
 
-        self._input_checks()
+        # Here, we check to make sure input options for the simulation 
+        # are acceptable. Note that these checks are separated from
+        # the input model checks in _input_model_checks() for ease in
+        # subclassing. See class notes for more information.
+        self._input_option_checks()
 
         if random_seed is None:
             self.rng = torch.default_generator
@@ -188,44 +221,72 @@ class Simulation():
 
         self._simulated = False
 
-    def _input_checks(self):
+
+    def _input_model_checks(self, model, idx=None):
+        """Method to  perform the following checks:
+        - warn if the input model is in 'train' mode.
+          This does not prevent the simulation from running.
+        - Checks to see if model has a SchnetFeature if if no
+          embeddings are specified
+
+        Notes
+        -----
+        This method is meant to check options only related to model settings
+        (such as being in 'train' or 'eval' mode) and/or model architectures
+        (such as the presence or absence of certain layers). For checking
+        options pertaining to simulation details, saving/output settings,
+        and/or log settings, see the _input_option_checks() method.
+        """
+
+        # This condition accounts for MultiModelSimulation iterating through
+        # _input_model_checks instead of running it directly. It's placed
+        # here to avoid repeating code, but if the simulation utilities
+        # are expanded it might make sense to remove this condition
+        # and rewrite _input_model_checks for each class
+        if type(model) is list:
+            pass
+
+        else:
+            idx = '' # just for ease of printing
+            if model.training:
+                warnings.warn('model {} is in training mode, and certain '
+                              'PyTorch layers, such as BatchNorm1d, behave '
+                              'differently in training mode in ways that can '
+                              'negatively bias simulations. We recommend that '
+                              'you put the model into inference mode by '
+                              'calling `model.eval()`.'.format(idx))
+
+            # make sure embeddings are provided if necessary
+            if self.embeddings is None:
+                if hasattr(model.feature, 'layer_list'):
+                    if np.any([type(model.feature.layer_list[i]) == SchnetFeature
+                               for i in range(len(model.feature.layer_list))]):
+                        raise RuntimeError('Since you have a SchnetFeature, you must '
+                                           'provide an embeddings array')
+                else:
+                    if type(model.feature) == SchnetFeature:
+                        raise RuntimeError('Since you have a SchnetFeature, you must '
+                                           'provide an embeddings array')
+
+
+    def _input_option_checks(self):
         """Method to catch any problems before starting a simulation:
-        - Warns if model is not in eval mode
         - Make sure the save_interval evenly divides the simulation length
-        - Make sure if the network has SchnetFeatures, there are embeddings
-          provided
         - Checks shapes of starting coordinates and embeddings
         - Ensures masses are provided if friction is not None
         - Warns if diffusion is specified but won't be used
         - Checks compatibility of arguments to save and log
         - Sets up saving parameters for numpy and log files, if relevant
+
+        Notes
+        -----
+        This method is meant to check the acceptability/compatibility of
+        options pertaining to simulation details, saving/output settings,
+        and/or log settings. For checks related to model structures/architectures
+        and input compatibilities (such as using embeddings in models
+        with SchnetFeatures), see the _input_model_checks() method.
+
         """
-
-        # warn if model is in train mode, but don't prevent
-        if self.model.training:
-            warnings.warn('model is in training mode, and certain PyTorch '
-                          'layers, such as BatchNorm1d, behave differently '
-                          'in training mode in ways that can negatively bias '
-                          'simulations. We recommend that you put the model '
-                          'into inference mode by calling `model.eval()`.')
-
-        # make sure save interval is a factor of total length
-        if self.length % self.save_interval != 0:
-            raise ValueError(
-                'The save_interval must be a factor of the simulation length'
-            )
-
-        # make sure embeddings are provided if necessary
-        if self.embeddings is None:
-            try:
-                if np.any([type(self.model.feature.layer_list[i]) == SchnetFeature
-                           for i in range(len(self.model.feature.layer_list))]):
-                    raise RuntimeError('Since you have a SchnetFeature, you must '
-                                       'provide an embeddings array')
-            except:
-                if type(self.model.feature) == SchnetFeature:
-                    raise RuntimeError('Since you have a SchnetFeature, you must '
-                                       'provide an embeddings array')
 
         # if there are embeddings, make sure their shape is correct
         if self.embeddings is not None:
@@ -235,6 +296,13 @@ class Simulation():
             if self.initial_coordinates.shape[:2] != self.embeddings.shape:
                 raise ValueError('initial_coordinates and embeddings '
                                  'must have the same first two dimensions')
+
+        # make sure save interval is a factor of total length
+        if self.length % self.save_interval != 0:
+            raise ValueError(
+                'The save_interval must be a factor of the simulation length'
+            )
+
 
         # make sure initial coordinates are in the proper format
         if len(self.initial_coordinates.shape) != 3:
@@ -550,6 +618,35 @@ class Simulation():
         swapped_data = data.permute(*axes)
         return swapped_data.cpu().detach().numpy()
 
+
+    def calculate_potential_and_forces(self, x_old):
+        """Method to calculated predicted forces by forwarding the current
+        coordinates through self.model.
+
+        Parameters
+        ----------
+        x_old : torch.Tensor
+            coordinates from the previous timestep
+
+        Returns
+        -------
+        potential : torch.Tensor
+            scalar potential predicted by the model
+        forces : torch.Tensor
+            vector forces predicted by the model
+
+        Notes
+        -----
+        This method has been isolated from the main simulation update scheme
+        for ease in overriding in a subclass that may preprocess or modify the
+        forces or potential returned from a model. For example, see
+        cgnet.network.MultiModelSimulation, where this method is overridden
+        in order to average forces and potentials over more than one model.
+        """
+        potential, forces = self.model(x_old, self.embeddings)
+        return potential, forces
+
+
     def simulate(self, overwrite=False):
         """Generates independent simulations.
 
@@ -609,7 +706,7 @@ class Simulation():
 
         for t in range(self.length):
             # produce potential and forces from model
-            potential, forces = self.model(x_old, self.embeddings)
+            potential, forces = self.calculate_potential_and_forces(x_old)
             potential = potential.detach()
             forces = forces.detach()
 
@@ -671,3 +768,138 @@ class Simulation():
         self._simulated = True
 
         return self.simulated_coords
+
+
+class MultiModelSimulation(Simulation):
+    """Simulation that integrates CG coordinates forward in time using
+    the average forces predicted from more than one CGnet model. For
+    thoeretical details on (overdamped) Langevin integration schemes,
+    see help(cgnet.network.Simulation)
+
+    Parameters
+    ----------
+    models: list of cgnet.network.CGNet() instances
+        The list of models from which predicted forces will be averaged over.
+    initial_coordinates : np.ndarray or torch.Tensor
+        Coordinate data of dimension [n_simulations, n_atoms, n_dimensions].
+        Each entry in the first dimension represents the first frame of an
+        independent simulation.
+    embeddings : np.ndarray or None (default=None)
+        Embedding data of dimension [n_simulations, n_beads]. Each entry
+        in the first dimension corresponds to the embeddings for the
+        initial_coordinates data. If no embeddings, use None.
+    dt : float (default=5e-4)
+        The integration time step for Langevin dynamics. Units are determined
+        by the frame striding of the original training data simulation
+    beta : float (default=1.0)
+        The thermodynamic inverse temperature, 1/(k_B T), for Boltzman constant
+        k_B and temperature T. The units of k_B and T are fixed from the units
+        of training forces and settings of the training simulation data
+        respectively
+    friction : float (default=None)
+        If None, overdamped Langevin dynamics are used (this is equivalent to
+        "infinite" friction). If a float is given, Langevin dynamics are
+        utilized with this (finite) friction value (sometimes referred to as
+        gamma)
+    masses : list of floats (default=None)
+        Only relevant if friction is not None and (therefore) Langevin dynamics
+        are used. In that case, masses must be a list of floats where the float
+        at mass index i corresponds to the ith CG bead.
+    diffusion : float (default=1.0)
+        The constant diffusion parameter D for overdamped Langevin dynamics
+        *only*. By default, the diffusion is set to unity and is absorbed into
+        the dt argument. However, users may specify separate diffusion and dt
+        parameters in the case that they have some estimate of the CG
+        diffusion
+    save_forces : bool (defalt=False)
+        Whether to save forces at the same saved interval as the simulation
+        coordinates
+    save_potential : bool (default=False)
+        Whether to save potential at the same saved interval as the simulation
+        coordinates
+    length : int (default=100)
+        The length of the simulation in simulation timesteps
+    save_interval : int (default=10)
+        The interval at which simulation timesteps should be saved. Must be
+        a factor of the simulation length
+    random_seed : int or None (default=None)
+        Seed for random number generator; if seeded, results always will be
+        identical for the same random seed
+    device : torch.device (default=torch.device('cpu'))
+        Device upon which simulation compuation will be carried out
+    export_interval : int (default=None)
+        If not None, .npy files will be saved. If an int is given, then
+        the int specifies at what intervals numpy files will be saved per
+        observable. This number must be an integer multiple of save_interval.
+        All output files should be the same shape. Forces and potentials will
+        also be saved according to the save_forces and save_potential
+        arguments, respectively. If friction is not None, kinetic energies
+        will also be saved. This method is only implemented for a maximum of
+        1000 files per observable due to file naming conventions.
+    log_interval : int (default=None)
+        If not None, a log will be generated indicating simulation start and
+        end times as well as completion updates at regular intervals. If an
+        int is given, then the int specifies how many log statements will be
+        output. This number must be a multiple of save_interval.
+    log_type : 'print' or 'write' (default='write')
+        Only relevant if log_interval is not None. If 'print', a log statement
+        will be printed. If 'write', the log will be written to a .txt file.
+    filename : string (default=None)
+        Specifies the location to which numpys and/or log files are saved.
+        Must be provided if export_interval is not None and/or if log_interval
+        is not None and log_type is 'write'. This provides the base file name;
+        for numpy outputs, '_coords_000.npy' or similar is added. For log
+        outputs, '_log.txt' is added.
+
+    Notes
+    -----
+    This class inherits from cgnet.network.Simulation. The same checks for
+    model mode ('train' vs. 'eval'), embedding/model compatibility for each input
+    model. The checks concerning simulation options are handled through superclassed
+    __init__(). For a full list of these checks, see
+    cgnet.network.Simulation._input_option_checks
+    """
+
+    def __init__(self, models, initial_coordinates, **kwargs):
+
+        super(MultiModelSimulation, self).__init__(models, initial_coordinates,
+                                                   **kwargs)
+
+        self._input_model_list_check(models)
+        self.models = models
+
+    def _input_model_list_check(self, models):
+        for idx, individual_model in enumerate(models):
+            self._input_model_checks(individual_model, idx=idx)
+
+    def calculate_potential_and_forces(self, x_old):
+        """Method to calculate average predicted potentials and forces from
+        forwarding the x_old through each of the models in self.models
+
+        Parameters
+        ----------
+        x_old : torch.Tensor
+            coordinates from the previous timestep
+
+        Returns
+        -------
+        potential : torch.Tensor
+            scalar potential averaged over all the models in self.models
+        forces : torch.Tensor
+            vector forces averaged over all the models in self.models
+        """
+        potential_list = []
+        forces_list = []
+        for model in self.models:
+            potential, forces = model(x_old, self.embeddings)
+            potential_list.append(potential)
+            forces_list.append(forces)
+        mean_potential =  sum(potential_list) / len(potential_list)
+        mean_forces =  sum(forces_list) / len(forces_list)
+
+        # make sure the mean did not alter the shapes of potential/forces
+        # using the last potential/force
+        assert mean_potential.size() == potential.size()
+        assert mean_forces.size() == forces.size()
+
+        return mean_potential, mean_forces

@@ -1,4 +1,4 @@
-# Authors: Brooke Husic
+# Authors: Brooke Husic, Nick Charron
 # Contributors: Andreas Kraemer
 
 import numpy as np
@@ -6,9 +6,12 @@ import os
 import tempfile
 import torch
 import torch.nn as nn
+import copy
 
-from cgnet.feature import MoleculeDataset, LinearLayer
-from cgnet.network import CGnet, ForceLoss, Simulation
+from cgnet.feature import (MoleculeDataset, LinearLayer,
+                           CGBeadEmbedding, GaussianRBF)
+from cgnet.network import (CGnet, ForceLoss, Simulation,
+                           MultiModelSimulation, SchnetFeature)
 from nose.tools import assert_raises
 
 # Here we create testing data from a random linear protein
@@ -44,6 +47,24 @@ initial_coordinates = dataset[:][0].reshape(-1, beads, dims)
 masses = np.ones(beads)
 friction = np.random.randint(10, 20)
 
+# SchNet model
+feature_size = np.random.randint(5, 10)  # random feature size
+embedding_dim = 10  # embedding property size
+n_interaction_blocks = np.random.randint(1, 3)  # random number of interactions
+neighbor_cutoff = np.random.uniform(0, 1)  # random neighbor cutoff
+embedding_layer = CGBeadEmbedding(n_embeddings=embedding_dim,
+                                  embedding_dim=feature_size)
+rbf_layer = GaussianRBF()
+
+# Here we use the above variables to create the SchnetFeature
+schnet_feature = SchnetFeature(feature_size=feature_size,
+                               embedding_layer=embedding_layer,
+                               rbf_layer=rbf_layer,
+                               n_interaction_blocks=n_interaction_blocks,
+                               calculate_geometry=True,
+                               n_beads=beads,
+                               neighbor_cutoff=neighbor_cutoff)
+schnet_model = CGnet(arch, ForceLoss(), feature=schnet_feature).eval()
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # The following tests probe basic shapes/functionalities of the simulation  #
@@ -238,6 +259,14 @@ def test_langevin_simulation_seeding():
     np.testing.assert_array_equal(sim1.kinetic_energies, sim2.kinetic_energies)
 
 
+def test_schnet_simulation_safety():
+    # This test confirms that a simulation cannot be instantiated if
+    # schnet features but no embeddings are provided
+    with assert_raises(RuntimeError):
+        Simulation(schnet_model, initial_coordinates, length=sim_length,
+                   save_interval=save_interval)
+
+
 def test_brownian_simulation_safety():
     # Test whether a brownian (overdamped langevin) simulation indeed will
     # refuse to overwrite existing data unless overwrite is set to true
@@ -341,8 +370,7 @@ class HarmonicPotential():
     def __call__(self, positions, embeddings=None):
         """in kilojoule/mole/nm"""
         forces = -self.k * positions
-        # dont need meaningful values here
-        potential = torch.zeros(*forces.shape)
+        potential = (1.0/self.k) * positions**2
         return potential, forces
 
 
@@ -650,3 +678,128 @@ def test_log_file_basics():
     # We expect the log file to contain the expected number of logs, plus two
     # extra lines: one at the start and one at the end.
     assert len(line_list) == n_expected_logs + 2
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# The following tests are for the MultiModelSimulation class  #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+
+def test_multi_model_simulation_averaging():
+    # Tests to make sure that forces and potentials are accurately averaged
+    # when more than one model is used for a simulation
+
+    # We make 3 to ten random harmonic trap models with randomly chosen 
+    # curvature constants
+    num_models = np.random.randint(low=3, high=11)
+    constants = np.random.uniform(low=1, high=11, size=5)
+
+    # We use the same, random number of sims/particles for all models
+    n_sims = np.random.randint(low=10, high=101)
+    n_particles = np.random.randint(low=10, high=101)
+    masses = n_particles * [np.random.randint(low=1, high=5)]
+
+    models = [HarmonicPotential(k=k, T=300, n_particles=n_particles,
+                                dt=0.001, friction=10, n_sims=n_sims,
+                                sim_length=10) for k in constants]
+
+    # Here we generate random initial coordinates
+    initial_coordinates = torch.randn((n_sims, n_particles, 3))
+
+    my_sim = MultiModelSimulation(models, initial_coordinates,
+                                  embeddings=None, length=10,
+                                  save_interval=1, masses=masses,
+                                  friction=10, dt=0.001)
+
+    # Here we use the 'calculate_potential_and_forces' method from
+    # MultiModelSimulation
+    avg_potential, avg_forces = my_sim.calculate_potential_and_forces(
+                                    initial_coordinates)
+
+    # Next, we compute the average potential and forces manually
+
+    manual_avg_potential = []
+    manual_avg_forces = []
+    for model in models:
+        potential, forces = model(initial_coordinates)
+        manual_avg_potential.append(potential)
+        manual_avg_forces.append(forces)
+
+    manual_avg_potential = torch.mean(torch.stack(manual_avg_potential), dim=0)
+    manual_avg_forces = torch.mean(torch.stack(manual_avg_forces), dim=0)
+
+    # Test to see if the averages calulated by MultiModelSimulation
+    # match the averages calculate manually
+
+    np.testing.assert_array_equal(manual_avg_potential.numpy(),
+                                  avg_potential.numpy())
+    np.testing.assert_array_equal(manual_avg_forces.numpy(),
+                                  avg_forces.numpy())
+
+
+def test_single_model_simulation_vs_multimodelsimulation():
+    # Tests to make sure that Simulation and MultiModelSimulation return
+    # the same simulation results (coordinates, forces, potential energy,
+    # and kinetic energies) if a single model is used in both cases.
+
+    # First, we generate a random integer seed
+    seed = np.random.randint(0, 1e6)
+
+    # Next, we set up a model
+    save_interval = 1
+    dt = 0.001 * np.random.randint(1, 11)
+    friction = 10 * np.random.randint(1, 11)
+    k = np.random.randint(1, 6)
+    n_particles = np.random.randint(1, 101)
+    n_sims = np.random.randint(1, 11)
+    initial_coordinates = torch.randn((n_sims, n_particles, 3))
+    masses = n_particles * [np.random.randint(low=1, high=5)]
+    sim_length = np.random.randint(2, 11)
+
+    model = HarmonicPotential(k=k, T=300, n_particles=n_particles,
+                              dt=dt, friction=friction, n_sims=n_sims,
+                              sim_length=sim_length,
+                              save_interval=save_interval)
+
+    # Next, we simulate both models. We wrap both of the simulations in
+    # a temporary directory as to not generate permanent simulation files
+    with tempfile.TemporaryDirectory() as tmp:
+        sim = Simulation(model, initial_coordinates, embeddings=None,
+                         length=sim_length, save_interval=save_interval,
+                         masses=masses, dt=dt, save_forces=True,
+                         save_potential=True,
+                         friction=friction, random_seed=seed,
+                         filename=tmp+'/test')
+        multi_sim = MultiModelSimulation([model], initial_coordinates,
+                                         embeddings=None, length=sim_length,
+                                         save_interval=save_interval,
+                                         masses=masses, dt=dt, save_forces=True,
+                                         save_potential=True, friction=friction,
+                                         random_seed=seed,
+                                         filename=tmp+'/test_copy')
+
+        trajectory = sim.simulate()
+        trajectory_from_multi = multi_sim.simulate()
+
+        # Here, we test the equality of the two simulation results
+
+        assert trajectory.shape == trajectory_from_multi.shape
+        assert sim.simulated_forces.shape == multi_sim.simulated_forces.shape
+        assert sim.simulated_potential.shape == multi_sim.simulated_potential.shape
+        assert sim.kinetic_energies.shape == multi_sim.kinetic_energies.shape
+
+        np.testing.assert_array_equal(trajectory, trajectory_from_multi)
+        np.testing.assert_array_equal(sim.simulated_potential,
+                                      multi_sim.simulated_potential)
+        np.testing.assert_array_equal(sim.simulated_forces,
+                                      multi_sim.simulated_forces)
+        np.testing.assert_array_equal(sim.kinetic_energies,
+                                      multi_sim.kinetic_energies)
+
+
+def test_schnet_simulation_safety_multiple_models():
+    # This test confirms that a multi model simulation cannot be instantiated
+    # if schnet features but no embeddings are provided
+    schnet_model_list = [schnet_model, schnet_model]
+    with assert_raises(RuntimeError):
+        MultiModelSimulation(schnet_model_list, initial_coordinates,
+                             length=sim_length, save_interval=save_interval)
