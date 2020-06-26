@@ -684,7 +684,7 @@ def test_log_file_basics():
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 
-def test_multi_model_simulation():
+def test_multi_model_simulation_averaging():
     # Tests to make sure that forces and potentials are accurately averaged
     # when more than one model is used for a simulation
 
