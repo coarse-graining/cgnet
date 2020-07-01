@@ -535,7 +535,7 @@ class Simulation():
 
         if v_new is not None:
             kes = 0.5 * torch.sum(torch.sum(self.masses[:, None]*v_new**2,
-                                            axis=2), axis=1)
+                                            dim=2), dim=1)
             self.kinetic_energies[save_ind, :] = kes
 
     def _log_progress(self, iter_):
