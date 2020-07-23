@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 NAME = 'cgnet'
-VERSION = '0.0'
+VERSION = '0.1'
 
 
 def read(filename):

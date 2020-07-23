@@ -1,7 +1,7 @@
 cgnet
 =====
 
-In development!
+Coarse graining for molecular dymamics ([preprint](https://arxiv.org/abs/2007.11412))
 
 Dependencies
 ------------
@@ -15,6 +15,7 @@ Optional:
 + `pandas` (for `cgnet.molecule` only)
 + `sklearn` (for testing)
 + `Jupyter` (for `examples`)
++ `matplotlib` (for `examples`)
 
 Usage
 -----
@@ -31,13 +32,22 @@ python setup.py install
 
 Notes
 -----
-For backwards compatibility with software before the incorporations of variable size utilities and Langevin dynamics, please use the `invariable` branch.
-
 For compatibility with `pytorch==1.1`, please use the `pytorch-1.1` branch. This branch currently does not include the updates for variable size and Langevin dynamics, nor some normalization options.
 
 Cite
 ----
-Based off the CGnet paper,
+Please cite the preprint:
+
+```bibtex
+@article{husic2020coarse,
+  title={Coarse Graining Molecular Dynamics with Graph Neural Networks},
+  author={Husic, Brooke E and Charron, Nicholas E and Lemm, Dominik and Wang, Jiang and Pérez, Adrià and Krämer, Andreas and Chen, Yaoyi and Olsson, Simon and de Fabritiis, Gianni and Noé, Frank and Clementi, Cecilia},
+  journal={arXiv preprint arXiv:2007.11412},
+  year={2020}
+}
+```
+
+Various methods are based off the following papers. CGnet:
 
 ```bibtex
 @article{wang2019machine,
@@ -47,5 +57,20 @@ Based off the CGnet paper,
   year={2019},
   publisher={ACS Publications},
   doi={10.1021/acscentsci.8b00913}
+}
+```
+
+SchNet:
+
+```bibtex
+@article{schutt2018schnetpack,
+  title={SchNetPack: A deep learning toolbox for atomistic systems},
+  author={Schutt, KT and Kessel, Pan and Gastegger, Michael and Nicoli, KA and Tkatchenko, Alexandre and Müller, K-R},
+  journal={Journal of Chemical Theory and Computation},
+  volume={15},
+  number={1},
+  pages={448--455},
+  year={2018},
+  publisher={ACS Publications}
 }
 ```
