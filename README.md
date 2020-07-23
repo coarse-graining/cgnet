@@ -1,7 +1,7 @@
 cgnet
 =====
 
-Coarse graining for molecular dymamics
+Coarse graining for molecular dymamics ([preprint](https://arxiv.org/abs/2007.11412))
 
 Dependencies
 ------------
@@ -47,9 +47,7 @@ Please cite the preprint:
 }
 ```
 
-Various methods are based off the following papers.
-
-CGnet:
+Various methods are based off the following papers. CGnet:
 
 ```bibtex
 @article{wang2019machine,
