@@ -115,6 +115,28 @@ class GaussianRBF(_AbstractRBFLayer):
         If True, the output of the GaussianRBF layer will be normalized by the sum
         over the outputs from every basis function.
 
+    Example
+    -------
+    To instance a SchnetFeature using a GaussianRBF layer with 50 centers, a
+    low cuttof of 1 distance unit, a high cutoff of 50 distance units, a
+    variance of 0.8, and no output normalization, the following procedure can
+    be used:
+
+        rbf_layer = GaussianRBF(low_cutoff=1.0, high_cutoff=50.0,
+                                n_gaussians=50, variance=0.8)
+        schnet_feature = SchnetFeature(feature_size = ...,
+                                       embedding_layer = ...,
+                                       rbf_layer=rbf_layer,
+                                       n_interaction_blocks = ...,
+                                       calculate_geometry = ...,
+                                       n_beads = ...,
+                                       neighbor_cutoff = ...,
+                                       device = ...)
+
+    where the elipses represent the other parameters of the SchnetFeature that
+    are specific to your needs (see cgnet.feature.SchnetFeature for more
+    details).
+
     Notes
     -----
     The units of the variance and cutoffs are fixed by the units of the
@@ -245,6 +267,29 @@ class PolynomialCutoffRBF(_AbstractRBFLayer):
     beta : float
         Gaussian decay parameter, defined as:
             \beta = ((2/n_gaussians) * (1 - exp(-cutoff))^-2
+
+    Example
+    -------
+    To instance a SchnetFeature using a PolynomialCutoffRBF layer with 50 centers,
+    a low cuttof of 1 distance unit, a high cutoff of 50 distance units, an
+    alpha value of 0.8, and no output normalization, the following procedure can
+    be used:
+
+        rbf_layer = PolynomialCutoffRBF(low_cutoff=1.0, high_cutoff=50.0,
+                                        n_gaussians=50, variance=0.8)
+        schnet_feature = SchnetFeature(feature_size = ...,
+                                       embedding_layer = ...,
+                                       rbf_layer=rbf_layer,
+                                       n_interaction_blocks = ...,
+                                       calculate_geometry = ...,
+                                       n_beads = ...,
+                                       neighbor_cutoff = ...,
+                                       device = ...)
+
+    where the elipses represent the other parameters of the SchnetFeature that
+    are specific to your needs (see cgnet.feature.SchnetFeature for more
+    details).
+
 
     Notes
     -----
