@@ -114,6 +114,58 @@ class _EmbeddingPriorLayer(nn.Module):
             "custom classes inheriting from _EmbeddingPriorLayer()")
 
 
+class EmbeddingHarmonicLayer(_EmbeddingPriorLayer):
+    """Harmonic prior that can handle input features
+    with dyanimically changing embeddings."""
+
+    def __init__(self, callback_indices, parameter_dictionary,
+                 bead_tuples, **kwargs):
+
+        self.parameter_dict = parameter_dictionary
+        self.callback_indices = callback_indices
+        self.bead_tuples = torch.tensor(bead_tuples)
+
+    def forward(self, features, embeddings):
+        """Computes harmonic contributions to the total
+        coarse grain energy based on the interaction
+        parameters determined by the embeddings of those
+        beads involved.
+
+        Parameters
+        ----------
+        features: torch.tensor
+            tensor input features of shape [num_examples, num_features]
+        embeddings: torch.tensor
+            tensor of embeddings for each input example of shape
+            [num_examples, num_beads]
+
+        Returns
+        -------
+        energy: torch.tensor
+            Harmonic contributions from the input features according
+            to their embedding-dependent interactions defined in the
+            parameter dictionary, with an output shape of
+            [num_examples, 1]
+
+        """
+
+        embedding_tuples = embeddings[:, self.bead_tuples].cpu()
+        num_examples = features.size()[0]
+        tensor_lookups = torch.cat((self.bead_tuples[None, :].repeat(num_examples,1,1),
+                                  embedding_tuples), dim=-1).cpu()
+
+
+        means = torch.tensor([[self.parameter_dict[tuple(lookup)]['mean']
+                             for lookup in tensor_lookups[i].numpy()]
+                             for i in range(num_examples)]).to(self.device)
+        constants = torch.tensor([[self.parameter_dict[tuple(lookup)]['k']
+                                 for lookup in tensor_lookups[i].numpy()]
+                                 for i in range(num_examples)]).to(self.device)
+
+        energy = torch.sum(constants * ((features - means)**2)) / 2.0
+        return energy
+
+
 class RepulsionLayer(_PriorLayer):
     """Layer for calculating pairwise repulsion energy prior. Pairwise repulsion
     energies are calculated using the following formula:
