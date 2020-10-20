@@ -614,6 +614,472 @@ class GeometryStatistics():
                 "features must be description string or list of tuples.")
 
 
+class EmbeddingStatistics(GeometryStatistics):
+    """Subclass of GeometryStatistics. Overrides the following methods from
+    GeometryStatistics in order to calculate statistics that are embedding-dependent:
+
+        1. self._get_distances()
+        2. self._get_angles()
+        3. self._get_dihedrals()
+        4. self._get_stats()
+        5. self.get_prior_statistics
+
+    and the following new methods are added:
+
+        1. self.get_prior_statistics_helper()
+
+    This class must be passed coordinates and embeddings in order to function properly.
+    It has been designed to analyze systems with frames that have varying embeddings or
+    models that require embedding-dependent priors.
+
+    Parameters
+    ----------
+    embeddings: numpy.array
+        Embeddings for each bead for each data frame, with shape [num_examples, num_beads]
+    """
+
+    def __init__(self, data, embeddings, custom_feature_tuples=None, backbone_inds=None,
+                 get_all_distances=False, get_backbone_angles=False,
+                 get_backbone_dihedrals=False, temperature=300.0,
+                 get_redundant_distance_mapping=False, bond_pairs=[],
+                 adjacent_backbone_bonds=True):
+        #super(EmbeddingStatistics, self).__init__(*args, **kwargs) DONT do super -
+        self.embeddings = embeddings
+
+        if torch.is_tensor(data):
+            self.data = data.detach().numpy()
+        else:
+            self.data = data
+
+        if custom_feature_tuples is None:
+            self.custom_feature_tuples = []
+        else:
+            self.custom_feature_tuples = custom_feature_tuples
+
+        self.n_frames = self.data.shape[0]
+        self.n_beads = self.data.shape[1]
+        assert self.data.shape[2] == 3  # dimensions
+        self.temperature = temperature
+        if self.temperature is not None:
+            self.beta = JPERKCAL/KBOLTZMANN/AVOGADRO/self.temperature
+        else:
+            self.beta = 1.0
+
+        if custom_feature_tuples is None:
+            if backbone_inds is None:
+                raise RuntimeError("You must specify either custom_feature_tuples ' \
+                                   'or backbone_inds='all'")
+            if type(backbone_inds) is str:
+                if backbone_inds == 'all':
+                    if get_all_distances + get_backbone_angles + get_backbone_dihedrals == 0:
+                        raise RuntimeError('Without custom feature tuples, you must specify ' \
+                                           'any of get_all_distances, get_backbone_angles, or ' \
+                                           'get_backbone_dihedrals.')
+        self._process_backbone(backbone_inds)
+        self._process_custom_feature_tuples()
+
+        if get_redundant_distance_mapping and not get_all_distances:
+            raise ValueError(
+                "Redundant distance mapping can only be returned "
+                "if get_all_distances is True."
+            )
+        self.get_redundant_distance_mapping = get_redundant_distance_mapping
+
+        if not get_all_distances:
+            if np.any([bond_ind not in self.custom_feature_tuples
+                       for bond_ind in bond_pairs]):
+                raise ValueError(
+                    "All bond_pairs must be also in custom_feature_tuples "
+                    "if get_all_distances is False."
+                )
+        if np.any([len(bond_ind) != 2 for bond_ind in bond_pairs]):
+            raise RuntimeError(
+                "All bonds must be of length 2."
+            )
+        self._bond_pairs = bond_pairs
+        self.adjacent_backbone_bonds = adjacent_backbone_bonds
+
+        self.order = []
+
+        self.distances = []
+        self.angles = []
+        self.dihedral_cosines = []
+        self.dihedral_sines = []
+
+        self.descriptions = {
+            'Distances': [],
+            'Angles': [],
+            'Dihedral_cosines': [],
+            'Dihedral_sines': []
+        }
+
+        self.embedding_descriptions = {
+            'Distances': [],
+            'Angles': [],
+            'Dihedral_cosines': [],
+            'Dihedral_sines': []
+        }
+
+        self._stats_dict = {}
+
+        # # # # # # #
+        # Distances #
+        # # # # # # #
+        if get_all_distances:
+            (self._pair_order,
+             self._adj_backbone_pairs) = g.get_distance_indices(self.n_beads,
+                                                                self.backbone_inds,
+                                                                self._backbone_map)
+            if len(self._custom_distance_pairs) > 0:
+                warnings.warn(
+                    "All distances are already being calculated, so custom distances are meaningless."
+                )
+                self._custom_distance_pairs = []
+            self._distance_pairs = self._pair_order
+
+            if self.adjacent_backbone_bonds:
+                if np.any([bond_ind in self._adj_backbone_pairs
+                           for bond_ind in self._bond_pairs]):
+                    warnings.warn(
+                        "Some bond indices were already on the backbone."
+                    )
+                    # We weed out already existing backbone pairs from the
+                    # bond pairs provided by the user. We will append them
+                    # to all of our bond pairs below.
+                    self._bond_pairs = [bond_ind for bond_ind
+                                        in self._bond_pairs if bond_ind
+                                        not in self._adj_backbone_pairs]
+
+            # This attribute starts our list of "master" bond pairs
+            # when we've done some automatic calculations on the distances
+            # because we specified get_all_distances.
+            # Note also that we force the user to put backbone bonds in
+            # their custom_feature_tuples list if get_all_distances is
+            # False, which is why we're still inside the case where
+            # get_all_distances is True.
+            self.bond_pairs = copy.deepcopy(self._adj_backbone_pairs)
+
+        else:
+            self._distance_pairs = []
+            # If we haven't specified get_all_distances, our "master"
+            # bond list starts out empty
+            self.bond_pairs = []
+        self._distance_pairs.extend(self._custom_distance_pairs)
+
+        # Extend our master list of bond pairs by the user-defined, possibly
+        # filtered bond pairs
+        self.bond_pairs.extend(self._bond_pairs)
+
+        if len(self._distance_pairs) > 0:
+            self._get_distances()
+
+        # # # # # #
+        # Angles  #
+        # # # # # #
+        if get_backbone_angles:
+            self._angle_trips = [(self.backbone_inds[i], self.backbone_inds[i+1],
+                                  self.backbone_inds[i+2])
+                                 for i in range(len(self.backbone_inds) - 2)]
+            if np.any([cust_angle in self._angle_trips
+                       for cust_angle in self._custom_angle_trips]):
+                warnings.warn(
+                    "Some custom angles were on the backbone and will not be re-calculated."
+                )
+                self._custom_angle_trips = [cust_angle for cust_angle
+                                            in self._custom_angle_trips
+                                            if cust_angle not in self._angle_trips]
+        else:
+            self._angle_trips = []
+        self._angle_trips.extend(self._custom_angle_trips)
+        if len(self._angle_trips) > 0:
+            self._get_angles()
+
+        # # # # # # #
+        # Dihedrals #
+        # # # # # # #
+        if get_backbone_dihedrals:
+            self._dihedral_quads = [(self.backbone_inds[i], self.backbone_inds[i+1],
+                                     self.backbone_inds[i+2], self.backbone_inds[i+3])
+                                    for i in range(len(self.backbone_inds) - 3)]
+            if np.any([cust_dih in self._dihedral_quads
+                       for cust_dih in self._custom_dihedral_quads]):
+                warnings.warn(
+                    "Some custom dihedrals were on the backbone and will not be re-calculated."
+                )
+                self._custom_dihedral_quads = [cust_dih for cust_dih
+                                               in self._custom_dihedral_quads
+                                               if cust_dih not in self._dihedral_quads]
+        else:
+            self._dihedral_quads = []
+        self._dihedral_quads.extend(self._custom_dihedral_quads)
+        if len(self._dihedral_quads) > 0:
+            self._get_dihedrals()
+
+        self.feature_tuples = []
+        self.master_description_tuples = []
+        self._master_stat_array = [[] for _ in range(3)]
+
+        for feature_type in self.order:
+            if feature_type not in ['Dihedral_cosines', 'Dihedral_sines']:
+                self.feature_tuples.extend(self.descriptions[feature_type])
+                self.master_description_tuples.extend(
+                    self.descriptions[feature_type])
+
+            else:
+                self.master_description_tuples.extend(
+                    [self._get_key(desc, feature_type)
+                     for desc in self.descriptions[feature_type]])
+                if feature_type == 'Dihedral_cosines':
+                    # because they have the same indices as dihedral sines,
+                    # do only cosines
+                    self.feature_tuples.extend(self.descriptions[feature_type])
+
+
+    def _get_dihedrals(self):
+        """Obtains all dihedral angles for the four-bead indices provided.
+        Additionally, this overriden method stores the embeddings of each bead
+        in a separate numpy.array attribute "self.dihedral_embeddings" of
+        shape (n_examples, n_distances, 4) - these represent the bead tuples
+        mapped to the embedding tuples according to the embeddings used to 
+        instance the EmbeddingStatistics.
+
+        """
+        (self.dihedral_cosines,
+            self.dihedral_sines) = g.get_dihedrals(self._dihedral_quads, self.data)
+
+        self.descriptions['Dihedral_cosines'].extend(self._dihedral_quads)
+        self.descriptions['Dihedral_sines'].extend(self._dihedral_quads)
+
+
+        self.order += ['Dihedral_cosines']
+        self.order += ['Dihedral_sines']
+
+        self.dihedral_embeddings = np.stack([self.embeddings[:, np.array(self._dihedral_quads[i])]
+                                            for i in range(len(self._dihedral_quads))],
+                                            axis=1)
+
+        self._get_stats(self.dihedral_cosines, 'Dihedral_cosines', self._dihedral_quads, self.dihedral_embeddings)
+        self._get_stats(self.dihedral_sines, 'Dihedral_sines', self._dihedral_quads, self.dihedral_embeddings)
+
+
+    def _get_angles(self):
+        """Obtains all planar angles for the three-bead indices provided.
+        Additionally, this overriden method stores the embeddings of each bead
+        in a separate numpy.array attribute "self.angle_embeddings" of
+        shape (n_examples, n_angles, 3) - these represent the bead tuples
+        mapped to the embedding tuples according to the embeddings used to
+        instance the EmbeddingStatistics.
+        """
+        self.angles = g.get_angles(self._angle_trips, self.data)
+
+        self.descriptions['Angles'].extend(self._angle_trips)
+        self.order += ['Angles']
+
+        # Here, we get the embeddings involved in each pair across all frames
+        # self._distance_pairs - 1 for each bead corresponds to the embedding index
+        # This ultimately produces a list of embeddings for each distance
+        # of shape [num_examples, num_distances, 2]
+        # Note that this a proper numpy array - there are no tuples
+
+        self.angle_embeddings = np.stack([self.embeddings[:, np.array(self._angle_trips[i])]
+                                            for i in range(len(self._angle_trips))],
+                                            axis=1)
+        self._get_stats(self.angles, 'Angles', self._angle_trips, self.angle_embeddings)
+
+
+    def _get_distances(self):
+        """Obtains all pairwise distances for the two-bead indices provided.
+        Additionally, this overriden method stores the embeddings of each bead
+        in a separate numpy.array attribute "self.distance_embeddings" of
+        shape (n_examples, n_distances, 2) - these represent the bead tuples
+        mapped to the embedding tuples according to the embeddings used to
+        instance the EmbeddingStatistics.
+        """
+        self.distances = g.get_distances(
+            self._distance_pairs, self.data, norm=True)
+        self.descriptions['Distances'].extend(self._distance_pairs)
+
+        self.order += ['Distances']
+        if self.get_redundant_distance_mapping:
+            self.redundant_distance_mapping = g.get_redundant_distance_mapping(
+                self._distance_pairs)
+
+        # Here, we get the embeddings involved in each pair across all frames
+        # self._distance_pairs - 1 for each bead corresponds to the embedding index
+        # This ultimately produces a list of embeddings for each distance
+        # of shape [num_examples, num_distances, 2]
+        # Note that this a proper numpy array - there are no tuples
+
+        self.distance_embeddings = np.stack([self.embeddings[:, np.array(self._distance_pairs[i])]
+                                            for i in range(len(self._distance_pairs))],
+                                            axis=1)
+        self._get_stats(self.distances, 'Distances', self._distance_pairs, self.distance_embeddings)
+
+
+    def _get_stats(self, X, key, beads, embeddings):
+        """Populates stats dictionary, self._stats_dict, with feature statistics computed on
+        a per-embedding tuple basis.
+
+        Parameters
+        ----------
+        X: numpy.array
+            Input data over which statistics will be calculated, whith shape
+            (n_examples, n_features)
+        key: str
+            Speficies the feature type - must be one of "Distances", "Angles",
+            "Dihedral_sines", or "Dihedral_cosines".
+        beads: list of tuples of ints
+            The bead tuples that describe each feature in the input data X.
+        embeddings: numpy.array
+            The embeddings that correspond to the bead tuples for each feature
+            for each frame, with shape (n_examples, n_features, n_beads_per_feature)
+        """
+
+        #mean = np.mean(X, axis=0)
+        #std = np.std(X, axis=0)
+        #var = np.var(X, axis=0)
+        #k = 1/var/self.beta
+        self._stats_dict[key] = {}
+        #self._stats_dict[key]['mean'] = mean
+        #self._stats_dict[key]['std'] = std
+        #self._stats_dict[key]['k'] = k       
+        for i in range(X.shape[0]):
+            for j in range(X.shape[1]):
+                embedding_key = tuple((*beads[j],*embeddings[i,j,:]))
+                if embedding_key not in self._stats_dict[key].keys():
+                    self._stats_dict[key][embedding_key] = {}
+                    self._stats_dict[key][embedding_key]['mean'] = 0
+                    self._stats_dict[key][embedding_key]['std'] = 0
+                    self._stats_dict[key][embedding_key]['var'] = 0
+                    self._stats_dict[key][embedding_key]['k'] = 0
+                    self._stats_dict[key][embedding_key]['observations'] = 0
+
+                self._stats_dict[key][embedding_key]['mean'] += X[i,j]
+                self._stats_dict[key][embedding_key]['observations'] += 1
+        #compute final means
+        for embedding_key in self._stats_dict[key].keys():
+            self._stats_dict[key][embedding_key]['mean'] /= self._stats_dict[key][embedding_key]['observations']
+
+        #variance calulcation - maybe update with Welford's algorithm if too slow
+        for i in range(X.shape[0]):
+            for j in range(X.shape[1]):
+                embedding_key = tuple((*beads[j],*embeddings[i,j,:]))
+                self._stats_dict[key][embedding_key]['var'] += (X[i,j] 
+                    - self._stats_dict[key][embedding_key]['mean'])**2
+        #final vars , stds, and k       
+        for embedding_key in self._stats_dict[key].keys():
+            self._stats_dict[key][embedding_key]['var'] /= self._stats_dict[key][embedding_key]['observations']
+            if self._stats_dict[key][embedding_key]['var'] == 0:
+                warnings.warn("variance is zero for key {}. Check to see if there is only one observation of "
+                              "this feature value.".format(embedding_key))
+            self._stats_dict[key][embedding_key]['std'] = np.sqrt(self._stats_dict[key][embedding_key]['var'])
+            self._stats_dict[key][embedding_key]['k'] = 1.0/self._stats_dict[key][embedding_key]['var']/self.beta
+
+
+    def get_prior_statistics(self, features, tensor=True):
+        """This method returns a dictionary of embedding-dependent statistics for the supplied
+        features. Note that this method makes calls to the helper method,
+        self.get_prior_statistics_helper(), for each feature type
+
+        Parameters
+        ----------
+        features: list of tuples
+            The features for which embedding-dependent statistics will be retrieved. Any tuples
+            describing four-body dihedral interactions must end in a string denoting either
+            "sine" or "cosine" for the dihedral angle: Eg,
+
+                [(1, 2), (1, 4, 7), (1, 2, 3, 4, "sine"), (1, 2, 3, 4, "cosine")]
+
+        tensor: bool (default=True)
+            If True, statistics will be returned as torch.tensors. If False, the statistics will
+            be returned as numpy.arrays 
+
+
+        Returns
+        -------
+        stats_dictionary: python dictionary
+            The dictionary of statistics for the specified features. The dictionary is organized
+            in the following way:
+
+               { "Feature Type" :
+                     { (*beads, *embeddings) :
+                         { "mean" : ...
+                           "std" : ...
+                           "var" : ...
+                           "k" : ...
+                           "observations" : ...
+                          }
+                     }
+               }
+
+            where "Feature Type" is one of "Distances", "Angles", "Dihedral_sines", or
+            "Dihedral_cosines", *beads is the expanded bead tuples of that feature,
+            and *embeddings is the expanded embedding tuples.
+        """
+
+        for feature in features:
+            if len(feature) not in [2,3,5]:
+                warnings.warn("found feature tuple that is not a distance, angle, "
+                              "or dihedral sine/cosine", RuntimeWarning)
+            if len(feature) == 5 and feature[-1] not in ["sine", "cosine"]:
+                warnings.warn("dihedral tuple given but 'sine/cosine' not specified {}".format(feature),
+                               RuntimeWarning)
+        distances = [feature for feature in features if len(feature) == 2]
+        angles = [feature for feature in features if len(feature) == 3]
+        dihedral_sines = [feature for feature in features if len(feature) == 5
+                         and feature[-1] == 'sine']
+        dihedral_cosines = [feature for feature in features if len(feature) == 5
+                           and feature[-1] == 'cosine']
+
+        separated_features = [distances, angles, dihedral_sines, dihedral_cosines]
+        feature_types = ['Distances', 'Angles', 'Dihedral_sines', 'Dihedral_cosines']
+
+        stats_dictionary = {}
+        for separated_feature, feature_type in zip(separated_features, feature_types):
+            sub_dictionary = self.get_prior_statistics_helper(separated_feature, feature_type,
+                                                             tensor=tensor)
+            for key, value in sub_dictionary.items():
+                stats_dictionary[key] = value
+
+        return stats_dictionary
+
+    def get_prior_statistics_helper(self, feature_tuples, feature_type, tensor=True):
+
+        # We need the entire dictionary because it will be used to instance
+        # a full universe for the prior
+        if feature_type not in ['Distances', 'Angles', 'Dihedral_sines', 'Dihedral_cosines']:
+            raise ValueError("Feature type '{}' does not exist.".format(feature_type))
+        if feature_type in ["Dihedral_sines", "Dihedral_cosines"]:
+            # peel off the sine/cosine labels
+            feature_tuples = [bead_tuple[:-1] for bead_tuple in feature_tuples]
+        key_lens = {'Distances': 4, 'Angles': 6, 'Dihedral_sines': 8, 'Dihedral_cosines': 8}
+        key_len = key_lens[feature_type]
+
+        #grab only those keys from self._stats_dict that are in the 
+        #the requested tuples
+
+        #currently this is implemeted in a bad way, but retrieval of
+        #statistics needs to be done only once
+        sub_dictionary = {}
+        wrapper_dictionary = {}
+
+        for feature_tuple in feature_tuples:
+            for key in self._stats_dict[feature_type].keys():
+                if feature_tuple == key[:int(key_len/2)]:
+                    if tensor:
+                        sub_dictionary[key] = {}
+                        sub_dictionary[key]['mean'] = torch.tensor(self._stats_dict[feature_type][key]['mean'])
+                        sub_dictionary[key]['var'] = torch.tensor(self._stats_dict[feature_type][key]['var'])
+                        sub_dictionary[key]['std'] = torch.tensor(self._stats_dict[feature_type][key]['std'])
+                        sub_dictionary[key]['k'] = torch.tensor(self._stats_dict[feature_type][key]['k'])
+                        sub_dictionary[key]['observations'] = torch.tensor(
+                            self._stats_dict[feature_type][key]['observations'])
+                    else:
+                        sub_dictionary[key] = self._stats_dict[feature_type][key]
+        wrapper_dictionary[feature_type] = sub_dictionary
+        return wrapper_dictionary
+
+
 def kl_divergence(dist_1, dist_2):
     r"""Compute the Kullback-Leibler (KL) divergence between two discrete
     distributions according to:
