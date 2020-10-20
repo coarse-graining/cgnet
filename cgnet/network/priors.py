@@ -97,6 +97,23 @@ class _PriorLayer(_AbstractPriorLayer):
         self.interaction_parameters = interaction_parameters
         self.callback_indices = callback_indices
 
+
+class _EmbeddingPriorLayer(nn.Module):
+    """Abstract class for priors that require both features and
+       embeddings"""
+
+    def __init__(self, device=torch.device('cpu')):
+        super(_EmbeddingPriorLayer, self).__init__()
+        self.parameter_dict = None
+        self.bead_tuples = None
+        self.device = device
+
+    def forward(self, x):
+        raise NotImplementedError(
+            "forward() method must be overridden in "
+            "custom classes inheriting from _EmbeddingPriorLayer()")
+
+
 class RepulsionLayer(_PriorLayer):
     """Layer for calculating pairwise repulsion energy prior. Pairwise repulsion
     energies are calculated using the following formula:
