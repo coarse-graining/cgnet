@@ -120,7 +120,7 @@ class EmbeddingHarmonicLayer(_EmbeddingPriorLayer):
 
     def __init__(self, callback_indices, parameter_dictionary,
                  bead_tuples, **kwargs):
-
+        super(EmbeddingHarmonicLayer, self).__init__(**kwargs)
         self.parameter_dict = parameter_dictionary
         self.callback_indices = callback_indices
         self.bead_tuples = torch.tensor(bead_tuples)
