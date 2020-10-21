@@ -237,7 +237,11 @@ class CGnet(nn.Module):
                     "Priors may only be used with GeometryFeatures or coordinates."
                 )
             for prior in self.priors:
-                energy = energy + prior(geom_feature[:, prior.callback_indices])
+                if isinstance(prior, _EmbeddingPriorLayer):
+                    energy = energy + prior(geom_feature[:, prior.callback_indices,
+                                            embedding_property)
+                else:
+                    energy = energy + prior(geom_feature[:, prior.callback_indices])
         # Sum up energies along bead axis for Schnet outputs and mask out
         # nonexisting beads
         if len(energy.size()) == 3 and isinstance(self.feature, SchnetFeature):
