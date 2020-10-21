@@ -213,8 +213,111 @@ class EmbeddingHarmonicLayer(_EmbeddingPriorLayer):
                                  for lookup in tensor_lookups[i].numpy()]
                                  for i in range(num_examples)]).to(self.device)
 
-        energy = torch.sum(constants * ((features - means)**2)) / 2.0
+        energy = torch.sum(constants * ((features - means)**2),
+                           dim=1).reshape(num_examples, 1) / 2.0
         return energy
+
+
+class EmbeddingRepulsionLayer(_EmbeddingPriorLayer):
+    """Repulsion prior that can handle input features
+    with dyanimically changing embeddings.
+
+    Parameters
+    ----------
+    callback_indices: list of int
+        indices used to access a specified subset of outputs from the feature
+        layer through a residual connection
+    parameter_dictionary: dictionary
+        parameter dictionary that contains the embedding-dependent
+        excluded_volume and exponent parameters for each type of interaction.
+        The dictionary is structured as follows:
+
+            { (*beads, *bead_embeddings) :
+                { ["ex_vol"] : scalar torch.tensor or numpy.array
+                  ["exp"] : scalar torch.tensor or numpy.array
+                }
+              .
+              .
+              .
+            }
+
+        where *beads are the expanded bead indices involved in the
+        interaction and *bead_embeddings are the embeddings for
+        each bead involved in the interaction (in the same order
+        as the beads in *beads). Note, therefore, that all keys in
+        the dictionary are twice as long as the normal length of
+        the tuples that define the beads involved in the interaction.
+        Also note that it is possible to have multiple keys with the
+        same bead indices. For example:
+
+            { (1, 2, 4, 18) : ...
+              .
+              .
+              .
+              (1, 2, 8, 10) : ...
+            }
+
+        where repulsion interactions are defined between beads 1 and 2
+        for the case where bead 1 has embedding 4 and bead 2 has
+        embedding 18, as well as the case where bead 2 has embedding
+        8 and bead 2 has embedding 10.
+
+    bead_tuples: list of tuples
+        the list of bead tuples that define repulsions interactions between
+        beads. This list is used to index the embeddings given to the
+        forward method and dynamically create the lookup keys to access
+        the appropriate interaction parameters in the self.parameter_dict
+        attribute for each batch of input features and embeddings.
+    """
+
+    def __init__(self, callback_indices, parameter_dictionary,
+                 bead_tuples, **kwargs):
+        super(EmbeddingRepulsionLayer, self).__init__(**kwargs)
+        self.parameter_dict = parameter_dictionary
+        self.callback_indices = callback_indices
+        self.bead_tuples = torch.tensor(bead_tuples)
+
+    def forward(self, features, embeddings):
+        """Computes harmonic contributions to the total
+        coarse grain energy based on the interaction
+        parameters determined by the embeddings of those
+        beads involved.
+
+        Parameters
+        ----------
+        features: torch.tensor
+            tensor input features of shape [num_examples, num_features]
+        embeddings: torch.tensor
+            tensor of embeddings for each input example of shape
+            [num_examples, num_beads]
+
+        Returns
+        -------
+        energy: torch.tensor
+            Harmonic contributions from the input features according
+            to their embedding-dependent interactions defined in the
+            parameter dictionary, with an output shape of
+            [num_examples, 1]
+
+        """
+
+        embedding_tuples = embeddings[:, self.bead_tuples].cpu()
+        num_examples = features.size()[0]
+        tensor_lookups = torch.cat((self.bead_tuples[None, :].repeat(num_examples,1,1),
+                                  embedding_tuples), dim=-1).cpu()
+
+
+        ex_vols = torch.tensor([[self.parameter_dict[tuple(lookup)]['ex_vol']
+                             for lookup in tensor_lookups[i].numpy()]
+                             for i in range(num_examples)]).to(self.device)
+        exps = torch.tensor([[self.parameter_dict[tuple(lookup)]['exp']
+                                 for lookup in tensor_lookups[i].numpy()]
+                                 for i in range(num_examples)]).to(self.device)
+
+        energy = torch.sum((ex_vols/features)
+                           ** exps, dim=1).reshape(num_examples, 1) / 2
+        return energy
+
 
 
 class RepulsionLayer(_PriorLayer):
