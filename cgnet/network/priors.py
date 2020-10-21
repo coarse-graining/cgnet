@@ -116,7 +116,58 @@ class _EmbeddingPriorLayer(nn.Module):
 
 class EmbeddingHarmonicLayer(_EmbeddingPriorLayer):
     """Harmonic prior that can handle input features
-    with dyanimically changing embeddings."""
+    with dyanimically changing embeddings. Note: only
+    features of a single type can be used per EmbeddingHarmonicLayer.
+    For example, separate EmbeddingHarmonicLayers are needed
+    for angle and bond constraints.
+
+    Parameters
+    ----------
+    callback_indices: list of int
+        indices used to access a specified subset of outputs from the feature
+        layer through a residual connection
+    parameter_dictionary: dictionary
+        parameter dictionary that contains the embedding-dependent
+        mean and harmonic constant parameters for each type of interaction.
+        The dictionary is structured as follows:
+
+            { (*beads, *bead_embeddings) :
+                { ["mean"] : scalar torch.tensor or numpy.array
+                  ["k"] : scalar torch.tensor or numpy.array
+                }
+              .
+              .
+              .
+            }
+
+        where *beads are the expanded bead indices involved in the
+        interaction and *bead_embeddings are the embeddings for
+        each bead involved in the interaction (in the same order
+        as the beads in *beads). Note, therefore, that all keys in
+        the dictionary are twice as long as the normal length of
+        the tuples that define the beads involved in the interaction.
+        Also note that it is possible to have multiple keys with the
+        same bead indices. For example:
+
+            { (1, 2, 4, 18) : ...
+              .
+              .
+              .
+              (1, 2, 8, 10) : ...
+            }
+
+        where harmonic interactions are defined between beads 1 and 2
+        for the case where bead 1 has embedding 4 and bead 2 has
+        embedding 18, as well as the case where bead 2 has embedding
+        8 and bead 2 has embedding 10.
+
+    bead_tuples: list of tuples
+        the list of bead tuples that define harmonic interactions between
+        beads. This list is used to index the embeddings given to the
+        forward method and dynamically create the lookup keys to access
+        the appropriate interaction parameters in the self.parameter_dict
+        attribute for each batch of input features and embeddings.
+    """
 
     def __init__(self, callback_indices, parameter_dictionary,
                  bead_tuples, **kwargs):
