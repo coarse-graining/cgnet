@@ -238,7 +238,7 @@ class CGnet(nn.Module):
                 )
             for prior in self.priors:
                 if isinstance(prior, _EmbeddingPriorLayer):
-                    energy = energy + prior(geom_feature[:, prior.callback_indices,
+                    energy = energy + prior(geom_feature[:, prior.callback_indices],
                                             embedding_property)
                 else:
                     energy = energy + prior(geom_feature[:, prior.callback_indices])

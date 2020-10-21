@@ -5,7 +5,7 @@ import scipy.spatial
 import torch
 
 from cgnet.feature import GeometryStatistics, EmbeddingStatistics
-from cgnet.network import EmbeddingHarmonicLayer
+from cgnet.network import EmbeddingHarmonicLayer, EmbeddingRepulsionLayer
 
 # The following sets up our pseud-simulation data
 
@@ -51,7 +51,7 @@ beta = stats.beta
 def test_embedding_harmonic_layer():
     # Tests to make sure that interaction parameters are assembled 
     # properly according to the input embeddings, resulting in the
-    # correct energy predictions
+    # correct energy predictions for harmonic interactions
 
     # First, we construct a random set of distances and angles
     # with which we can constrain with an embedding dependent prior
@@ -107,7 +107,8 @@ def test_embedding_harmonic_layer():
                           for lookup in bond_tensor_lookups[i].numpy()]
                           for i in range(num_examples)])
 
-    manual_bond_energy = torch.sum(bond_constants * ((distances - bond_means)**2)) / 2.0
+    manual_bond_energy = torch.sum(bond_constants * ((distances - bond_means)**2),
+                             dim=1).reshape(num_examples, 1) / 2.0
 
     # next, we handle the angles
     angle_tuples = torch.tensor(angle_features)
@@ -123,7 +124,8 @@ def test_embedding_harmonic_layer():
                           for lookup in angle_tensor_lookups[i].numpy()]
                           for i in range(num_examples)])
 
-    manual_angle_energy = torch.sum(angle_constants * ((angles - angle_means)**2)) / 2.0
+    manual_angle_energy = torch.sum(angle_constants * ((angles - angle_means)**2),
+                              dim=1).reshape(num_examples, 1) / 2.0
 
     # Lastly, we compute the same energies using the EmbeddingHarmonicLayers
     # and compare their output with the manual calculations above
@@ -137,7 +139,77 @@ def test_embedding_harmonic_layer():
                             angle_energy.numpy())
 
 
-def test_embedding_prior_pipline()
+def test_embedding_repulsion_layer():
+    # Tests to make sure that interaction parameters are assembled 
+    # properly according to the input embeddings, resulting in the
+    # correct energy predictions for repulsion interactions
+
+    # First, we construct a random set of distances and angles
+    # with which we can constrain with an embedding dependent prior
+
+    num_distances = np.random.randint(1, high=len(stats._distance_pairs))
+
+    distance_idx = np.random.choice(np.arange(0, len(stats._distance_pairs)),
+                                num_distances, replace=False)
+
+    features = [stats._distance_pairs[i] for i in distance_idx]
+    feature_dict = stats.get_prior_statistics(features)
+
+    # Here, we construct a parameter dictionary of random exponents
+    # and excluded volumes
+
+    parameter_dictionary = {}
+    for key in feature_dict["Distances"].keys():
+        parameter_dictionary[key] = {}
+        parameter_dictionary[key]["ex_vol"] = np.random.uniform(1.0, high=5.0)
+        parameter_dictionary[key]["exp"] = np.random.uniform(1.0, high=5.0)
+
+    # Here, the callback indices are just placeholders, though
+    # we still calculate them in the intended fashion using the 
+    # stats.return_indices method
+
+    callback_idx = stats.return_indices(features)
+
+    # Next, we construct embedding harmonic layers for both feature sets
+
+    embedding_rlayer = EmbeddingRepulsionLayer(callback_idx,
+                                parameter_dictionary, features)
+
+    #print(bond_embedding_hlayer.parameter_dict)
+
+    # we produce a manual calculation of the energies for each
+    # feature set
+
+    distances = torch.tensor(stats.distances[:, distance_idx])
+    embeddings = torch.tensor(stats.embeddings)
+
+    # first, we handle the bonds
+    feature_tuples = torch.tensor(features)
+    embedding_tuples = embeddings[:, feature_tuples]
+    num_examples = distances.size()[0]
+    tensor_lookups = torch.cat((feature_tuples[None, :].repeat(num_examples,1,1),
+                              embedding_tuples), dim=-1)
+
+    ex_vols = torch.tensor([[parameter_dictionary[tuple(lookup)]['ex_vol']
+                          for lookup in tensor_lookups[i].numpy()]
+                          for i in range(num_examples)])
+    exps = torch.tensor([[parameter_dictionary[tuple(lookup)]['exp']
+                          for lookup in tensor_lookups[i].numpy()]
+                          for i in range(num_examples)])
+
+    manual_repulsion_energy = torch.sum((ex_vols / distances) ** exps,
+                                  dim=1).reshape(num_examples, 1) / 2.0
+
+    # Lastly, we compute the same energies using the EmbeddingHarmonicLayers
+    # and compare their output with the manual calculations above
+
+    repulsion_energy = embedding_rlayer(distances, embeddings)
+
+    np.testing.assert_equal(manual_repulsion_energy.numpy(),
+                            repulsion_energy.numpy())
+
+
+def test_embedding_prior_pipline():
     # This test ensures that embedding-based priors can be successfully
     # incoroprated into the full CGSchNet pipeline
     pass
