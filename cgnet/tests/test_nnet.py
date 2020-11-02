@@ -7,7 +7,8 @@ import torch.nn as nn
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error as mse
 from cgnet.network import (CGnet, ForceLoss, RepulsionLayer,
-                           HarmonicLayer, ZscoreLayer, Simulation)
+                           HarmonicLayer, ZscoreLayer, Simulation,
+                           PriorForceComputer)
 from cgnet.feature import (GeometryStatistics, GeometryFeature,
                            LinearLayer, FeatureCombiner, SchnetFeature,
                            CGBeadEmbedding, GaussianRBF)
@@ -504,3 +505,57 @@ def test_linear_regression():
 
     # Here, we test to to see if MSE losses are close up to a tolerance.
     np.testing.assert_almost_equal(mse(y, y_pred), loss, decimal=1)
+
+
+def test_prior_force_computer():
+    # Tests to make sure that the correct prior forces are calculated
+    # set up harmonic layer and repulsion layer as prior list
+    bonds_idx = geom_stats.return_indices('Bonds')  # Bond indices
+    bonds_interactions, _ = geom_stats.get_prior_statistics(
+        features='Bonds', as_list=True)
+
+    distances_idx = geom_stats.return_indices('Distances') # includes bonds and nonbonds
+    repul_interactions = [{'ex_vol': np.random.uniform(1,high=5), 'exp':
+                          np.random.randint(1,high=5)}
+                          for _ in range(len(distances_idx))]
+
+    harmonic_potential = HarmonicLayer(bonds_idx, bonds_interactions)
+    repulsion_potential = RepulsionLayer(distances_idx, repul_interactions)
+
+    geom_feat = GeometryFeature(feature_tuples='all_backbone',
+                                n_beads=beads)
+    geom_feat_out = geom_feat(coords)
+    # Here, we manually compute the total prior energy/forces
+
+    harmonic_parameters = torch.tensor([])
+    for stat in bonds_interactions:
+        harmonic_parameters = torch.cat((
+        harmonic_parameters,
+        torch.tensor([[stat['k']],
+                      [stat['mean']]])), dim=1)
+    repul_parameters = torch.tensor([])
+    for stat in repul_interactions:
+        repul_parameters = torch.cat((
+        repul_parameters,
+        torch.tensor([[stat['ex_vol']],
+                      [stat['exp']]])), dim=1)
+    bond_features = geom_feat_out[:, bonds_idx]
+    print(bonds_idx)
+    print(harmonic_parameters)
+    print(bond_features.size())
+    distance_features = geom_feat_out[:, distances_idx]
+    harmonic_energy = 0.5 * torch.sum((harmonic_parameters[0, :] * (bond_features -
+                            harmonic_parameters[1, :])**2), 1).reshape(len(bond_features), 1)
+    repulsion_energy = 0.5 * torch.sum((repul_parameters[0, :] / distance_features)
+                              **repul_parameters[1, :], 1).reshape(len(distance_features), 1)
+
+    total_manual_energy = torch.sum(harmonic_energy + repulsion_energy)
+    total_manual_forces = torch.autograd.grad(-total_manual_energy, coords,
+        create_graph=True, retain_graph=True)[0]
+
+    # Next, we create a PriorForceComputer module
+    prior_computer = PriorForceComputer([harmonic_potential, repulsion_potential],
+                         geom_feat)
+
+    prior_forces = prior_computer(coords)
+    np.testing.assert_equal(total_manual_forces.detach().numpy(), prior_forces.detach().numpy())
