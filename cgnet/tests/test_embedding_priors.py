@@ -4,8 +4,9 @@ import numpy as np
 import scipy.spatial
 import torch
 
-from cgnet.feature import GeometryStatistics, EmbeddingStatistics
-from cgnet.network import EmbeddingHarmonicLayer, EmbeddingRepulsionLayer
+from cgnet.feature import GeometryStatistics, EmbeddingStatistics, GeometryFeature
+from cgnet.network import (EmbeddingHarmonicLayer, EmbeddingRepulsionLayer,
+                           PriorForceComputer)
 
 # The following sets up our pseud-simulation data
 
@@ -22,7 +23,6 @@ dims = 3
 
 # Create a pseudo simulation dataset, but double each frame to get nonzero variances
 data = np.random.randn(frames, beads, dims)
-
 
 # Create embeddings that vary from frame to frame to simulate multiple
 # different molecules within the same dataset
@@ -207,6 +207,99 @@ def test_embedding_repulsion_layer():
 
     np.testing.assert_equal(manual_repulsion_energy.numpy(),
                             repulsion_energy.numpy())
+
+
+def test_prior_computer_with_embeddings():
+    # Tests to make sure that the correct prior forces are calculated
+    # set up embedding harmonic layer and embedding repulsion layer as prior list
+    # We set all distances to have repulsive interactions, and a subset of these 
+    # distances will also have harmonic interactions
+
+    # random subest for bonds:
+    upper_idx = np.random.randint(4,high=10)
+    bonds_idx = np.arange(upper_idx).astype('int32')
+
+    # here we assemble the harmonix parameter dictionary
+    distances_interactions = stats.get_prior_statistics(stats.descriptions['Distances'])['Distances']
+    distances_idx = stats.return_indices(stats.descriptions['Distances'])
+    bond_bead_tuples = [stats.descriptions['Distances'][i] for i in bonds_idx]
+    bond_bead_embedding_keys = [key for key in distances_interactions.keys() if
+                                (key[0], key[1]) in bond_bead_tuples]
+    bond_interactions = {key:value for key, value in distances_interactions.items() if
+                         key in bond_bead_embedding_keys}
+
+    # Here we assemble the repulsive paramter dictionary
+    # Instead of using that stats object, we just get some random ex_vols and
+    # exps for each embedding-dependent tuple:
+
+    repul_interactions = {}
+    for key in distances_interactions.keys():
+        repul_interactions[key] = {}
+        repul_interactions[key]['ex_vol'] = torch.tensor(np.random.uniform(1,5))
+        repul_interactions[key]['exp'] = torch.tensor(np.random.uniform(1,5))
+
+    # Here, we instance the embedding-dependent priors
+    embedding_hlayer = EmbeddingHarmonicLayer(bonds_idx,
+                                bond_interactions, bond_bead_tuples)
+    embedding_rlayer = EmbeddingRepulsionLayer(distances_idx,
+                                repul_interactions, stats.descriptions['Distances'])
+
+    geom_feat = GeometryFeature(feature_tuples='all_backbone',
+                                n_beads=beads)
+
+    # Produce the tensor of invariant features from the coordinates
+    coords = torch.tensor(data, requires_grad=True)
+    geom_feat_out = geom_feat(coords)
+    # Here, we manually compute the total prior energy/forces
+
+    bonds = geom_feat_out[:, bonds_idx]
+    distances = geom_feat_out[:, distances_idx]
+    embeddings = torch.tensor(stats.embeddings)
+
+    # first, we handle the bonds
+    bond_tuples = torch.tensor(bond_bead_tuples)
+    embedding_tuples = embeddings[:, bond_tuples]
+    num_examples = distances.size()[0]
+    bond_tensor_lookups = torch.cat((bond_tuples[None, :].repeat(num_examples,1,1),
+                              embedding_tuples), dim=-1)
+
+    bond_means = torch.tensor([[bond_interactions[tuple(lookup)]['mean']
+                          for lookup in bond_tensor_lookups[i].numpy()]
+                          for i in range(num_examples)])
+    bond_constants = torch.tensor([[bond_interactions[tuple(lookup)]['k']
+                          for lookup in bond_tensor_lookups[i].numpy()]
+                          for i in range(num_examples)])
+
+    manual_bond_energy = torch.sum(bond_constants * ((bonds - bond_means)**2),
+                             dim=1).reshape(num_examples, 1) / 2.0
+
+    # next, we handle the repulsions
+    distances_tuples = torch.tensor(stats.descriptions['Distances'])
+    embedding_tuples = embeddings[:, distances_tuples]
+    distances_tensor_lookups = torch.cat((distances_tuples[None, :].repeat(num_examples,1,1),
+                              embedding_tuples), dim=-1)
+
+    distances_ex_vols = torch.tensor([[repul_interactions[tuple(lookup)]['ex_vol']
+                          for lookup in distances_tensor_lookups[i].numpy()]
+                          for i in range(num_examples)])
+    distances_exps = torch.tensor([[repul_interactions[tuple(lookup)]['exp']
+                          for lookup in distances_tensor_lookups[i].numpy()]
+                          for i in range(num_examples)])
+
+    manual_repulsion_energy = torch.sum((distances_ex_vols / distances) ** distances_exps,
+                              dim=1).reshape(num_examples, 1) / 2.0
+
+    total_manual_energy = torch.sum(manual_bond_energy + manual_repulsion_energy)
+    total_manual_forces = torch.autograd.grad(-total_manual_energy, coords,
+        create_graph=True, retain_graph=True)[0]
+
+    # Next, we create a PriorForceComputer module
+    prior_computer = PriorForceComputer([embedding_hlayer, embedding_rlayer],
+                         geom_feat)
+
+    prior_forces = prior_computer(coords, embeddings)
+    np.testing.assert_equal(total_manual_forces.detach().numpy(), prior_forces.detach().numpy())
+
 
 
 def test_embedding_prior_pipline():

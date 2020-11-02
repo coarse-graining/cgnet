@@ -319,7 +319,6 @@ class EmbeddingRepulsionLayer(_EmbeddingPriorLayer):
         return energy
 
 
-
 class RepulsionLayer(_PriorLayer):
     """Layer for calculating pairwise repulsion energy prior. Pairwise repulsion
     energies are calculated using the following formula:
@@ -614,7 +613,7 @@ class PriorForceComputer(nn.Module):
         features = self.feature_layer(coords)
         energy = 0.00
         for prior in self.priors:
-           if embeddings and isinstance(prior, _EmbeddingPriorLayer):
+           if embeddings is not None and isinstance(prior, _EmbeddingPriorLayer):
                energy = energy + prior(features[:, prior.callback_indices],
                                        embeddings)
            else:
