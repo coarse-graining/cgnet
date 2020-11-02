@@ -570,3 +570,57 @@ class ZscoreLayer(nn.Module):
         """
         rescaled_feat = (in_feat - self.zscores[0, :])/self.zscores[1, :]
         return rescaled_feat
+
+
+class PriorForceComputer(nn.Module):
+    """Class for computing the forces from priors
+    using autograd operations.
+
+    Parameters
+    ----------
+    priors: list of nn.Module
+        sequence of priors for which force contributions
+        will be calculated
+    feature_layer: nn.Module
+        feature layer through which input coordinates
+        are transformed before passin through the priors
+    """
+
+    def __init__(self, priors, feature_layer):
+        super(PriorForceComputer, self).__init__()
+        self.feature_layer = feature_layer
+        self.priors = priors
+
+    def forward(self, coords, embeddings=None):
+        """Produces forces from prior contributions
+        that can later be used to form delta forces
+
+        Parameters
+        ----------
+        coords: torch.tensor
+            input coordinates for calculating forces, of shape
+            [num_examples, num_beads, 3]
+        embeddings: torch.tensor
+            input embeddings in the case that there are priors
+            that require embeddings, such as an EmbeddingHarmonicLyaer
+
+        Returns
+        -------
+        forces: torch.tensor
+            forces derived from the total prior energy from all the
+            supplied priors, of shape [num_examples, num_beads, 3]
+        """
+
+        features = self.feature_layer(coords)
+        energy = 0.00
+        for prior in self.priors:
+           if embeddings and isinstance(prior, _EmbeddingPriorLayer):
+               energy = energy + prior(features[:, prior.callback_indices],
+                                       embeddings)
+           else:
+               energy = energy + prior(features[:, prior.callback_indices])
+        energy = torch.sum(energy)
+        forces = torch.autograd.grad(-energy, coords, create_graph=True,
+                                     retain_graph=True)
+        return forces[0]
+

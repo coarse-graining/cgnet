@@ -4,7 +4,8 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from .priors import ZscoreLayer, HarmonicLayer, RepulsionLayer
+from .priors import (ZscoreLayer, HarmonicLayer, RepulsionLayer,
+                     _EmbeddingPriorLayer)
 from cgnet.feature import FeatureCombiner, SchnetFeature, GeometryFeature
 
 
