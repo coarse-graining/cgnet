@@ -67,7 +67,7 @@ class GeometryStatistics():
     def __init__(self, data, custom_feature_tuples=None, backbone_inds=None,
                  get_all_distances=False, get_backbone_angles=False,
                  get_backbone_dihedrals=False, temperature=300.0,
-                 get_redundant_distance_mapping=False, bond_pairs=[],
+                 get_redundant_distance_mapping=False, bond_pairs=None,
                  adjacent_backbone_bonds=True):
         if torch.is_tensor(data):
             self.data = data.detach().numpy()
@@ -100,6 +100,9 @@ class GeometryStatistics():
                                            'get_backbone_dihedrals.')
         self._process_backbone(backbone_inds)
         self._process_custom_feature_tuples()
+
+        if bond_pairs is None:
+            bond_pairs = []
 
         if get_redundant_distance_mapping and not get_all_distances:
             raise ValueError(
