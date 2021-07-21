@@ -36,14 +36,18 @@ For compatibility with `pytorch==1.1`, please use the `pytorch-1.1` branch. This
 
 Cite
 ----
-Please cite the preprint:
+Please cite our [paper](https://doi.org/10.1063/5.0026133) in J Chem Phys:
 
 ```bibtex
 @article{husic2020coarse,
-  title={Coarse Graining Molecular Dynamics with Graph Neural Networks},
-  author={Husic, Brooke E and Charron, Nicholas E and Lemm, Dominik and Wang, Jiang and Pérez, Adrià and Krämer, Andreas and Chen, Yaoyi and Olsson, Simon and de Fabritiis, Gianni and Noé, Frank and Clementi, Cecilia},
-  journal={arXiv preprint arXiv:2007.11412},
-  year={2020}
+  title={Coarse graining molecular dynamics with graph neural networks},
+  author={Husic, Brooke E and Charron, Nicholas E and Lemm, Dominik and Wang, Jiang and P{\'e}rez, Adri{\`a} and Majewski, Maciej and Kr{\"a}mer, Andreas and Chen, Yaoyi and Olsson, Simon and de Fabritiis, Gianni and Noe{\'e}, Frank and Clementi, Cecilia},
+  journal={The Journal of Chemical Physics},
+  volume={153},
+  number={19},
+  pages={194101},
+  year={2020},
+  publisher={AIP Publishing LLC}
 }
 ```
 
