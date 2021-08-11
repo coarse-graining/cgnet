@@ -57,7 +57,7 @@ class GeometryFeature(nn.Module):
         self._n_beads = n_beads
         self.device = device
         self.geometry = Geometry(method='torch', device=self.device)
-        if feature_tuples is not 'all_backbone':
+        if feature_tuples != 'all_backbone':
             if feature_tuples is not None:
                 _temp_dict = dict(
                     zip(feature_tuples, np.arange(len(feature_tuples))))
@@ -309,7 +309,7 @@ class SchnetFeature(nn.Module):
                     * n_interaction_blocks
                 )
             if not share_batchnorm_parameters:
-                # This represents the case where weights parameters are 
+                # This represents the case where weights parameters are
                 # shared between the interaction blocks, but the batchnorm
                 # parameters are not shared.
                 self.interaction_blocks = nn.ModuleList(

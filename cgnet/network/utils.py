@@ -156,7 +156,7 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
     # SchnetFeature) mask
     if network_mask is None:
         network_mask = [True for _ in network_weight_layers]
-    elif network_mask is 'all':
+    elif network_mask == 'all':
         network_mask = [False for _ in network_weight_layers]
     if network_mask is not None:
         if not isinstance(network_mask, list):
@@ -168,7 +168,7 @@ def lipschitz_projection(model, strength=10.0, network_mask=None, schnet_mask=No
 
     if schnet_mask is None:
         schnet_mask = [True for _ in schnet_weight_layers]
-    elif schnet_mask is 'all':
+    elif schnet_mask == 'all':
         schnet_mask = [False for _ in schnet_weight_layers]
     if schnet_mask is not None:
         if not isinstance(schnet_mask, list):
@@ -316,7 +316,7 @@ def dataset_loss(model, loader, optimizer=None,
                 "dataset loss."
             )
         if (isinstance(loader.dataset, MultiMoleculeDataset) or
-            loader.dataset.embeddings is not None):
+                loader.dataset.embeddings is not None):
             potential, predicted_force = model.forward(coords,
                                                        embedding_property=embedding_property)
         else:
