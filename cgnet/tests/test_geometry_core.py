@@ -14,7 +14,7 @@ frames = np.random.randint(10, 30)
 beads = np.random.randint(5, 10)
 
 # create random linear protein data
-coords = np.random.randn(frames, beads, 3).astype(np.float32)
+coords = np.random.randn(frames, beads, 3).astype(np.float64)
 
 # Calculate redundant distances and create a simple neighbor list in which all
 # beads see each other (shape [n_frames, n_beads, n_beads -1]).
@@ -78,9 +78,9 @@ def test_distances_and_neighbors_numpy_vs_torch():
         distances_torch,
         cutoff=neighbor_cutoff)
 
-    np.testing.assert_array_equal(distances_numpy, distances_torch)
-    np.testing.assert_array_equal(neighbors_numpy, neighbors_torch)
-    np.testing.assert_array_equal(neighbors_mask_numpy, neighbors_mask_torch)
+    np.testing.assert_allclose(distances_numpy, distances_torch, rtol=1e-9)
+    np.testing.assert_allclose(neighbors_numpy, neighbors_torch, rtol=1e-9)
+    np.testing.assert_allclose(neighbors_mask_numpy, neighbors_mask_torch, rtol=1e-9)
 
 
 def test_nan_check():

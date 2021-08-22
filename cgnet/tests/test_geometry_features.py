@@ -20,7 +20,7 @@ beads = np.random.randint(8, 10)
 dims = 3
 
 # Create a pseudo simulation dataset
-data = np.random.randn(frames, beads, dims)
+data = np.random.randn(frames, beads, dims).astype(np.float64)
 data_tensor = torch.Tensor(data)
 
 # Note: currently get_distance_indices is not directly tested.

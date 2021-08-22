@@ -24,7 +24,7 @@ beads = np.random.randint(5, 10)  # Number of coarse-granined beads
 dims = 3  # Number of dimensions
 
 # Create mock linear protein simulation data and create statistics
-coords = torch.randn((frames, beads, 3), requires_grad=True)
+coords = torch.randn((frames, beads, 3), requires_grad=True, dtype=torch.float64)
 geom_stats = GeometryStatistics(coords.detach().numpy(),
                                 backbone_inds='all',
                                 get_all_distances=True,
@@ -114,7 +114,7 @@ def test_repulsion_layer():
                        if abs(i[0]-i[1]) > 2]
     repul_idx = geom_stats.return_indices(repul_distances)  # Indices of beads
     # Random excluded volumes
-    ex_vols = np.random.uniform(2, 8, len(repul_distances))
+    ex_vols = np.random.uniform(2, 8, len(repul_distances)).astype(np.float64)
     # Random interaction exponentials
     exps = np.random.randint(1, 6, len(repul_distances))
     # List of interaction dictionaries for forming RepulsionLayers
@@ -134,8 +134,8 @@ def test_repulsion_layer():
     assert repul_idx == repulsion_potential.callback_indices
     # Next, we test to see if the manually calculated energy
     # matches the output of the RepulsionLayer
-    p1 = torch.tensor(ex_vols).float()
-    p2 = torch.tensor(exps).float()
+    p1 = torch.tensor(ex_vols).double()
+    p2 = torch.tensor(exps).double()
     energy_check = torch.sum((p1/output_features[:, repul_idx]) ** p2,
                              1).reshape(len(output_features), 1) / 2
     np.testing.assert_array_equal(energy.detach().numpy(),
@@ -332,6 +332,7 @@ def test_cgnet():
     # with force matching as a loss criterion
     model = CGnet(arch, ForceLoss(), feature=feature_layer,
                   priors=[harmonic_potential])
+    model.double()
 
     # Test to see if the prior is embedded
     assert model.priors is not None
@@ -389,6 +390,7 @@ def test_bead_energy_masking():
     # with force matching as a loss criterion. We forward the coords
     # and the embedding property through as well
     model = CGnet(arch, ForceLoss(), feature=feature)
+    model.double()
     energy, force = model.forward(coords, embedding_property=embedding_property)
 
     # the force components for masked beads should all be zero if the padding
@@ -426,10 +428,11 @@ def test_cgnet_simulation():
     # with force matching as a loss criterion
     model = CGnet(arch, ForceLoss(), feature=feature_layer,
                   priors=[harmonic_potential])
+    model.double()
     model.eval()
 
     # Here, we produce mock target protein force data
-    forces = torch.randn((frames, beads, 3), requires_grad=False)
+    forces = torch.randn((frames, beads, 3), requires_grad=False, dtype=torch.float64)
 
     # Here, we create an optimizer for traning the model,
     # and we train it for one epoch

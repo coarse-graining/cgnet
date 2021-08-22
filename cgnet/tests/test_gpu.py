@@ -11,7 +11,7 @@ from cgnet.network import (CGnet, ForceLoss,
                            RepulsionLayer, HarmonicLayer, ZscoreLayer)
 from cgnet.feature import (GeometryStatistics, GeometryFeature,
                            MoleculeDataset, LinearLayer, SchnetFeature,
-                           FeatureCombiner, CGBeadEmbedding)
+                           FeatureCombiner, CGBeadEmbedding, GaussianRBF)
 from torch.utils.data import DataLoader
 from nose.exc import SkipTest
 
@@ -59,8 +59,13 @@ def generate_model():
                                        size=(n_frames, n_beads))
     embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
                                       embedding_dim=embedding_dim)
+
+    # gaussian radial basis function layer
+    rbf_layer = GaussianRBF()
+
     schnet_feature = SchnetFeature(feature_size=feature_size,
                                    embedding_layer=embedding_layer,
+                                   rbf_layer=rbf_layer,
                                    n_interaction_blocks=n_interaction_blocks,
                                    calculate_geometry=False,
                                    n_beads=n_beads,

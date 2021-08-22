@@ -18,8 +18,8 @@ def _get_random_distr():
     # Here, we create two distributions, and then shuffle the bins
     # so that the zero count bins are distributed randomly along the
     # distribution extent
-    distribution_1 = np.abs(np.concatenate([np.random.randn(length), zeros]))
-    distribution_2 = np.abs(np.concatenate([np.random.randn(length), zeros]))
+    distribution_1 = np.abs(np.concatenate([np.random.randn(length).astype(np.float64), zeros]))
+    distribution_2 = np.abs(np.concatenate([np.random.randn(length).astype(np.float64), zeros]))
     np.random.shuffle(distribution_1)
     np.random.shuffle(distribution_2)
     return distribution_1, distribution_2
@@ -34,10 +34,10 @@ def _get_uniform_histograms():
     # Here, we produce the two histogram/bin pairs. We explicitly use
     # the same _bins, so we check that bins_1 and bins_2 are both equal
     # to our specified _bins post histogram creation.
-    histogram_1, bins_1 = np.histogram(np.random.uniform(size=nbins),
+    histogram_1, bins_1 = np.histogram(np.random.uniform(size=nbins).astype(np.float64),
                                        bins=_bins,
                                        density=True)
-    histogram_2, bins_2 = np.histogram(np.random.uniform(size=nbins),
+    histogram_2, bins_2 = np.histogram(np.random.uniform(size=nbins).astype(np.float64),
                                        bins=_bins,
                                        density=True)
 

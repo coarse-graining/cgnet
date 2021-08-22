@@ -20,8 +20,8 @@ frames = np.random.randint(5, 10)
 beads = np.random.randint(4, 10)
 dims = 3
 
-coords = np.random.randn(frames, beads, dims).astype('float32')
-forces = np.random.randn(frames, beads, dims).astype('float32')
+coords = np.random.randn(frames, beads, dims).astype(np.float64)
+forces = np.random.randn(frames, beads, dims).astype(np.float64)
 
 dataset = MoleculeDataset(coords, forces)
 
@@ -32,7 +32,8 @@ arch = (LinearLayer(dims, dims, activation=nn.Tanh()) +
 
 # Here we construct a CGnet model using the above architecture
 # as well as variables to be used in CG simulation tests
-model = CGnet(arch, ForceLoss()).float()
+model = CGnet(arch, ForceLoss())
+model.double()
 model.eval()
 sim_length = np.random.choice([2, 4])*2  # Number of frames to simulate
 # Frequency with which to save simulation
@@ -509,19 +510,19 @@ def test_saving_numpy_coordinates():
     # (ii)  That the saved numpy files have the proper shapes
     # (iii) That the contatenation of the saved numpy files are equal to the
     #        trajectory output from the simulation
-    n_sims = np.random.randint(1, high=5)
-    sim_length = np.random.choice([24, 36])
-    npy_interval = np.random.choice([6, 12])
-    save_interval = np.random.choice([2, 3])
+    n_sims = 1#np.random.randint(1, high=5)
+    sim_length = 4#np.random.choice([24, 36])
+    npy_interval = 1#np.random.choice([6, 12])
+    save_interval = 1#np.random.choice([2, 3])
 
-    n_expected_files = sim_length / npy_interval
-
-    model = HarmonicPotential(k=1, T=300, n_particles=10,
+    n_expected_files = int(sim_length / npy_interval)
+    print(n_expected_files)
+    model = HarmonicPotential(k=1, T=300, n_particles=3, #10
                               dt=0.001, friction=None,
                               n_sims=n_sims, sim_length=sim_length,
                               save_interval=save_interval)
 
-    initial_coordinates = torch.zeros((model.n_sims, model.n_particles, 3))
+    initial_coordinates = torch.zeros((model.n_sims, model.n_particles, 3), dtype=torch.float64)
 
     with tempfile.TemporaryDirectory() as tmp:
         my_sim = Simulation(model, initial_coordinates, embeddings=None,
@@ -533,8 +534,9 @@ def test_saving_numpy_coordinates():
 
         traj = my_sim.simulate()
         assert traj.shape[1] == sim_length / save_interval
-        file_list = os.listdir(tmp)
-
+        file_list = sorted(os.listdir(tmp))
+        print(len(file_list))
+        print(traj)
         assert len(file_list) == n_expected_files
 
         expected_chunk_length = npy_interval / save_interval
@@ -550,7 +552,6 @@ def test_saving_numpy_coordinates():
             else:
                 running_traj = np.concatenate(
                     [running_traj, temp_traj], axis=1)
-
         # Test (iii)
         np.testing.assert_array_equal(traj, running_traj)
 
@@ -703,7 +704,7 @@ def test_multi_model_simulation_averaging():
                                 sim_length=10) for k in constants]
 
     # Here we generate random initial coordinates
-    initial_coordinates = torch.randn((n_sims, n_particles, 3))
+    initial_coordinates = torch.randn((n_sims, n_particles, 3), dtype=torch.float64)
 
     my_sim = MultiModelSimulation(models, initial_coordinates,
                                   embeddings=None, length=10,
@@ -730,10 +731,10 @@ def test_multi_model_simulation_averaging():
     # Test to see if the averages calulated by MultiModelSimulation
     # match the averages calculate manually
 
-    np.testing.assert_array_equal(manual_avg_potential.numpy(),
-                                  avg_potential.numpy())
-    np.testing.assert_array_equal(manual_avg_forces.numpy(),
-                                  avg_forces.numpy())
+    np.testing.assert_allclose(manual_avg_potential.numpy(),
+                                  avg_potential.numpy(), rtol=1e-9)
+    np.testing.assert_allclose(manual_avg_forces.numpy(),
+                                  avg_forces.numpy(), rtol=1e-9)
 
 
 def test_single_model_simulation_vs_multimodelsimulation():

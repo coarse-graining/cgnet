@@ -21,8 +21,8 @@ beads = np.random.randint(8, 20)
 dims = 3
 
 # Create a pseudo simulation dataset
-data = np.random.randn(frames, beads, dims)
-data_tensor = torch.Tensor(data)
+data = np.random.randn(frames, beads, dims).astype(np.float64)
+data_tensor = torch.Tensor(data).double()
 
 geom_feature = GeometryFeature(feature_tuples='all_backbone',
                                  n_beads=beads)
