@@ -74,6 +74,7 @@ schnet_model = CGnet(arch, ForceLoss(), feature=schnet_feature).eval()
 # there are no kinetic energies in the former, but there are in the latter. #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+
 def test_brownian_simulation_shape():
     # Test shape of Brownian (overdamped Langevin) simulation without
     # saving the forces or the potential
@@ -510,19 +511,20 @@ def test_saving_numpy_coordinates():
     # (ii)  That the saved numpy files have the proper shapes
     # (iii) That the contatenation of the saved numpy files are equal to the
     #        trajectory output from the simulation
-    n_sims = 1#np.random.randint(1, high=5)
-    sim_length = 4#np.random.choice([24, 36])
-    npy_interval = 1#np.random.choice([6, 12])
-    save_interval = 1#np.random.choice([2, 3])
+    n_sims = 1  # np.random.randint(1, high=5)
+    sim_length = 4  # np.random.choice([24, 36])
+    npy_interval = 1  # np.random.choice([6, 12])
+    save_interval = 1  # np.random.choice([2, 3])
 
     n_expected_files = int(sim_length / npy_interval)
     print(n_expected_files)
-    model = HarmonicPotential(k=1, T=300, n_particles=3, #10
+    model = HarmonicPotential(k=1, T=300, n_particles=3,  # 10
                               dt=0.001, friction=None,
                               n_sims=n_sims, sim_length=sim_length,
                               save_interval=save_interval)
 
-    initial_coordinates = torch.zeros((model.n_sims, model.n_particles, 3), dtype=torch.float64)
+    initial_coordinates = torch.zeros(
+        (model.n_sims, model.n_particles, 3), dtype=torch.float64)
 
     with tempfile.TemporaryDirectory() as tmp:
         my_sim = Simulation(model, initial_coordinates, embeddings=None,
@@ -590,7 +592,8 @@ def test_saving_all_quantities():
         assert traj.shape[1] == sim_length / save_interval
         file_list = os.listdir(tmp)
 
-        assert len(file_list) == n_expected_files * 4  # coords, forces, pot, ke
+        assert len(file_list) == n_expected_files * \
+            4  # coords, forces, pot, ke
         coords_file_list = sorted(
             [file for file in file_list if 'coords' in file])
         force_file_list = sorted(
@@ -689,7 +692,7 @@ def test_multi_model_simulation_averaging():
     # Tests to make sure that forces and potentials are accurately averaged
     # when more than one model is used for a simulation
 
-    # We make 3 to ten random harmonic trap models with randomly chosen 
+    # We make 3 to ten random harmonic trap models with randomly chosen
     # curvature constants
     num_models = np.random.randint(low=3, high=11)
     constants = np.random.uniform(low=1, high=11, size=5)
@@ -704,7 +707,8 @@ def test_multi_model_simulation_averaging():
                                 sim_length=10) for k in constants]
 
     # Here we generate random initial coordinates
-    initial_coordinates = torch.randn((n_sims, n_particles, 3), dtype=torch.float64)
+    initial_coordinates = torch.randn(
+        (n_sims, n_particles, 3), dtype=torch.float64)
 
     my_sim = MultiModelSimulation(models, initial_coordinates,
                                   embeddings=None, length=10,
@@ -714,7 +718,7 @@ def test_multi_model_simulation_averaging():
     # Here we use the 'calculate_potential_and_forces' method from
     # MultiModelSimulation
     avg_potential, avg_forces = my_sim.calculate_potential_and_forces(
-                                    initial_coordinates)
+        initial_coordinates)
 
     # Next, we compute the average potential and forces manually
 
@@ -732,9 +736,9 @@ def test_multi_model_simulation_averaging():
     # match the averages calculate manually
 
     np.testing.assert_allclose(manual_avg_potential.numpy(),
-                                  avg_potential.numpy(), rtol=1e-9)
+                               avg_potential.numpy(), rtol=1e-9)
     np.testing.assert_allclose(manual_avg_forces.numpy(),
-                                  avg_forces.numpy(), rtol=1e-9)
+                               avg_forces.numpy(), rtol=1e-9)
 
 
 def test_single_model_simulation_vs_multimodelsimulation():

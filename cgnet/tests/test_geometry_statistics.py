@@ -25,7 +25,7 @@ data = np.random.randn(frames, beads, dims).astype(np.float64)
 data_tensor = torch.Tensor(data).double()
 
 geom_feature = GeometryFeature(feature_tuples='all_backbone',
-                                 n_beads=beads)
+                               n_beads=beads)
 _ = geom_feature.forward(data_tensor)
 
 stats = GeometryStatistics(data_tensor, backbone_inds='all',
@@ -117,9 +117,9 @@ def test_manual_backbone_calculations():
     # in each case, so we use return_indices to get only the "bond" distances
     # for testing
     stats_bb_inds_bond_dists = stats_bb_inds.distances[:,
-                        stats_bb_inds.return_indices(stats_bb_inds.bond_pairs)]
+                                                       stats_bb_inds.return_indices(stats_bb_inds.bond_pairs)]
     stats_bb_only_bond_dists = stats_bb_only.distances[:,
-                        stats_bb_only.return_indices(stats_bb_only.bond_pairs)]
+                                                       stats_bb_only.return_indices(stats_bb_only.bond_pairs)]
 
     np.testing.assert_allclose(stats_bb_inds_bond_dists,
                                stats_bb_only_bond_dists)

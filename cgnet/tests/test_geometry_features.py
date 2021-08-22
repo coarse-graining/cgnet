@@ -108,11 +108,11 @@ def test_dihedral_features():
     # \overline{dc} = d - c
     #
     # % normal vector with plane of first and second angles, respectively
-    # n_1 = \overline{ba} \times \overline{cb} 
+    # n_1 = \overline{ba} \times \overline{cb}
     # n_2 = \overline{cb} \ times \overline{dc}
     #
     # m_1 = n_2 \times n_1
-    # 
+    #
     # \sin(\alpha) = \frac{m_1 \dot \overline{cb}}
     #                     {\sqrt{\overline{cb} \dot \overline{cb}}}
     # \cos(\alpha) = n_2 \dot n_1

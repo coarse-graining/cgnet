@@ -167,6 +167,7 @@ def test_cgnet_dismount():
     assert pot.device.type == device.type
     assert pred_force.device.type == device.type
 
+
 def test_save_load_model():
     # This test asseses the ability to dismount models from GPU that are loaded
     # from a saved .pt file
@@ -189,7 +190,7 @@ def test_save_load_model():
         loaded_model = torch.load(tmp+"/cgnet_gpu_test.pt")
         device = torch.device('cpu')
         loaded_model.mount(torch.device('cpu'))
-        # First we check features 
+        # First we check features
         for layer in loaded_model.feature.layer_list:
             if isinstance(layer, (GeometryFeature, SchnetFeature)):
                 assert layer.device.type == device.type

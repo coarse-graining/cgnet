@@ -24,7 +24,8 @@ beads = np.random.randint(5, 10)  # Number of coarse-granined beads
 dims = 3  # Number of dimensions
 
 # Create mock linear protein simulation data and create statistics
-coords = torch.randn((frames, beads, 3), requires_grad=True, dtype=torch.float64)
+coords = torch.randn((frames, beads, 3),
+                     requires_grad=True, dtype=torch.float64)
 geom_stats = GeometryStatistics(coords.detach().numpy(),
                                 backbone_inds='all',
                                 get_all_distances=True,
@@ -362,7 +363,8 @@ def test_bead_energy_masking():
     n_embeddings = np.random.randint(beads, 2*beads)
     embedding_layer = CGBeadEmbedding(n_embeddings=n_embeddings,
                                       embedding_dim=num_feats)
-    variable_beads = np.random.randint(3, beads, size=frames) # random protein sizes
+    variable_beads = np.random.randint(
+        3, beads, size=frames)  # random protein sizes
     variable_embeddings = [np.random.randint(1,
                            high=beads, size=bead) for bead in variable_beads]
     padded_embedding_list = []
@@ -377,7 +379,7 @@ def test_bead_energy_masking():
     arch = (LinearLayer(num_feats, rand, bias=True, activation=nn.Tanh())
             + LinearLayer(rand, 1, bias=True, activation=nn.Tanh()))
 
-    # Next we create a basic SchnetFeature 
+    # Next we create a basic SchnetFeature
     rbf_layer = GaussianRBF()
     feature = SchnetFeature(num_feats,
                             embedding_layer=embedding_layer,
@@ -391,15 +393,17 @@ def test_bead_energy_masking():
     # and the embedding property through as well
     model = CGnet(arch, ForceLoss(), feature=feature)
     model.double()
-    energy, force = model.forward(coords, embedding_property=embedding_property)
+    energy, force = model.forward(
+        coords, embedding_property=embedding_property)
 
     # the force components for masked beads should all be zero if the padding
     # due to variable length input is masked properly
     # We check each frame of the above output individually:
     for i in range(frames):
         masked_forces = force[i][variable_beads[i]:]
-        zero_forces = np.zeros((beads - variable_beads[i],3))
-        np.testing.assert_array_equal(masked_forces.detach().numpy(), zero_forces)
+        zero_forces = np.zeros((beads - variable_beads[i], 3))
+        np.testing.assert_array_equal(
+            masked_forces.detach().numpy(), zero_forces)
 
 
 def test_cgnet_simulation():
@@ -432,7 +436,8 @@ def test_cgnet_simulation():
     model.eval()
 
     # Here, we produce mock target protein force data
-    forces = torch.randn((frames, beads, 3), requires_grad=False, dtype=torch.float64)
+    forces = torch.randn((frames, beads, 3),
+                         requires_grad=False, dtype=torch.float64)
 
     # Here, we create an optimizer for traning the model,
     # and we train it for one epoch

@@ -80,7 +80,8 @@ def test_distances_and_neighbors_numpy_vs_torch():
 
     np.testing.assert_allclose(distances_numpy, distances_torch, rtol=1e-9)
     np.testing.assert_allclose(neighbors_numpy, neighbors_torch, rtol=1e-9)
-    np.testing.assert_allclose(neighbors_mask_numpy, neighbors_mask_torch, rtol=1e-9)
+    np.testing.assert_allclose(
+        neighbors_mask_numpy, neighbors_mask_torch, rtol=1e-9)
 
 
 def test_nan_check():

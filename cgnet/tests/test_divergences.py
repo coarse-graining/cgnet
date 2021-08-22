@@ -18,8 +18,10 @@ def _get_random_distr():
     # Here, we create two distributions, and then shuffle the bins
     # so that the zero count bins are distributed randomly along the
     # distribution extent
-    distribution_1 = np.abs(np.concatenate([np.random.randn(length).astype(np.float64), zeros]))
-    distribution_2 = np.abs(np.concatenate([np.random.randn(length).astype(np.float64), zeros]))
+    distribution_1 = np.abs(np.concatenate(
+        [np.random.randn(length).astype(np.float64), zeros]))
+    distribution_2 = np.abs(np.concatenate(
+        [np.random.randn(length).astype(np.float64), zeros]))
     np.random.shuffle(distribution_1)
     np.random.shuffle(distribution_2)
     return distribution_1, distribution_2
@@ -141,7 +143,8 @@ def test_js_divergence_2():
     dist2_masked = np.ma.masked_where(dist2 == 0, dist2)
     elementwise_mean = 0.5 * (dist1_masked + dist2_masked)
     summand = 0.5 * (dist1_masked * np.ma.log(dist1_masked / elementwise_mean))
-    summand += 0.5 * ((dist2_masked * np.ma.log(dist2_masked / elementwise_mean)))
+    summand += 0.5 * \
+        ((dist2_masked * np.ma.log(dist2_masked / elementwise_mean)))
     manual_div = np.ma.sum(summand)
 
     cgnet_div = js_divergence(dist1, dist2)
