@@ -64,7 +64,6 @@ def test_adding_variable_selection():
                                variable_embeddings)
 
     # Build a dataset with the first half of the data...
-    print(np.arange(frames//2))
     ds2 = MultiMoleculeDataset(variable_coords, variable_forces,
                                variable_embeddings, selection=np.arange(frames//2))
     # ... then add the second half afterward
@@ -197,7 +196,6 @@ def test_multi_molecule_collate():
 
     # get tensors output from multi_molecule_collate()
     coords, forces, embeddings = multi_molecule_collate(data)
-    print(coords.size())
 
     # test manual padding against padding performed by collating
     np.testing.assert_array_equal(coords.detach().numpy(),

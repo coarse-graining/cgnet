@@ -517,7 +517,6 @@ def test_saving_numpy_coordinates():
     save_interval = 1  # np.random.choice([2, 3])
 
     n_expected_files = int(sim_length / npy_interval)
-    print(n_expected_files)
     model = HarmonicPotential(k=1, T=300, n_particles=3,  # 10
                               dt=0.001, friction=None,
                               n_sims=n_sims, sim_length=sim_length,
@@ -537,8 +536,6 @@ def test_saving_numpy_coordinates():
         traj = my_sim.simulate()
         assert traj.shape[1] == sim_length / save_interval
         file_list = sorted(os.listdir(tmp))
-        print(len(file_list))
-        print(traj)
         assert len(file_list) == n_expected_files
 
         expected_chunk_length = npy_interval / save_interval
@@ -592,8 +589,7 @@ def test_saving_all_quantities():
         assert traj.shape[1] == sim_length / save_interval
         file_list = os.listdir(tmp)
 
-        assert len(file_list) == n_expected_files * \
-            4  # coords, forces, pot, ke
+        assert len(file_list) == n_expected_files * 4  # coords, forces, pot, ke
         coords_file_list = sorted(
             [file for file in file_list if 'coords' in file])
         force_file_list = sorted(
