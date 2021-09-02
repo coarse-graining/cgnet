@@ -198,10 +198,10 @@ def test_combiner_zscore():
     assert feature_combiner.interfeature_transforms == [None, None]
     np.testing.assert_equal(list(feature_output.size()),
                             list((n_frames,
-                            len(geom_stats.master_description_tuples))))
+                                  len(geom_stats.master_description_tuples))))
     np.testing.assert_equal(list(geometry_output.size()),
                             list((n_frames,
-                            len(geom_stats.master_description_tuples))))
+                                  len(geom_stats.master_description_tuples))))
     assert geometry_output is not None
 
 
@@ -243,7 +243,7 @@ def test_combiner_full():
     # Test the combination of GeometryFeature, SchnetFeature,
     # amd priors in a CGnet class
     schnet_feature, embedding_property, feature_size = _get_random_schnet_feature(
-                                                          calculate_geometry=False)
+        calculate_geometry=False)
     layer_list = [geometry_feature, zscore_layer, schnet_feature]
     # grab distance indices
     dist_idx = geom_stats.return_indices('Distances')
@@ -274,7 +274,7 @@ def test_cgschnet_simulation_shapes():
     # Test simulation with embeddings and make sure the shapes of
     # the simulated coordinates, forces, and potential are correct
     schnet_feature, embedding_property, feature_size = _get_random_schnet_feature(
-                                                           calculate_geometry=True)
+        calculate_geometry=True)
     layer_list = [schnet_feature]
     feature_combiner = FeatureCombiner(layer_list)
 
@@ -305,7 +305,7 @@ def test_feature_combiner_shapes():
                                             n_beads=n_beads)
 
     schnet_feature, embedding_property, feature_size = _get_random_schnet_feature(
-                                                          calculate_geometry=False)
+        calculate_geometry=False)
     layer_list = [full_geometry_feature, schnet_feature]
     # grab distance indices
     dist_idx = geom_stats.return_indices('Distances')
@@ -328,7 +328,7 @@ def test_feature_combiner_shapes():
     # The forward method returns the object to be propagated to the NN and
     # the geometry features.
     feature_output, geometry_features = feature_combiner.forward(coords_torch,
-                                                            embedding_property)
+                                                                 embedding_property)
 
     np.testing.assert_array_equal(feature_output.shape,
                                   [n_frames, n_beads, feature_size])
@@ -345,7 +345,7 @@ def test_combiner_shape_with_geometry_propagation():
                                             n_beads=n_beads)
 
     schnet_feature, embedding_property, feature_size = _get_random_schnet_feature(
-                                                          calculate_geometry=False)
+        calculate_geometry=False)
     layer_list = [full_geometry_feature, schnet_feature]
     # grab distance indices
     dist_idx = geom_stats.return_indices('Distances')
@@ -393,7 +393,7 @@ def test_combiner_output_with_geometry_propagation():
                                             n_beads=n_beads)
     # Here we generate a random schent feature that does not calculate geometry
     schnet_feature, embedding_property, feature_size = _get_random_schnet_feature(
-                                                          calculate_geometry=False)
+        calculate_geometry=False)
     # grab distance indices
     dist_idx = geom_stats.return_indices('Distances')
 

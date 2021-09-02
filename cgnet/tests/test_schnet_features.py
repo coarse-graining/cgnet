@@ -92,7 +92,6 @@ def test_continuous_convolution():
     np.testing.assert_allclose(cfconv_layer_out, cfconv_manual_out)
 
 
-
 def test_cfconv_bead_masking():
     # tests to see if the output of ContinousFilterConvolution
     # is properly masked if tha input has padding to account
@@ -100,7 +99,8 @@ def test_cfconv_bead_masking():
 
     # First, we assmeble a tensor of mock padded embeddings
     # to emulate the effect of using a padded dataset
-    variable_beads = np.random.randint(3, beads, size=frames) # random protein sizes
+    variable_beads = np.random.randint(
+        3, beads, size=frames)  # random protein sizes
     variable_embeddings = [np.random.randint(1,
                            high=beads, size=bead) for bead in variable_beads]
     padded_embedding_list = []
@@ -113,7 +113,7 @@ def test_cfconv_bead_masking():
 
     # We repeate the same procedure here as in test_continuous_convolution
     # But in addition we apply the bead_mask to the forward operation
-    # and test to see if the artifical beads introduced by padding are 
+    # and test to see if the artifical beads introduced by padding are
     # zeroed out properly
     test_cfconv_features = torch.randn((frames, beads, n_filters))
     # Calculate continuous convolution output with the created layer
@@ -139,7 +139,7 @@ def test_cfconv_bead_masking():
     cfconv_manual_out = torch.tensor(np.sum(conv_features_masked, axis=2))
 
     # Here we mask the contributions from padded portions of the input
-    cfconv_manual_out = cfconv_manual_out * bead_mask[:,:,None]
+    cfconv_manual_out = cfconv_manual_out * bead_mask[:, :, None]
 
     # Test if the torch and numpy calculation are the same, including
     # after the filtering done by the bead_mask
@@ -220,9 +220,9 @@ def test_schnet_feature_geometry():
     # Here, we make sure that schnet_feature's calls to Geometry
     # can replicate those of a GeometryStatistics instance
     schnet_distance_pairs, _ = schnet_feature.geometry.get_distance_indices(beads,
-                                                                         [], [])
+                                                                            [], [])
     schnet_red_dist_map = schnet_feature.geometry.get_redundant_distance_mapping(
-                                                            schnet_distance_pairs)
+        schnet_distance_pairs)
     assert schnet_distance_pairs == geom_stats._distance_pairs
     np.testing.assert_equal(schnet_red_dist_map,
                             geom_stats.redundant_distance_mapping)

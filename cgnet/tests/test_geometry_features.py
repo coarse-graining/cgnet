@@ -20,7 +20,7 @@ beads = np.random.randint(8, 10)
 dims = 3
 
 # Create a pseudo simulation dataset
-data = np.random.randn(frames, beads, dims)
+data = np.random.randn(frames, beads, dims).astype(np.float64)
 data_tensor = torch.Tensor(data)
 
 # Note: currently get_distance_indices is not directly tested.
@@ -108,11 +108,11 @@ def test_dihedral_features():
     # \overline{dc} = d - c
     #
     # % normal vector with plane of first and second angles, respectively
-    # n_1 = \overline{ba} \times \overline{cb} 
+    # n_1 = \overline{ba} \times \overline{cb}
     # n_2 = \overline{cb} \ times \overline{dc}
     #
     # m_1 = n_2 \times n_1
-    # 
+    #
     # \sin(\alpha) = \frac{m_1 \dot \overline{cb}}
     #                     {\sqrt{\overline{cb} \dot \overline{cb}}}
     # \cos(\alpha) = n_2 \dot n_1
