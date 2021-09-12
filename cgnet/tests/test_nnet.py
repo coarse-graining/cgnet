@@ -138,7 +138,7 @@ def test_repulsion_layer():
     p1 = torch.tensor(ex_vols).double()
     p2 = torch.tensor(exps).double()
     energy_check = torch.sum((p1/output_features[:, repul_idx]) ** p2,
-                             1).reshape(len(output_features), 1) / 2
+                             1).reshape(len(output_features), 1)
     np.testing.assert_array_equal(energy.detach().numpy(),
                                   energy_check.detach().numpy())
 
