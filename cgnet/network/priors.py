@@ -187,7 +187,7 @@ class RepulsionLayer(_PriorLayer):
         n = len(in_feat)
         energy = torch.sum((self.repulsion_parameters[0, :]/in_feat)
                            ** self.repulsion_parameters[1, :],
-                           1).reshape(n, 1) / 2
+                           1).reshape(n, 1)
         return energy
 
 
