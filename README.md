@@ -33,6 +33,9 @@ python setup.py install
 Notes
 -----
 For compatibility with `pytorch==1.1`, please use the `pytorch-1.1` branch. This branch currently does not include the updates for variable size and Langevin dynamics, nor some normalization options.
+```diff
+- CGnet models can display high variance between different training runs. For more stable models, we recommend using CGSchNet instead.
+```
 
 Cite
 ----
