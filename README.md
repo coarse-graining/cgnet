@@ -2,7 +2,7 @@ cgnet
 =====
 
 ```diff
-- This code is no longer being routinely maintained. For more modern implenetations of CGSchNet, we recommend a Pytorch Geometric-based implemenation here:
+- This code is no longer being routinely maintained. For more modern implementations of CGSchNet, we recommend a Pytorch Geometric-based implemenation here:
 https://github.com/torchmd/torchmd-net
 ```
 
