@@ -1,6 +1,11 @@
 cgnet
 =====
 
+```diff
+- This code is no longer being routinely maintained. For more modern implenetations of CGSchNet, we recommend a Pytorch Geometric-based implemenation here:
+https://github.com/torchmd/torchmd-net
+```
+
 Coarse graining for molecular dymamics ([preprint](https://arxiv.org/abs/2007.11412))
 
 Dependencies
