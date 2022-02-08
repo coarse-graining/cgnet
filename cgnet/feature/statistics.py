@@ -50,7 +50,7 @@ class GeometryStatistics():
     ----------
     beta : float
         1/(Boltzmann constant)/(temperature) if temperature is not None in
-        units of kcal per mole; otherwise 1.0
+        units of mole per kcal; otherwise 1.0
     descriptions : dictionary
         List of indices (value) for each feature type (key)
     redundant_distance_mapping
